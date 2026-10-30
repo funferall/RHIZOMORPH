@@ -444,7 +444,7 @@ func rival() -> int:
 				leader = o
 	if leader >= 0:
 		return leader
-	for step in [1, 2]:
+	for step in [g.rival_step, 3 - g.rival_step]:
 		var o: int = (f + step) % 3
 		if g.fs[o]["alive"]:
 			return o

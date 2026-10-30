@@ -193,6 +193,18 @@ $G --headless --path . --fixed-fps 10 -- --sim --profile --match=11 --seconds=90
 - **First reading** (12 seeds, before the speed fixes): the Veiled Choir won 10 of 12, and the
   Amanita Court fell first in 9 of 12.
 
+## Playtests (humans)
+
+Every human game that ends (win or loss) saves the harness summary to `playtests/<date>_<court>.json`:
+court, result, length, income per minute, units, techs, buildings, spore actions.
+`python tools/sim/run_batch.py --playtests` lines them up against the bots' averages from the latest
+batch. Bots and humans play very differently; use both.
+
+**Fair rival cycle.** The AIs used to always press round the table one way, so the Choir hunted the
+Court in every seed. Now `game.rival_step` alternates by seed (even: Court > Hollow > Choir > Court;
+odd: the reverse), and reports split by direction. With it (24 seeds, 2026-10-30): Choir 13, Court 8,
+Hollow 1. The Court's earlier weakness was mostly the cycle; the Morel Hollow is now the outlier.
+
 ## Verify loop
 
 ```

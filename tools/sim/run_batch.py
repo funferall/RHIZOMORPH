@@ -91,6 +91,13 @@ def report(label: str, runs: list) -> str:
                 first += 1
         mean_d = f"{statistics.mean(deaths) / 60:.1f} min" if deaths else "never"
         lines.append(f"| {NAMES[c]} | {wins} | {wins / max(n, 1):.0%} ({lo:.0%} to {hi:.0%}) | {first} | {mean_d} |")
+    # the rival cycle alternates by seed; show each direction so a predator bias is visible
+    for step, label in [(1, "Court hunts Hollow, Hollow hunts Choir, Choir hunts Court"), (2, "the reverse")]:
+        sub = [r for r in ok if r.get("rival_step", 1) == step]
+        if sub:
+            wins = ", ".join(f"{NAMES[c].split()[1]} {sum(1 for r in sub if r['winner'] == i)}" for i, c in enumerate(COURTS))
+            lines.append("")
+            lines.append(f"Rival cycle {step} ({label}), {len(sub)} matches: wins {wins}.")
     unresolved = sum(1 for r in ok if r["winner"] < 0)
     lens = [r["time"] for r in ok]
     if lens:
@@ -138,6 +145,32 @@ def compare(a: str, b: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def playtests() -> str:
+    """Human games from playtests/ beside the bots' averages for the same court."""
+    games = [json.loads(p.read_text(encoding="utf-8")) for p in sorted((ROOT / "playtests").glob("*.json"))]
+    if not games:
+        return "No playtests yet: finish a game (win or lose) and it is saved to playtests/."
+    bots = []
+    for d in sorted(RUNS.iterdir(), key=lambda p: p.stat().st_mtime) if RUNS.exists() else []:
+        bots = [r for r in load(d.name) if not r.get("failed")] or bots
+    lines = ["# Playtests", "", "| date | court | result | length | units trained | techs | income at m3 (bots) | income at m6 (bots) |",
+             "|---|---|---|---|---|---|---|---|"]
+    for g in games:
+        i = COURTS.index(g["human"])
+        me = g["courts"][i]
+
+        def inc(runs, m):
+            vals = [r["courts"][i]["hist"][m - 1][0] for r in runs if len(r["courts"][i]["hist"]) >= m]
+            return statistics.mean(vals) if vals else float("nan")
+
+        mine3 = me["hist"][2][0] if len(me["hist"]) >= 3 else float("nan")
+        mine6 = me["hist"][5][0] if len(me["hist"]) >= 6 else float("nan")
+        lines.append(f"| {g['date'][:16]} | {NAMES[g['human']]} | {'won' if g['won'] else 'lost'} | {g['time'] / 60:.1f} min | "
+                     f"{me['trained']} | {me['techs']} | {mine3:.1f} ({inc(bots, 3):.1f}) | {mine6:.1f} ({inc(bots, 6):.1f}) |")
+    lines.append("\nIncome is the court's main resource per second; the bots' figure is the mean from the latest batch.")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=24)
@@ -147,7 +180,11 @@ def main() -> None:
     ap.add_argument("--fps", type=int, default=10, help="simulated frames per game second")
     ap.add_argument("--label", default=time.strftime("run_%Y%m%d_%H%M%S"))
     ap.add_argument("--compare", nargs=2, metavar=("A", "B"))
+    ap.add_argument("--playtests", action="store_true", help="show human games beside the bots")
     args = ap.parse_args()
+    if args.playtests:
+        print(playtests())
+        return
     if args.compare:
         print(compare(*args.compare))
         return

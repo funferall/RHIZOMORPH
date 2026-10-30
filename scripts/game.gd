@@ -95,6 +95,10 @@ var speed := 1.0
 var over := false
 var match_seed := 0       # --match=N varies the AI and the forest between bot games
 var sim := false          # headless balance run (main.gd --sim): records a summary
+# Which way round the table the AIs press: 1 = each court hunts the next (Court ->
+# Hollow -> Choir -> Court), 2 = the reverse. Alternates by seed so no court always
+# faces the same predator in balance runs.
+var rival_step := 1
 var _sample_min := 0
 
 var units: Array[Ent] = []
@@ -120,7 +124,8 @@ var _decor_t := 0.0
 var _ff_left := 0.0
 var _shake := 0.0
 var _rng := RandomNumberGenerator.new()
-var _log := OS.get_cmdline_user_args().has("--log") or OS.get_cmdline_user_args().has("--sim")
+var _log := true   # stats are always kept: bot logs print them, sims and playtests save them
+var _print_log := OS.get_cmdline_user_args().has("--log")
 var _log_t := 0.0
 var _stats := {}
 
@@ -157,6 +162,7 @@ func _ready() -> void:
 
 func start(faction: int, as_bot: bool) -> void:
 	_rng.seed = 1234 + match_seed * 7919
+	rival_step = 1 if match_seed % 2 == 0 else 2
 	player = faction
 	bot = as_bot
 	started = true
@@ -1174,7 +1180,7 @@ func _step(dt: float) -> void:
 				fs[f]["hist"] = []
 			var rt: Array = fs[f]["rate"]
 			fs[f]["hist"].append([snappedf(rt[0], 0.1), snappedf(rt[1], 0.1), snappedf(rt[2], 0.1), pop(f)])
-	if _log and not sim:
+	if _print_log and not sim:
 		_log_t -= dt
 		if _log_t <= 0.0:
 			_log_t = 20.0
@@ -2124,8 +2130,28 @@ func sim_summary() -> Dictionary:
 	for k in _stats:
 		if str(k).begins_with("cast_") or str(k).begins_with("spor") or str(k).begins_with("built_"):
 			casts[k] = _stats[k]
-	return {"match": match_seed, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
+	return {"match": match_seed, "rival_step": rival_step, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
 		"alive": alive, "courts": per, "casts": casts, "cpu_mycelium": myc.cpu, "profile_ms": _prof_report()}
+
+
+# A human game just ended: keep the same summary the balance harness records,
+# so playtests can be set beside the bots (tools/sim/run_batch.py --playtests).
+func _save_playtest(won: bool) -> void:
+	if bot or sim:
+		return
+	var sum := sim_summary()
+	sum["human"] = Data.FACTIONS[player]["key"]
+	sum["won"] = won
+	sum["date"] = Time.get_datetime_string_from_system()
+	var dir := ProjectSettings.globalize_path("res://playtests")
+	if DirAccess.make_dir_recursive_absolute(dir) != OK:
+		dir = OS.get_user_data_dir().path_join("playtests")
+		DirAccess.make_dir_recursive_absolute(dir)
+	var stamp := Time.get_datetime_string_from_system().replace(":", "").replace("-", "").replace("T", "_")
+	var fa := FileAccess.open(dir.path_join("%s_%s.json" % [stamp, sum["human"]]), FileAccess.WRITE)
+	if fa:
+		fa.store_string(JSON.stringify(sum, " "))
+		fa.close()
 
 
 func _check_end() -> void:
@@ -2143,6 +2169,7 @@ func _check_end() -> void:
 		return
 	if not fs[player]["alive"]:
 		over = true
+		_save_playtest(false)
 		emit_signal("game_over", false)
 		return
 	var others := 0
@@ -2151,6 +2178,7 @@ func _check_end() -> void:
 			others += 1
 	if others == 0:
 		over = true
+		_save_playtest(true)
 		emit_signal("game_over", true)
 
 
