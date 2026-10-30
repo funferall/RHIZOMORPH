@@ -7,14 +7,17 @@ extends Node
 
 const SFX_DIR := "res://audio/sfx"
 const MUSIC_DIR := "res://audio/music"
-const LOOPS := ["skitter_loop", "ambient_terrarium", "ambient_mycelium"]
+const LOOPS := ["skitter_loop", "ambient_terrarium", "ambient_mycelium", "ambient_forest", "ambient_rain", "ambient_wind", "ambient_dry"]
+const WEATHER_LOOPS := {"rain": "ambient_rain", "wind": "ambient_wind", "dry": "ambient_dry"}
 const VOICES := 24
 # how many copies of one sound may overlap, and the minimum gap between starts
 const LIMIT := {"hit_melee": [6, 0.03], "spit_fire": [4, 0.04], "spit_impact": [4, 0.04], "puff_fire": [3, 0.05],
-	"puff_impact": [3, 0.05], "lob_fire": [3, 0.05], "lob_impact": [3, 0.05], "spawn": [3, 0.08], "unit_death": [4, 0.05]}
+	"puff_impact": [3, 0.05], "lob_fire": [3, 0.05], "lob_impact": [3, 0.05], "spawn": [3, 0.08], "unit_death": [4, 0.05],
+	"thrall_rise": [3, 0.15], "branch_fall": [2, 0.3]}
 const FAMILY := {"hit": "hit_melee", "spawn": "spawn"}
 const PITCH := {"hit_melee": 0.18, "unit_death": 0.12, "spawn": 0.12, "spit_impact": 0.12, "lob_impact": 0.12}
-const VOLUME := {"ambient_terrarium": -10.0, "ambient_mycelium": -14.0, "skitter_loop": -12.0, "ui_click": -8.0,
+const VOLUME := {"ambient_terrarium": -10.0, "ambient_mycelium": -14.0, "ambient_forest": -13.0, "ambient_rain": -8.0,
+	"ambient_wind": -9.0, "ambient_dry": -14.0, "thrall_rise": -6.0, "skitter_loop": -12.0, "ui_click": -8.0,
 	"hit_melee": -4.0, "spawn": -6.0, "place": -2.0}
 
 var game: Node
@@ -35,6 +38,7 @@ var _music_hold := 0.0
 var _intensity := 0.0
 var _skitter := AudioStreamPlayer3D.new()
 var _amb: Array[AudioStreamPlayer] = []
+var _weather := {}       # weather kind -> its looping player, faded in while it lasts
 
 
 func _ready() -> void:
@@ -61,10 +65,19 @@ func _ready() -> void:
 	if sfx.has("skitter_loop"):
 		_skitter.stream = sfx["skitter_loop"][0]
 		_skitter.play()
-	for n in ["ambient_terrarium", "ambient_mycelium"]:
+	for w in WEATHER_LOOPS:
+		var n: String = WEATHER_LOOPS[w]
 		if sfx.has(n):
 			var p := AudioStreamPlayer.new()
-			p.stream = sfx[n][0]
+			p.stream = sfx[n].pick_random()
+			p.volume_db = -80.0
+			add_child(p)
+			p.play()
+			_weather[w] = p
+	for n in ["ambient_forest", "ambient_mycelium"]:
+		if sfx.has(n):
+			var p := AudioStreamPlayer.new()
+			p.stream = sfx[n].pick_random()
 			p.volume_db = VOLUME[n]
 			add_child(p)
 			p.play()
@@ -204,6 +217,11 @@ func _process(delta: float) -> void:
 		return
 	if game.over:
 		return
+	# weather beds fade in and out with the sky
+	for w in _weather:
+		var on: bool = game.weather.now == w
+		var p: AudioStreamPlayer = _weather[w]
+		p.volume_db = lerpf(p.volume_db, VOLUME[WEATHER_LOOPS[w]] if on else -80.0, 1.0 - exp(-delta * (0.8 if on else 0.4)))
 	# skitter: louder with more units moving near the focus point
 	var moving := 0
 	for u in game.units:

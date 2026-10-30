@@ -19,7 +19,7 @@ import common
 
 SITE = common.AUDIO / "review_site"
 GROUP_TITLES = {"music": "Music", "building": "Building & supply", "units": "Units", "structures": "Structures",
-                "abilities": "Spore actions", "ambience": "Ambience", "ui": "Interface"}
+                "abilities": "Spore actions", "world": "The living forest", "weather": "Weather", "ambience": "Ambience", "ui": "Interface"}
 
 
 def convert(src: Path, dst: Path) -> float:

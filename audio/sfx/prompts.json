@@ -706,6 +706,293 @@
    "in_game": [
     "r1:ui_error_1"
    ]
+  },
+  {
+   "name": "borer_swarm",
+   "use": "Agrilus Swarm: jewel-beetle borers descend on a tree",
+   "group": "abilities",
+   "seconds": 2.5,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Swarm of small metallic beetles buzzing in and landing on tree bark, rising insect drone then dry scratching and chewing into wood, close. Length: 2.5 seconds",
+    "Cloud of buzzing wood-boring beetles arriving all at once, whirring wings settling into a crackle of tiny mandibles gnawing bark. Length: 2.5 seconds",
+    "Dense droning insect swarm sweeping past and clinging to a tree trunk, then many small crunching bites into wood, close and dry. Length: 2.5 seconds"
+   ],
+   "in_game": [
+    "r3:borer_swarm_1",
+    "r3:borer_swarm_3"
+   ]
+  },
+  {
+   "name": "pandemic",
+   "use": "Pandemic: a contagious spore cloud where every death rises",
+   "group": "abilities",
+   "seconds": 3,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Thick wet spore cloud erupting from rotting fungus, deep sickly exhale and slow bubbling hiss spreading outward, eerie and organic. Length: 3 seconds",
+    "Many fungal pods bursting one after another, soft wet pops and a rising whispering hiss of drifting spores, ominous. Length: 3 seconds",
+    "Low creaking groan of a giant fungus followed by a long wet sigh of released spores, damp and unsettling. Length: 3 seconds"
+   ],
+   "in_game": [
+    "r3:pandemic_1",
+    "r3:pandemic_3"
+   ]
+  },
+  {
+   "name": "sporulate",
+   "use": "A Choir thrall bursts into spores on its summit",
+   "group": "units",
+   "seconds": 1.5,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Insect husk cracking open with a dry chitin crunch and a soft puff of powdery spores, close. Length: 1.5 seconds",
+    "Swollen fungal body on a dead insect splitting and bursting, wet pop then a dusty whoosh of spores. Length: 1.5 seconds",
+    "Small dry beetle shell snapping apart and exhaling a cloud of fine spore dust, crisp then soft. Length: 1.5 seconds"
+   ],
+   "in_game": [
+    "r3:sporulate_1",
+    "r3:sporulate_2"
+   ]
+  },
+  {
+   "name": "thrall_rise",
+   "use": "An infected insect twitches back up as a Choir thrall",
+   "group": "units",
+   "seconds": 1,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Dead insect twitching back to life, dry chitinous clicks and a soft wet fungal creak, close. Length: 1 seconds",
+    "Brittle beetle legs scraping and jerking, crackle of shell joints and a faint squelch, close-up. Length: 1 seconds",
+    "Insect body jolting upright with stiff clicking legs and a stringy wet stretch, small and close. Length: 1 seconds"
+   ],
+   "in_game": [
+    "r3:thrall_rise_2",
+    "r3:thrall_rise_3"
+   ]
+  },
+  {
+   "name": "hit_t_stag",
+   "use": "A Stag Thrall's mandibles clamp down",
+   "group": "units",
+   "seconds": 1,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Heavy beetle mandibles clamping shut on something wet, hard chitin crunch with a squelch, close. Length: 1 seconds",
+    "Large insect pincers snapping closed, loud woody crack and fleshy squish, close-up. Length: 1 seconds",
+    "Armoured beetle jaws crushing a soft mushroom, thick crunch then a wet splat. Length: 1 seconds"
+   ],
+   "in_game": [
+    "r3:hit_t_stag_3",
+    "r3:hit_t_stag_1"
+   ]
+  },
+  {
+   "name": "tree_dies",
+   "use": "A tree's vigor runs out and it dies as a standing snag",
+   "group": "world",
+   "seconds": 3,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Large old tree groaning as it dies, long deep wooden creak and dry crackling of bark, distant wind. Length: 3 seconds",
+    "Slow tired creaking of a dead tree trunk, low wooden moan with brittle splintering, outdoors. Length: 3 seconds",
+    "Ancient trunk splitting internally, deep resonant wooden groan fading into dry crackles. Length: 3 seconds"
+   ],
+   "in_game": [
+    "r3:tree_dies_2",
+    "r3:tree_dies_3"
+   ]
+  },
+  {
+   "name": "treefall",
+   "use": "A windstorm fells a snag into a log",
+   "group": "world",
+   "seconds": 4,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Huge dead tree snapping at the base and crashing to the forest floor, loud splintering crack, long whooshing fall, heavy earth-shaking thud. Length: 4 seconds",
+    "Giant tree trunk breaking with a gunshot crack, creaking topple and a massive booming impact on soft ground, branches crunching. Length: 4 seconds",
+    "Old snag giving way in a storm, groaning splinter, rushing fall through branches and a deep thumping crash, outdoors. Length: 4 seconds"
+   ],
+   "in_game": [
+    "r3:treefall_1",
+    "r3:treefall_2",
+    "r3:treefall_3"
+   ]
+  },
+  {
+   "name": "branch_fall",
+   "use": "A gust drops a dead branch",
+   "group": "world",
+   "seconds": 1.5,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Dead branch snapping high in a tree and dropping onto leaf litter, sharp crack then a rustling thump. Length: 1.5 seconds",
+    "Dry stick breaking off and falling through leaves, small crack and soft crunching landing. Length: 1.5 seconds",
+    "Rotten branch cracking loose in the wind, brief whoosh and a dull thud on mossy ground. Length: 1.5 seconds"
+   ],
+   "in_game": [
+    "r3:branch_fall_1",
+    "r3:branch_fall_2"
+   ]
+  },
+  {
+   "name": "leaf_fall",
+   "use": "The canopy drops its leaves",
+   "group": "world",
+   "seconds": 3,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Shower of dry autumn leaves falling and rustling onto the forest floor, gentle breeze, soft and airy. Length: 3 seconds",
+    "Many leaves pattering down through branches onto leaf litter, light crisp rustling. Length: 3 seconds",
+    "Gust shaking dry leaves loose from a canopy, cascading rustle settling on the ground. Length: 3 seconds"
+   ],
+   "in_game": [
+    "r3:leaf_fall_1",
+    "r3:leaf_fall_3"
+   ]
+  },
+  {
+   "name": "thunder",
+   "use": "Rain is coming (15 s warning)",
+   "group": "weather",
+   "seconds": 4,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Distant rolling thunder over a forest, low deep rumble slowly fading, outdoors. Length: 4 seconds",
+    "Far-off thunderclap rumbling across hills, soft and booming with a long tail. Length: 4 seconds",
+    "Low distant thunder growling under a darkening sky, gentle wind in trees. Length: 4 seconds"
+   ],
+   "in_game": [
+    "r3:thunder_1",
+    "r3:thunder_3"
+   ]
+  },
+  {
+   "name": "gust",
+   "use": "A windstorm is coming (15 s warning)",
+   "group": "weather",
+   "seconds": 3,
+   "variants": 1,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Strong gust of wind rushing through tall trees, rising roar of leaves and creaking branches, then easing. Length: 3 seconds",
+    "Sudden howling wind sweeping through a forest canopy, swaying trunks creaking, outdoors. Length: 3 seconds",
+    "Approaching storm wind building through the woods, loud rushing whoosh of leaves. Length: 3 seconds"
+   ],
+   "in_game": [
+    "r3:gust_2",
+    "r3:gust_1"
+   ]
+  },
+  {
+   "name": "ambient_rain",
+   "use": "Loop under rain",
+   "group": "weather",
+   "seconds": 10,
+   "variants": 1,
+   "loop": true,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Steady gentle rain falling on forest leaves and moss, soft continuous patter with occasional drips, calm and immersive. Length: 10 seconds",
+    "Light rain in a dense forest, droplets pattering on leaves and soft wet ground, steady and peaceful. Length: 10 seconds",
+    "Continuous soft rainfall under a tree canopy, quiet patter and dripping, no thunder. Length: 10 seconds"
+   ],
+   "in_game": [
+    "r3:ambient_rain_1",
+    "r3:ambient_rain_2",
+    "r3:ambient_rain_3"
+   ]
+  },
+  {
+   "name": "ambient_wind",
+   "use": "Loop under a windstorm",
+   "group": "weather",
+   "seconds": 10,
+   "variants": 1,
+   "loop": true,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Strong steady wind blowing through a forest, rushing leaves and swaying creaking trees, continuous. Length: 10 seconds",
+    "Gusty storm wind in tall trees, constant roar with rising and falling gusts, outdoors. Length: 10 seconds",
+    "Howling wind through a woodland canopy, leaves thrashing, low continuous rumble. Length: 10 seconds"
+   ],
+   "in_game": [
+    "r3:ambient_wind_1",
+    "r3:ambient_wind_2"
+   ]
+  },
+  {
+   "name": "ambient_dry",
+   "use": "Loop under a dry spell",
+   "group": "weather",
+   "seconds": 10,
+   "variants": 1,
+   "loop": true,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Hot dry summer forest, steady drone of cicadas and buzzing insects, dry grass rustling, continuous. Length: 10 seconds",
+    "Dry afternoon in the woods, constant insect hum and crickets, faint crackle of dry leaves. Length: 10 seconds",
+    "Parched forest floor in heat, droning insects and occasional dry twig crackle, steady. Length: 10 seconds"
+   ],
+   "in_game": [
+    "r3:ambient_dry_2"
+   ]
+  },
+  {
+   "name": "ambient_forest",
+   "use": "Constant forest-floor ambience (replaces the rejected terrarium bed)",
+   "group": "ambience",
+   "seconds": 12,
+   "variants": 1,
+   "loop": true,
+   "status": "keep",
+   "notes": "round 3",
+   "prompts": [
+    "Quiet deep forest at golden hour, distant birdsong, gentle breeze in leaves, faint insect hum, calm and continuous. Length: 12 seconds",
+    "Peaceful woodland ambience, soft rustling canopy, a few far-off birds, quiet and steady. Length: 12 seconds",
+    "Calm forest floor atmosphere, light wind through trees, distant bird calls and soft insect chirps. Length: 12 seconds"
+   ],
+   "in_game": [
+    "r3:ambient_forest_1",
+    "r3:ambient_forest_2",
+    "r3:ambient_forest_3"
+   ]
   }
  ]
 }

@@ -369,7 +369,7 @@ network matter.
   13 rocks; 8 puddles.
 - Camera zoom-out raised to 170 m; root-zone rings support up to 24 trees.
 
-**Still to build:** the burn-scar clearing, fern understory, the rocky outcrop's range bonus,
+**Still to build:** the burn-scar clearing, the rocky outcrop's range bonus,
 cords crossing the stream only at crossings, and the minimap is still the original size.
 
 The original plan:
@@ -388,7 +388,8 @@ The original plan:
     bridges and stepping stones. Cords can cross only at crossings, so crossings are chokepoints.
   - **Rocky outcrop:** high ground. Ranged units get +15% range, and it is a summit point
     for the Choir.
-  - **Fern understory:** units inside are hidden from enemies more than 4 m away.
+  - ~~Fern understory~~ **Dropped (2026-10-30).** Cover that hides your own units fights the
+    camera, not the enemy. Fog of war already supplies the hidden-information game.
   - **Anthills:** 3–4, spread so that every court has one nearby.
 - **Start positions.** There are three starts. Each one has a fair *mix* of nearby trees,
   deadwood, and an anthill, so any court can play from any start.
@@ -529,7 +530,32 @@ starts.
 
 ### Phase 4 — The forest map: 192 × 144 m, zones, stream, weather, treefall, saplings, leaf fall (§8, §9) (map, weather, treefall and leaf fall built; saplings and the remaining zones next)
 
-### Phase 5 — Physarum roaming hazard, ecological victories, AI that respects fog
+### Phase 5 — AI that respects fog (first pass done), Physarum roaming hazard, ecological victories
+
+The AI now acts only on what its court can see now or has spotted before, plus the three start
+positions. It sends a scout early, and armies with no spotted target march on the rival's start.
+
+### Tooling — a headless simulation harness for balance
+
+Today every balance test is a full rendered game at 8× speed: about 1.5 min of wall time per
+10-min match. That allows three seeds per change, and three seeds are mostly noise.
+
+`game.gd` is already a state machine: the whole match is its state, advanced by `_step(dt)`. A
+headless mode would run that same code, with no separate model to keep in sync:
+- **No presentation.** Skip meshes, particles, decor, the fog texture and audio. Ents keep a
+  bare `Node3D` so the rest of the code is unchanged.
+- **No frame clock.** Step the simulation as fast as the CPU allows (fixed `dt`, many steps per
+  frame), with no 8× cap.
+- **CPU mycelium.** Territory, income and vision depend on the GPU sim, which headless Godot
+  can't run. Use a coarse 2 m CPU stand-in, or the existing structure-reach estimate. Check it
+  against a few rendered games, because headless balance can drift a little from the real thing.
+- **A batch runner.** Run N seeds in parallel (one process per core) and aggregate: win rate per
+  court, time to first Heart kill, income curves, units trained, and spore-action use.
+
+**Expected:** 20–50× faster per game. Balance changes judged on 30+ seeds instead of 3.
+
+**Not worth it:** a separate abstract model (equations or a spreadsheet). It would drift from
+the real game the moment either changed.
 
 ## 13. Open questions
 

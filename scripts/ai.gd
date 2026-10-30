@@ -6,6 +6,9 @@ extends RefCounted
 # grows lures beside their nests and sporulates its dying thralls. All three
 # research down a fixed order, keep training, gather an army at the front and
 # send it in waves, raid enemy cords, defend, and cast spore actions on clumps.
+# It plays under the same fog: it acts only on what its court can see now or has
+# spotted before (fog.gd), plus the three start positions anyone reading the map
+# knows. A scout keeps the picture fresh.
 
 const Data = preload("res://scripts/data.gd")
 
@@ -22,6 +25,9 @@ var attacking := false
 var raid_t := 95.0
 var tech_order: Array = []
 var builder = null          # Choir: the thrall walking off to become a structure
+var scout = null
+var scout_t := 40.0
+var scout_route: Array[Vector2] = []
 var build_plan := {}        # Choir: {sid, at}
 
 
@@ -53,8 +59,52 @@ func tick(dt: float) -> void:
 		"parasite":
 			_build_choir()
 			_sporulate()
+	_scout()
 	_army()
 	_abilities()
+
+
+# --- what this court knows ------------------------------------------------------
+
+func _sees(p: Vector2) -> bool:
+	return g.fog.visible(f, p)
+
+
+func _knows(s) -> bool:
+	return s.seen_by & (1 << f) != 0
+
+
+# One fast unit tours the rival starts and the middle of the map, so the
+# army has targets; a dead scout is replaced after a while.
+func _scout() -> void:
+	if scout != null and (not scout.alive or scout.squad != "scout"):
+		scout = null
+		scout_t = g.time + 75.0
+	if scout == null:
+		if g.time < scout_t:
+			return
+		var best = null
+		for u in g.units:
+			if u.f == f and u.alive and u.squad == "" and not u.d.get("elite", false) and u.summit == Vector2.INF:
+				if best == null or u.d["speed"] > best.d["speed"]:
+					best = u
+		if best == null:
+			return
+		scout = best
+		scout.squad = "scout"
+		scout_route.clear()
+		for o in 3:
+			if o != f and g.fs[o]["alive"]:
+				scout_route.append(Data.START_POS[o])
+		scout_route.append(Vector2(rng.randf_range(-30, 30), rng.randf_range(-20, 20)))
+		scout_route.shuffle()
+	if scout.goal == Vector2.INF and scout.target == null:
+		if scout_route.is_empty():
+			scout.squad = ""   # done: back to the army
+			scout = null
+			scout_t = g.time + 120.0
+			return
+		g.order_move([scout], scout_route.pop_front())
 
 
 func _mine(sid := "") -> Array:
@@ -357,7 +407,9 @@ func rival() -> int:
 	var power := [0.0, 0.0, 0.0]
 	for o in 3:
 		if g.fs[o]["alive"]:
-			power[o] = g.pop(o) * 1.0 + g.structs.filter(func(e): return e.f == o and e.alive).size() * 0.6
+			# judged only by what this court has seen of them
+			power[o] = g.units.filter(func(e): return e.f == o and e.alive and (o == f or _sees(e.pos))).size() * 1.0 \
+				+ g.structs.filter(func(e): return e.f == o and e.alive and (o == f or _knows(e))).size() * 0.6
 	var leader := -1
 	for o in 3:
 		if o != f and g.fs[o]["alive"]:
@@ -450,9 +502,9 @@ func _enemy_tree() -> Vector2:
 		if not tr["alive"] or g.mantles_on(tr["i"], "honey_rot") > 0:
 			continue
 		var n := 0
-		for o in 3:
-			if o != f:
-				n += tr["fed"][o]
+		for s in g.structs:
+			if s.alive and s.id == "mantle" and s.f != f and s.tree == tr["i"] and _knows(s):
+				n += 1
 		if n > bn:
 			bn = n
 			best = tr["pos"]
@@ -504,7 +556,7 @@ func _army() -> void:
 	# the Heart under attack: drop everything and come home
 	var hp: Vector2 = g.heart(f).pos
 	for u in g.units:
-		if u.alive and u.f != f and u.f != Data.NEUTRAL and u.pos.distance_to(hp) < 24.0:
+		if u.alive and u.f != f and u.f != Data.NEUTRAL and u.pos.distance_to(hp) < 24.0 and _sees(u.pos):
 			if attacking:
 				attacking = false
 				attack_t = g.time + 40.0
@@ -568,14 +620,20 @@ func _hunt(army: Array) -> bool:
 	var best = null
 	var bd := 85.0
 	for u in g.units:
-		if u.f == Data.NEUTRAL and u.alive and u.d.get("host", "") != "" and _ours(u.pos):
+		if u.f == Data.NEUTRAL and u.alive and u.d.get("host", "") != "" and _ours(u.pos) and _sees(u.pos):
 			var d: float = u.pos.distance_to(h.pos)
 			if d < bd:
 				bd = d
 				best = u
-	if best == null:
+	if best != null:
+		g.order_move(idle.slice(0, 6), best.pos, true)
+		return true
+	# nothing in sight: go and look where insects breed
+	var nests: Array = g.forest.nests.filter(func(n): return _ours(n["pos"]) and not _sees(n["pos"]))
+	if nests.is_empty():
 		return false
-	g.order_move(idle.slice(0, 6), best.pos, true)
+	nests.sort_custom(func(a, b): return a["pos"].distance_to(h.pos) < b["pos"].distance_to(h.pos))
+	g.order_move(idle.slice(0, 4), nests[0]["pos"], true)
 	return true
 
 
@@ -592,13 +650,13 @@ func _ours(p: Vector2) -> bool:
 # any Honey Rot eating one of them.
 func _cull_pests(army: Array) -> void:
 	for s in g.structs:
-		if s.alive and s.id == "honey_rot" and s.f != f and s.tree >= 0 and g.forest.trees[s.tree]["fed"][f] > 0:
+		if s.alive and s.id == "honey_rot" and s.f != f and _knows(s) and s.tree >= 0 and g.forest.trees[s.tree]["fed"][f] > 0:
 			var idle := army.filter(func(a): return a.target == null)
 			if idle.size() >= 3:
 				g.order_attack(idle, s)
 				return
 	for u in g.units:
-		if u.f != Data.NEUTRAL or not u.alive:
+		if u.f != Data.NEUTRAL or not u.alive or not _sees(u.pos):
 			continue
 		var t: int = g.forest.tree_in_roots(u.pos)
 		if t < 0 or g.forest.trees[t]["fed"][f] == 0:
@@ -627,7 +685,7 @@ func _rally() -> Vector2:
 
 func _threat() -> Vector2:
 	for u in g.units:
-		if u.f == f or not u.alive or u.f == Data.NEUTRAL:
+		if u.f == f or not u.alive or u.f == Data.NEUTRAL or not _sees(u.pos):
 			continue
 		for s in _mine():
 			if s.pos.distance_to(u.pos) < 16.0:
@@ -640,11 +698,13 @@ func _enemy_target(from: Vector2) -> Vector2:
 	var bd := INF
 	var r := rival()
 	for s in g.structs:
-		if s.f == r and s.alive:
+		if s.f == r and s.alive and _knows(s):
 			var d: float = s.pos.distance_to(from)
 			if d < bd:
 				bd = d
 				best = s.pos
+	if best == Vector2.INF and g.fs[r]["alive"]:
+		best = Data.START_POS[r]   # nothing spotted yet: march on where they started
 	return best
 
 
@@ -653,7 +713,7 @@ func _enemy_cord():
 	var best = null
 	var bd := INF
 	for c in g.cords:
-		if c.f != f and c.alive and c.regrow <= 0.0 and c.grow >= 1.0:
+		if c.f != f and c.alive and c.regrow <= 0.0 and c.grow >= 1.0 and (_knows(c.a) or _knows(c.b)):
 			var d: float = c.pos.distance_to(h.pos)
 			if d < bd:
 				bd = d
@@ -687,11 +747,11 @@ func _abilities() -> void:
 		var bn := 0.0
 		var pts := []
 		for u in g.units:
-			if u.f != f and u.alive and u.f != Data.NEUTRAL:
+			if u.f != f and u.alive and u.f != Data.NEUTRAL and _sees(u.pos):
 				pts.append(u.pos)
 		if vs_structs:
 			for s in g.structs:
-				if s.f != f and s.alive:
+				if s.f != f and s.alive and _knows(s):
 					pts.append(s.pos)
 		for p in pts:
 			var n := 0.0

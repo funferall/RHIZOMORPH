@@ -53,6 +53,7 @@ class Ent:
 	var tree := -1
 	var dep := {}          # the deposit a Rot Bracket digests
 	var spotted := false   # the player has seen it (enemy structures stay as last seen)
+	var seen_by := 0       # bit per faction that has ever had it in sight (the AI's memory)
 	# units
 	var vel := Vector2.ZERO
 	var goal := Vector2.INF
@@ -330,7 +331,7 @@ func on_tree_died(i: int) -> void:
 	board.bark_mats[i].set_shader_parameter("dead", 1.0)
 	var t: Dictionary = forest.trees[i]
 	emit_signal("message", "The %s has died and stands as a snag." % t["name"], Color(0.75, 0.62, 0.45))
-	emit_signal("sound", "struct_death", _v3(t["pos"]))
+	emit_signal("sound", "tree_dies", _v3(t["pos"]))
 
 
 func on_tree_felled(i: int, dir: Vector2, length: float) -> void:
@@ -338,7 +339,7 @@ func on_tree_felled(i: int, dir: Vector2, length: float) -> void:
 	var t: Dictionary = forest.trees[i]
 	_shake = maxf(_shake, 0.7)
 	_burst(_v3(t["pos"] + dir * length * 0.5, 1.0), Color(0.6, 0.5, 0.35), 160, 6.0, 1.6, length * 0.3, 1.6)
-	emit_signal("sound", "heart_death", _v3(t["pos"]))
+	emit_signal("sound", "treefall", _v3(t["pos"] + dir * length * 0.4))
 	emit_signal("message", "The %s has fallen. A new log lies across the floor." % t["name"], Color(0.8, 0.68, 0.48))
 
 
@@ -692,7 +693,7 @@ func _sporulate(u: Ent) -> void:
 	u.dying = 0.001
 	_burst(_v3(u.pos, 1.6), Data.faction_color(f).lerp(Color(1.0, 0.6, 0.2), 0.4), 120, 5.0, 1.4, 1.0, 1.4)
 	_cloud(u.pos, 3.0, Data.faction_color(f).lerp(Color(0.8, 0.7, 0.5), 0.5), 2.0, 120)
-	emit_signal("sound", "puff_impact", _v3(u.pos))
+	emit_signal("sound", "sporulate", _v3(u.pos))
 
 
 func set_rally(s: Ent, p: Vector2) -> void:
@@ -1765,6 +1766,7 @@ func _raise_thrall(e: Ent, f: int) -> void:
 	var z := _spawn_unit(f, uid, e.pos)
 	z.home = e.pos
 	_burst(_v3(e.pos, 0.6), Color(1.0, 0.55, 0.1), 24, 2.0, 0.8)
+	emit_signal("sound", "thrall_rise", _v3(e.pos))
 
 
 func _thrall_decay(u: Ent, dt: float) -> void:

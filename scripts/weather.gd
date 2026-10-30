@@ -77,6 +77,8 @@ func tick(dt: float) -> void:
 		if next_t <= ANNOUNCE and not _said:
 			_said = true
 			g.emit_signal("message", KINDS[next]["say"], KINDS[next]["col"])
+			if next != "dry":
+				g.emit_signal("sound", "thunder" if next == "rain" else "gust", Vector3.INF)
 		if next_t <= 0.0:
 			now = next
 			left = KINDS[now]["dur"]
@@ -124,6 +126,7 @@ func _gust() -> void:
 
 func _leaf_fall() -> void:
 	g.emit_signal("message", "The canopy drops its leaves. Fresh litter covers the floor.", Color(0.85, 0.65, 0.35))
+	g.emit_signal("sound", "leaf_fall", Vector3.INF)
 	g.forest.leaf_fall(_rng)
 
 

@@ -249,6 +249,7 @@ func add_branch(p: Vector2, dir: Vector2) -> void:
 	d["b"] = p + dir * 1.6
 	d["radius"] = 0.3
 	d["node"] = g.branch_node(d["a"], d["b"])
+	g.emit_signal("sound", "branch_fall", g._v3(p))
 
 
 # Fresh litter: every pile refills by 30%, and a few new piles gather under the big trees.

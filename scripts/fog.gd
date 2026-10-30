@@ -108,6 +108,12 @@ func update() -> void:
 					b[i] = SEEN | VIS
 		if eco == "mycorrhizal":
 			_root_sight(f, b)
+	# every court remembers the structures it has had in sight
+	for s in g.structs:
+		if s.alive:
+			for f in 3:
+				if visible(f, s.pos):
+					s.seen_by |= 1 << f
 	_bake()
 
 

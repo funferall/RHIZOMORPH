@@ -53,8 +53,9 @@ lot by seed, so judge balance from several matches. Run: `bash` loop over `--mat
 
 **Next in the overhaul:**
 1. Hand playtest on the big map with fog.
-2. Phase 4 leftovers: saplings, burn scar, fern understory, stream crossings for cords.
-3. Phase 5: an AI that respects fog, the Physarum hazard, ecological victories.
+2. The headless simulation harness (DESIGN "Tooling"), so balance can use 30+ seeds per change.
+3. Phase 4 leftovers: saplings, burn scar, stream crossings for cords (fern understory dropped).
+4. Phase 5: the Physarum hazard and ecological victories. The fog-aware AI is done.
 
 The older note follows: hand playtest Phase 1 (especially the Choir's grow-from-thrall placement and
 sporulation by hand), then Phase 2 is mostly done in data (per-court tech trees exist), so Phase 3: fog
@@ -141,6 +142,12 @@ Tab lineages, Q/E or MMB-drag rotate, wheel zoom, arrows / screen edge pan, Spac
   `--force`, delete those items' docs in `reviews` (pin `if_version`), then `build_review_page.py --since <export mtime>`
   and republish the same file path. Rounds 1 and 2 done 2026-10-30: every item settled (40 sfx + 6 music in game,
   ambient_terrarium rejected). Raw decision exports are in `audio/review_site/decisions_round1|2/`.
+- **Round 3 (2026-10-30), awaiting review:** 15 new sounds × 3 takes, published to the same review
+  artifact (groups "The living forest" and "Weather"). They cover the borer swarm, Pandemic,
+  sporulate, thrall rise, a stag-thrall hit, tree death, treefall, branch fall, leaf fall, thunder
+  and gust (weather warnings), rain/wind/dry loops, and `ambient_forest` (replacing the rejected
+  terrarium bed). The game already emits all of them; they stay silent until approved and copied
+  in by `apply_review.py <dir> --round 3`. The weather loops fade in `audio.gd` (`WEATHER_LOOPS`).
 - Per-unit sounds: game emits `hit_<unit id>` and `spawn_light|heavy|elite`; audio.gd mixes them with the generic
   `hit_melee` / `spawn` family (35% generic) and falls back to it when a specific one is missing.
 - Run `--headless --import` (and let it finish) after copying new wavs, or Godot won't list them.
