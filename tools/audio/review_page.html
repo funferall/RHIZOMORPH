@@ -1,0 +1,405 @@
+<title>Rhizomorph Sound Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of sound "specimen" cards, grouped like the game's systems; a sticky
+   header carries the tally and the filters. Single dark look on purpose: it matches the game. */
+:root {
+  --loam: #15110d;        /* page */
+  --bark: #1f1913;        /* cards */
+  --bark-2: #2a221a;      /* raised controls */
+  --rule: #3b3026;
+  --ink: #ece3cf;
+  --ink-2: #b3a68c;
+  --ink-3: #85795f;
+  --cord: #e3b04b;        /* the gold of the supply-cord beads */
+  --approve: #8fc25a;     /* moss */
+  --regen: #e8963a;       /* amber */
+  --more: #b58cf0;        /* Veiled Choir violet */
+  --reject: #e2593f;      /* Amanita red */
+  --f-display: "Alegreya", Georgia, "Times New Roman", serif;
+  --f-body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--loam); color: var(--ink); font: 16px/1.5 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--loam); }
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--loam) 94%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--rule); }
+header.top .wrap { padding-block: 14px 10px; display: grid; gap: 10px; }
+.titlerow { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+h1 { font: 700 1.7rem/1.1 var(--f-display); margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+h1 span { color: var(--cord); }
+.tally { font-size: 0.92rem; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+.tally b { color: var(--ink); font-weight: 700; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+.meter { height: 4px; background: var(--bark-2); border-radius: 2px; overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; }
+.filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.filters button { flex: none; font: 500 0.85rem var(--f-body); color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.filters button[aria-pressed="true"] { color: var(--loam); background: var(--cord); border-color: var(--cord); }
+.notice { font-size: 0.88rem; color: var(--regen); }
+
+main .wrap { padding-block: 18px 80px; display: grid; gap: 30px; }
+.intro { color: var(--ink-2); max-width: 66ch; margin: 0; font-size: 0.98rem; }
+.group { display: grid; gap: 12px; }
+.group h2 { font: 700 1.25rem var(--f-display); margin: 0; color: var(--cord); display: flex; align-items: baseline; gap: 10px; }
+.group h2 small { font: 500 0.82rem var(--f-body); color: var(--ink-3); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.item { background: var(--bark); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; border-left: 4px solid var(--rule); }
+.item[data-d="approve"] { border-left-color: var(--approve); }
+.item[data-d="regenerate"] { border-left-color: var(--regen); }
+.item[data-d="more"] { border-left-color: var(--more); }
+.item[data-d="reject"] { border-left-color: var(--reject); opacity: 0.78; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.name { font: 600 0.98rem var(--f-mono); color: var(--ink); }
+.use { color: var(--ink-2); min-width: 0; flex: 1 1 260px; }
+.pill { font: 700 0.72rem var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; color: var(--loam); }
+.pill[hidden] { display: none; }
+.prompt { margin: 0; font-size: 0.86rem; color: var(--ink-3); line-height: 1.4; min-width: 0; overflow-wrap: anywhere; }
+.prompt + .prompt { margin-top: -6px; }
+.prev { margin: 0; font-size: 0.88rem; color: var(--regen); }
+.prev b { font-weight: 700; }
+.ingame { margin: 0; font-size: 0.84rem; color: var(--approve); }
+
+.takes { display: flex; flex-wrap: wrap; gap: 8px; }
+.take { display: flex; align-items: stretch; border: 1px solid var(--rule); border-radius: 8px; background: var(--bark-2); overflow: hidden; }
+.take .play { position: relative; display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: transparent; border: 0; color: var(--ink); cursor: pointer; font: 500 0.88rem var(--f-body); font-variant-numeric: tabular-nums; }
+.take .play::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: calc(var(--p, 0) * 100%); background: var(--cord); }
+.take .play svg { width: 14px; height: 14px; fill: currentColor; flex: none; }
+.take .play .dur { color: var(--ink-3); font-size: 0.8rem; }
+.take.playing { border-color: var(--cord); }
+.take .star { border: 0; border-left: 1px solid var(--rule); background: transparent; color: var(--ink-3); padding: 0 10px; cursor: pointer; font-size: 1rem; line-height: 1; }
+.take .star[aria-pressed="true"] { color: var(--cord); background: color-mix(in srgb, var(--cord) 14%, transparent); }
+.none { color: var(--ink-3); font-size: 0.88rem; margin: 0; }
+
+.decide { display: flex; flex-wrap: wrap; gap: 6px; }
+.decide button { font: 600 0.88rem var(--f-body); padding: 6px 14px; border-radius: 7px; border: 1px solid var(--rule); background: transparent; color: var(--ink-2); cursor: pointer; }
+.decide button:hover { color: var(--ink); border-color: var(--ink-3); }
+.decide button[aria-pressed="true"] { color: var(--loam); border-color: transparent; }
+.decide button[data-v="approve"][aria-pressed="true"] { background: var(--approve); }
+.decide button[data-v="regenerate"][aria-pressed="true"] { background: var(--regen); }
+.decide button[data-v="more"][aria-pressed="true"] { background: var(--more); }
+.decide button[data-v="reject"][aria-pressed="true"] { background: var(--reject); }
+.hint { font-size: 0.82rem; color: var(--ink-3); margin: 0; }
+textarea { width: 100%; box-sizing: border-box; min-height: 2.6em; resize: vertical; font: 0.92rem/1.4 var(--f-body); color: var(--ink); background: var(--loam); border: 1px solid var(--rule); border-radius: 7px; padding: 7px 10px; }
+textarea::placeholder { color: var(--ink-3); }
+.saved { font-size: 0.78rem; color: var(--ink-3); justify-self: end; min-height: 1em; }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--cord); outline-offset: 2px; }
+.empty { color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="titlerow">
+      <h1>Rhizomorph <span>Sound Review</span></h1>
+      <div class="tally" id="tally"></div>
+    </div>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <nav class="filters" id="filters" aria-label="Show"></nav>
+    <p class="notice" id="notice" hidden></p>
+  </div>
+</header>
+<main>
+  <div class="wrap" id="list">
+    <p class="intro">Play each take, star the ones worth keeping, then pick what happens to the sound. Approve uses the starred takes, or every take if none are starred. Add takes keeps the starred ones and makes more for variety. Write in the comment how a sound should change. Everything saves as you go.</p>
+  </div>
+</main>
+
+<script>
+const DATA = __DATA__;
+const DECISIONS = [
+  { v: "approve", label: "Approve", color: "--approve", hint: "Goes into the game: starred takes, or all takes if none are starred." },
+  { v: "regenerate", label: "Regenerate", color: "--regen", hint: "Throw these takes away and generate new ones, following your comment." },
+  { v: "more", label: "Add takes", color: "--more", hint: "Keep the starred takes and generate more, so the game has variety." },
+  { v: "reject", label: "Reject", color: "--reject", hint: "Leave this sound out of the game." },
+];
+const PLAY = '<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>';
+const STOP = '<svg viewBox="0 0 16 16"><path d="M4 3h3v10H4zM9 3h3v10H9z"/></svg>';
+
+const state = {};          // key -> {decision, keep, comment, round, updatedAt}
+const nodes = {};          // key -> element refs
+const chains = {};         // key -> write promise chain (one write at a time per doc)
+let col = null;
+let filter = "all";
+
+const player = new Audio();
+player.preload = "none";
+let current = null;        // {key, id, el}
+
+function cur(key) { return state[key] || { decision: "", keep: [], comment: "" }; }
+
+// --- rendering -----------------------------------------------------------------
+
+function buildList() {
+  const list = document.getElementById("list");
+  const order = Object.keys(DATA.groups);
+  for (const g of order) {
+    const items = DATA.items.filter(it => it.group === g);
+    if (!items.length) continue;
+    const sec = document.createElement("section");
+    sec.className = "group";
+    sec.dataset.group = g;
+    const h = document.createElement("h2");
+    h.innerHTML = `${DATA.groups[g]} <small>${items.length} ${g === "music" ? "tracks" : "sounds"}</small>`;
+    sec.append(h);
+    for (const it of items) sec.append(buildItem(it));
+    list.append(sec);
+  }
+}
+
+function buildItem(it) {
+  const el = document.createElement("article");
+  el.className = "item";
+  el.dataset.key = it.key;
+  const head = document.createElement("div");
+  head.className = "head";
+  const name = document.createElement("span");
+  name.className = "name";
+  name.textContent = it.name;
+  const use = document.createElement("span");
+  use.className = "use";
+  use.textContent = it.use;
+  const pill = document.createElement("span");
+  pill.className = "pill";
+  pill.hidden = true;
+  head.append(name, use, pill);
+  el.append(head);
+  if (it.note) {
+    const pv = document.createElement("p");
+    pv.className = "prev";
+    pv.innerHTML = "<b>You said:</b> ";
+    pv.append(it.note.replace(/^round \d+:\s*/, ""));
+    el.append(pv);
+  }
+  if (it.in_game) {
+    const ig = document.createElement("p");
+    ig.className = "ingame";
+    ig.textContent = `Already in the game: ${it.in_game} take${it.in_game > 1 ? "s" : ""}. These are extra takes to add.`;
+    el.append(ig);
+  }
+  for (const p of it.prompts) {
+    const pr = document.createElement("p");
+    pr.className = "prompt";
+    pr.textContent = p;
+    el.append(pr);
+  }
+  const takes = document.createElement("div");
+  takes.className = "takes";
+  const takeEls = {};
+  if (!it.takes.length) {
+    const n = document.createElement("p");
+    n.className = "none";
+    n.textContent = "No takes generated yet.";
+    takes.append(n);
+  }
+  it.takes.forEach((t, i) => {
+    const box = document.createElement("div");
+    box.className = "take";
+    const play = document.createElement("button");
+    play.className = "play";
+    play.type = "button";
+    play.setAttribute("aria-label", `Play take ${i + 1} of ${it.name}`);
+    play.innerHTML = `${PLAY}<span>Take ${i + 1}</span><span class="dur">${t.dur.toFixed(t.dur < 10 ? 1 : 0)}s</span>`;
+    play.addEventListener("click", () => toggle(it, t, box, play));
+    const star = document.createElement("button");
+    star.className = "star";
+    star.type = "button";
+    star.textContent = "★";
+    star.title = "Keep this take";
+    star.setAttribute("aria-label", `Keep take ${i + 1}`);
+    star.setAttribute("aria-pressed", "false");
+    star.addEventListener("click", () => {
+      const s = cur(it.key);
+      const keep = new Set(s.keep || []);
+      keep.has(t.id) ? keep.delete(t.id) : keep.add(t.id);
+      save(it.key, { keep: [...keep] });
+    });
+    box.append(play, star);
+    takes.append(box);
+    takeEls[t.id] = { box, play, star };
+  });
+  el.append(takes);
+  const decide = document.createElement("div");
+  decide.className = "decide";
+  const btns = {};
+  for (const d of DECISIONS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.v = d.v;
+    b.textContent = d.label;
+    b.title = d.hint;
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => save(it.key, { decision: cur(it.key).decision === d.v ? "" : d.v }));
+    decide.append(b);
+    btns[d.v] = b;
+  }
+  el.append(decide);
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.hidden = true;
+  el.append(hint);
+  const ta = document.createElement("textarea");
+  ta.id = "c-" + it.key;
+  ta.rows = 1;
+  ta.placeholder = it.kind === "music" ? "How should it change? e.g. slower, fewer drums, more alien, loops too obviously" : "How should it change? e.g. wetter, mushier, shorter, less metallic, more variety";
+  ta.setAttribute("aria-label", `Comment on ${it.name}`);
+  let timer = null;
+  const flush = () => { clearTimeout(timer); timer = null; if (ta.value !== (cur(it.key).comment || "")) save(it.key, { comment: ta.value }); };
+  ta.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(flush, 900); });
+  ta.addEventListener("blur", flush);
+  el.append(ta);
+  const saved = document.createElement("div");
+  saved.className = "saved";
+  el.append(saved);
+  nodes[it.key] = { el, pill, btns, takeEls, hint, ta, saved, item: it };
+  paintItem(it.key);
+  return el;
+}
+
+function paintItem(key) {
+  const n = nodes[key];
+  if (!n) return;
+  const s = cur(key);
+  const d = DECISIONS.find(x => x.v === s.decision);
+  n.el.dataset.d = s.decision || "";
+  n.pill.hidden = !d;
+  if (d) { n.pill.textContent = d.label; n.pill.style.background = `var(${d.color})`; }
+  for (const v in n.btns) n.btns[v].setAttribute("aria-pressed", String(s.decision === v));
+  const keep = new Set(s.keep || []);
+  for (const id in n.takeEls) n.takeEls[id].star.setAttribute("aria-pressed", String(keep.has(id)));
+  n.hint.hidden = !d;
+  if (d) {
+    let extra = "";
+    if (s.decision === "approve") extra = keep.size ? ` Keeping ${keep.size} of ${n.item.takes.length}.` : ` Keeping all ${n.item.takes.length}.`;
+    if (s.decision === "more") extra = keep.size ? ` Keeping ${keep.size}.` : " Nothing starred yet, so all current takes stay.";
+    n.hint.textContent = d.hint + extra;
+  }
+  if (document.activeElement !== n.ta && n.ta.value !== (s.comment || "")) n.ta.value = s.comment || "";
+  n.el.hidden = !visible(n.item, s);
+}
+
+function visible(it, s) {
+  if (filter === "all") return true;
+  if (filter === "todo") return !s.decision;
+  if (filter === "decided") return !!s.decision;
+  return it.group === filter;
+}
+
+function paintAll() {
+  for (const key in nodes) paintItem(key);
+  document.querySelectorAll("section.group").forEach(sec => {
+    sec.hidden = ![...sec.querySelectorAll(".item")].some(e => !e.hidden);
+  });
+  paintTally();
+}
+
+function paintTally() {
+  const total = DATA.items.length;
+  const counts = { approve: 0, regenerate: 0, more: 0, reject: 0 };
+  for (const it of DATA.items) { const d = cur(it.key).decision; if (d) counts[d]++; }
+  const done = Object.values(counts).reduce((a, b) => a + b, 0);
+  const t = document.getElementById("tally");
+  t.innerHTML = `<span><b>${done}</b> of ${total} decided</span>` + DECISIONS.map(d =>
+    `<span><i class="dot" style="background:var(${d.color})"></i>${d.label} <b>${counts[d.v]}</b></span>`).join("");
+  document.getElementById("meter").innerHTML = DECISIONS.map(d =>
+    `<i style="width:${(counts[d.v] / total) * 100}%;background:var(${d.color})"></i>`).join("");
+}
+
+function buildFilters() {
+  const f = document.getElementById("filters");
+  const opts = [["all", "All"], ["todo", "Not decided"], ["decided", "Decided"], ...Object.entries(DATA.groups)];
+  for (const [v, label] of opts) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.dataset.v = v;
+    b.setAttribute("aria-pressed", String(v === filter));
+    b.addEventListener("click", () => {
+      filter = v;
+      f.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === v)));
+      paintAll();
+    });
+    f.append(b);
+  }
+}
+
+// --- audio ---------------------------------------------------------------------
+
+function toggle(it, t, box, btn) {
+  const same = current && current.id === t.id;
+  stop();
+  if (same) return;
+  current = { key: it.key, id: t.id, box, btn };
+  player.src = t.src;
+  player.currentTime = 0;
+  box.classList.add("playing");
+  btn.querySelector("svg").outerHTML = STOP;
+  player.play().catch(() => stop());
+}
+
+function stop() {
+  if (!current) return;
+  player.pause();
+  current.box.classList.remove("playing");
+  current.btn.style.setProperty("--p", 0);
+  const svg = current.btn.querySelector("svg");
+  if (svg) svg.outerHTML = PLAY;
+  current = null;
+}
+
+player.addEventListener("timeupdate", () => {
+  if (current && player.duration) current.btn.style.setProperty("--p", player.currentTime / player.duration);
+});
+player.addEventListener("ended", stop);
+
+// --- saving --------------------------------------------------------------------
+
+function save(key, patch) {
+  const next = { decision: "", keep: [], comment: "", ...cur(key), ...patch, updatedAt: new Date().toISOString() };
+  state[key] = next;
+  paintItem(key);
+  paintTally();
+  if (!col) { note(key, "Not saved: this view can't store choices"); return; }
+  note(key, "Saving…");
+  chains[key] = (chains[key] || Promise.resolve()).then(() => col.doc(key).set({ ...state[key] }))
+    .then(() => note(key, "Saved"))
+    .catch(e => note(key, e && e.code === "invalid_argument" ? "Not saved: you can't edit this page" : "Not saved, try again"));
+}
+
+function note(key, text) {
+  const n = nodes[key];
+  if (n) n.saved.textContent = text;
+}
+
+function showNotice(text) {
+  const el = document.getElementById("notice");
+  el.textContent = text;
+  el.hidden = !text;
+}
+
+// --- boot ----------------------------------------------------------------------
+
+buildFilters();
+buildList();
+paintAll();
+
+(async () => {
+  const db = window.claude ? await window.claude.use("db") : null;
+  if (!db) {
+    showNotice("Choices can't be saved in this view. Open the page on claude.ai while signed in.");
+    return;
+  }
+  col = db.collection("reviews");
+  col.onSnapshot(snap => {
+    for (const d of snap.docs) {
+      if (d.exists && !(chains[d.id] && d.metadata.hasPendingWrites)) state[d.id] = d.data();
+    }
+    paintAll();
+  }, e => showNotice("Lost the connection to saved choices (" + e.code + "). Reload the page."));
+})();
+</script>

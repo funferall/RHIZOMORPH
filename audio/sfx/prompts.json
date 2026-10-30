@@ -1,0 +1,711 @@
+{
+ "_about": "Sound effects for RHIZOMORPH, generated locally with Stable Audio 3 Small SFX (tools/audio/gen_sfx.py). Prompts follow SA3's house style: source, material, space, how it evolves, then 'Length: N seconds'. variants = how many takes per prompt; give \"prompts\" (a list) instead of \"prompt\" when one prompt keeps producing the same sound (hits/deaths get several so the game can randomise). loop = crossfade the tail into the head. status: todo / review / keep / redo. Put picked files in this folder as <name>.wav (or <name>_1.wav, _2... for variants).",
+ "sounds": [
+  {
+   "name": "place",
+   "use": "You drop a new structure on the board",
+   "group": "building",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:place_1",
+    "r1:place_2",
+    "r2:place_3",
+    "r2:place_4",
+    "r2:place_2"
+   ],
+   "prompt_r1": "Wet clump of moss and soil pressed firmly into damp earth, soft squelch with a dull low thud, close-up and dry. Length: 1 seconds",
+   "prompts": [
+    "Handful of wet mud and moss slapped down onto damp ground, soft squelchy thud, close and dry. Length: 1 seconds",
+    "Spongy mushroom root ball pressed into soft soil, muffled wet squish with a light earthy crunch. Length: 1 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "fruited",
+   "use": "A structure finishes growing",
+   "group": "building",
+   "seconds": 2,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:fruited_1",
+    "r2:fruited_1",
+    "r2:fruited_3"
+   ],
+   "prompt_r1": "Mushroom bursting rapidly out of damp soil, rubbery creaking stretch rising in pitch, then a soft fleshy pop and a light dusty puff of spores, close perspective. Length: 2 seconds",
+   "prompts": [
+    "Mushroom cap unfurling quickly, wet rubbery stretch and a soft squelchy pop, small puff of spores, close-up. Length: 2 seconds",
+    "Fleshy bulb swelling and splitting open, moist tearing creak then a gentle wet bloom. Length: 2 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "cord_severed",
+   "use": "A rhizomorph supply cord is cut",
+   "group": "building",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:cord_severed_2",
+    "r2:cord_severed_3"
+   ],
+   "prompt_r1": "Thick wet fibrous root tearing apart, stringy ripping snap followed by a short hiss of escaping sap, close-up and dry. Length: 1 seconds",
+   "prompts": [
+    "Thick wet rope of fungal fibre snapping under tension, sharp fibrous crack followed by a juicy splatter, close. Length: 1 seconds",
+    "Machete hacking through a fleshy wet root, single chopping thunk with a stringy rip and dripping sap. Length: 1 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "cord_regrow",
+   "use": "A cut cord grows back",
+   "group": "building",
+   "seconds": 2,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:cord_regrow_2",
+    "r2:cord_regrow_1",
+    "r2:cord_regrow_3"
+   ],
+   "prompt_r1": "Slow creaking organic growth, soft tendrils stretching and knitting together with fine crackles and tiny wet clicks, intimate close-up. Length: 2 seconds",
+   "prompts": [
+    "Fibrous wet strands slowly knitting back together, soft rubbery stretching creaks and tiny moist pops, close-up. Length: 2 seconds",
+    "Thick root tendrils creeping and twisting through damp soil, low organic creak with gentle wet squeaks, intimate. Length: 2 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "cut_off_alert",
+   "use": "Alert: one of your structures lost its link to the Heart",
+   "group": "ui",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 1: maybe more of a cut paper sound? cut rope?",
+   "prompt_r1": "Two soft hollow knocks on a dry wooden log, low and ominous, slight dark room reverb, warning signal. Length: 1 seconds",
+   "prompts": [
+    "Sharp scissors snipping through thick paper twice, crisp cut and tear, close and dry. Length: 1 seconds",
+    "Taut rope being cut with a blade, fibrous snap and a quick rope whip, close. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:cut_off_alert_1"
+   ]
+  },
+  {
+   "name": "research_done",
+   "use": "A lineage finishes researching",
+   "group": "ui",
+   "seconds": 2,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Gentle glassy chime with a breathy organic swell, soft shimmering tail, discovery and reward, fantasy interface sound. Length: 2 seconds",
+   "in_game": [
+    "r1:research_done_2"
+   ]
+  },
+  {
+   "name": "spawn",
+   "use": "A sporeling hatches from a fruiting body",
+   "group": "units",
+   "seconds": 1,
+   "variants": 3,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 1: more takes for different unit types | per-unit variants split out into new entries for round 2",
+   "prompt": "Small creature hatching from a soft wet sac, quick moist pop followed by tiny insect chittering, close-up and dry. Length: 1 seconds",
+   "in_game": [
+    "r1:spawn_3",
+    "r1:spawn_1",
+    "r1:spawn_2"
+   ]
+  },
+  {
+   "name": "hit_melee",
+   "use": "Melee units bite and slap each other",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "v1 all sounded the same and too dry - now four different wet/mushy prompts, 2 takes each | round 1: add a few more for different unit attacks | per-unit variants split out into new entries for round 2",
+   "prompts": [
+    "Wet squelchy punch into a soft rotting mushroom cap, mushy splat with a juicy spatter of droplets, close-up foley. Length: 1 seconds",
+    "Fist squishing into overripe fruit pulp, thick wet smack with dripping slime, short and close. Length: 1 seconds",
+    "Sloppy wet slap of slimy raw flesh striking flesh, squelch with a juicy sticky tail, close foley. Length: 1 seconds",
+    "Soft mushy bite into a wet sponge soaked with mud, sticky squish and a small drip, close-up foley. Length: 1 seconds"
+   ],
+   "in_game": [
+    "r1:hit_melee_1",
+    "r1:hit_melee_3",
+    "r1:hit_melee_5",
+    "r1:hit_melee_7"
+   ]
+  },
+  {
+   "name": "hit_wartling",
+   "use": "Wartling melee bite (it poisons)",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Small creature biting into soft flesh, quick wet chomp with a toxic hiss, close foley. Length: 1 seconds",
+    "Sharp wet nip of tiny jaws on rubbery skin, juicy squelch and a short sizzle. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:hit_wartling_1",
+    "r2:hit_wartling_3"
+   ]
+  },
+  {
+   "name": "hit_bruiser",
+   "use": "Morel Bruiser melee slam (heavy tank)",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Heavy blunt body slam into soft wet flesh, deep meaty thud with a mushy splat, close. Length: 1 seconds",
+    "Thick spongy club smashing into mud and flesh, low squelching thump, heavy and wet. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:hit_bruiser_3"
+   ]
+  },
+  {
+   "name": "hit_angel",
+   "use": "Destroying Angel melee strike (fast assassin)",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Fast slicing slash through wet mushroom flesh, crisp swish and clean juicy cut, close. Length: 1 seconds",
+    "Quick stabbing strike into soft rubbery flesh, sharp whoosh and wet pierce. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:hit_angel_1"
+   ]
+  },
+  {
+   "name": "hit_lure_fly",
+   "use": "Fly-Lure melee nip (fast skirmisher)",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Buzzing insect darting in and biting, short wing buzz and a wet little nip, close. Length: 1 seconds",
+    "Fly gnawing at rotten flesh, quick buzz with a sticky squelch. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:hit_lure_fly_2"
+   ]
+  },
+  {
+   "name": "hit_zombie",
+   "use": "Cordyceps Thrall melee (converted enemy)",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Clumsy gnawing bite of a decaying creature, wet crunchy chew with a sickly squelch, close. Length: 1 seconds",
+    "Rotting limb slapping into flesh, sloppy wet thwack with a crackle of brittle shell. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:hit_zombie_1"
+   ]
+  },
+  {
+   "name": "spawn_light",
+   "use": "Small sporelings hatch (wartling, spitter, slinger, fly-lure, bomber)",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Small soft sac popping open and a tiny creature wriggling out, quick wet pop and light chittering. Length: 1 seconds",
+    "Little mushroom bud bursting, short squishy pop with a faint scurry of tiny legs. Length: 1 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:spawn_light_1"
+   ]
+  },
+  {
+   "name": "spawn_heavy",
+   "use": "Tough sporeling hatches (Morel Bruiser)",
+   "group": "units",
+   "seconds": 2,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Large thick-walled egg sac tearing open, heavy wet rip and a deep fleshy plop as something big drops out. Length: 2 seconds",
+    "Bulky creature pushing out of dense fungal flesh, low stretching creak and a heavy squelch. Length: 2 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:spawn_heavy_3"
+   ]
+  },
+  {
+   "name": "spawn_elite",
+   "use": "Elite unit emerges (Angel, Stalker, Sniper)",
+   "group": "units",
+   "seconds": 2,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "new in round 2",
+   "prompts": [
+    "Ominous birth of a large creature, slow wet tearing, a deep resonant swell and a sharp emerging hiss. Length: 2 seconds",
+    "Elegant pale creature unfurling from a membrane, silky wet peel with a rising eerie chime. Length: 2 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:spawn_elite_3"
+   ]
+  },
+  {
+   "name": "spit_fire",
+   "use": "Spitters / stalkers / slime towers fire a glob",
+   "group": "units",
+   "seconds": 1,
+   "variants": 3,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Short wet spitting sound, a glob of thick slime launched from a small mouth, quick and close. Length: 1 seconds",
+   "in_game": [
+    "r1:spit_fire_1"
+   ]
+  },
+  {
+   "name": "spit_impact",
+   "use": "A slime glob hits its target",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:spit_impact_1",
+    "r2:spit_impact_1",
+    "r2:spit_impact_3"
+   ],
+   "prompt_r1": "Wet splat of thick slime hitting a soft surface, sticky smack with a brief acidic sizzle. Length: 1 seconds",
+   "prompts": [
+    "Gob of thick mucus splatting against a rubbery surface, wet sticky slap with a bubbling sizzle. Length: 1 seconds",
+    "Glob of slime hitting soft flesh, juicy splat and a short dripping trickle, close-up. Length: 1 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "puff_fire",
+   "use": "Slingers and bombers fire a spore puff",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:puff_fire_1",
+    "r2:puff_fire_3"
+   ],
+   "prompt_r1": "Dry puffball mushroom squeezed hard, soft papery burst of air and powder, short whoomp, close-up. Length: 1 seconds",
+   "prompts": [
+    "Small puffball squeezed sharply, short dusty poof of spores shooting out with a soft airy whoosh. Length: 1 seconds",
+    "Rubbery sac contracting and firing a burst of powder, quick muffled thump and hiss, close. Length: 1 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "puff_impact",
+   "use": "A spore puff bursts on impact",
+   "group": "units",
+   "seconds": 1,
+   "variants": 3,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Muffled powdery explosion, a sack of fine dust bursting on impact, soft low thump with an airy hiss of spores spreading. Length: 1 seconds",
+   "in_game": [
+    "r1:puff_impact_1"
+   ]
+  },
+  {
+   "name": "lob_fire",
+   "use": "Bird's Nest towers and snipers launch a pellet",
+   "group": "units",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Springy organic catapult twang, a taut wet stalk snapping forward and flinging a small pellet, quick whoosh. Length: 1 seconds",
+   "in_game": [
+    "r1:lob_fire_1"
+   ]
+  },
+  {
+   "name": "lob_impact",
+   "use": "A lobbed pellet / barrage shell lands",
+   "group": "units",
+   "seconds": 1,
+   "variants": 3,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Small hard seed pellet landing in loose soil, dull thud with a dusty scatter of dirt, outdoor and close. Length: 1 seconds",
+   "in_game": [
+    "r1:lob_impact_1"
+   ]
+  },
+  {
+   "name": "unit_death",
+   "use": "A sporeling dies",
+   "group": "units",
+   "seconds": 2,
+   "variants": 4,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Small mushroom creature collapsing, soft wet squish and crumple, a faint dying insect chitter, then a gentle exhaled puff of spores. Length: 2 seconds",
+   "in_game": [
+    "r1:unit_death_1",
+    "r1:unit_death_3",
+    "r1:unit_death_4"
+   ]
+  },
+  {
+   "name": "skitter_loop",
+   "use": "Loop under the camera while units walk (volume follows how many)",
+   "group": "units",
+   "seconds": 4,
+   "variants": 2,
+   "loop": true,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:skitter_loop_1",
+    "r2:skitter_loop_2",
+    "r2:skitter_loop_4"
+   ],
+   "prompt_r1": "Many tiny chitinous insect legs scurrying quickly over dry leaf litter and twigs, dense continuous rustling, close-up. Length: 4 seconds",
+   "prompts": [
+    "Dozens of small creatures with soft feet pattering quickly over damp moss and leaves, continuous gentle rustle, close. Length: 4 seconds",
+    "Swarm of beetles scuttling across dry bark and twigs, dense clicking scurry with light leaf rustle, continuous. Length: 4 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "tower_fire",
+   "use": "Earthstar tower bellows out a spore cloud",
+   "group": "structures",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Hollow leather bellows expelling a cloud of spores, deep soft whoomp with a dusty air rush, close. Length: 1 seconds",
+   "in_game": [
+    "r1:tower_fire_1"
+   ]
+  },
+  {
+   "name": "struct_death",
+   "use": "A structure is destroyed",
+   "group": "structures",
+   "seconds": 3,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "in_game": [
+    "r1:struct_death_1",
+    "r2:struct_death_1",
+    "r2:struct_death_2",
+    "r2:struct_death_3",
+    "r2:struct_death_4"
+   ],
+   "prompt_r1": "Large mushroom toppling and collapsing, deep wet crunch, creaking fibrous stem snapping, heavy soft thud and settling debris with a dusty spore hiss. Length: 3 seconds",
+   "prompts": [
+    "Large spongy mushroom collapsing in on itself, deep squelching cave-in, tearing wet fibres and a dull heavy flop, spores hissing out. Length: 3 seconds",
+    "Rotting tree stump crumbling apart, cracking soft wood, wet crunch and falling debris settling into mud. Length: 3 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "heart_death",
+   "use": "A faction's Heart falls (the big one)",
+   "group": "structures",
+   "seconds": 5,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Massive organic structure rotting and caving in, deep groaning timber creak, sloshing wet collapse, low rumble, then a long hiss of escaping air fading out, large and reverberant. Length: 5 seconds",
+   "in_game": [
+    "r1:heart_death_1"
+   ]
+  },
+  {
+   "name": "haze",
+   "use": "Spore action: Muscimol Haze (toxic fog)",
+   "group": "abilities",
+   "seconds": 3,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Thick toxic fog hissing out of many small vents, low wet bubbling underneath, slowly spreading and thickening. Length: 3 seconds",
+   "in_game": [
+    "r1:haze_1",
+    "r1:haze_2"
+   ]
+  },
+  {
+   "name": "fairy_ring",
+   "use": "Spore action: Fairy Ring (mushroom ring erupts)",
+   "group": "abilities",
+   "seconds": 3,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": " | round 2: new takes rejected, round-1 take stays in game",
+   "in_game": [
+    "r1:fairy_ring_1"
+   ],
+   "prompt_r1": "Circle of mushrooms bursting up through soil in rapid succession, a rolling sequence of soft earthy pops travelling around in a ring, low rumble beneath. Length: 3 seconds",
+   "prompts": [
+    "Ring of mushrooms erupting from moss one after another around a circle, quick soft fleshy pops with rumbling earth underneath. Length: 3 seconds",
+    "Ground cracking open in a circle as fungi push up through soil, crumbling earth, rising pops and a low magical swell. Length: 3 seconds"
+   ],
+   "round": 2
+  },
+  {
+   "name": "bloom",
+   "use": "Spore action: Death Cap Bloom (delayed poison eruption)",
+   "group": "abilities",
+   "seconds": 3,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Ominous rising organic whine building tension, then a deep wet eruption of bursting fungal flesh with a heavy low impact and spraying droplets. Length: 3 seconds",
+   "in_game": [
+    "r1:bloom_1",
+    "r1:bloom_2"
+   ]
+  },
+  {
+   "name": "volley",
+   "use": "Spore action: Ascus Volley (every ascus fires at once)",
+   "group": "abilities",
+   "seconds": 2,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Dozens of tiny spore sacs firing at once, dense crackling burst like popcorn in a drum, short airy whooshes scattering outward. Length: 2 seconds",
+   "in_game": [
+    "r1:volley_1",
+    "r1:volley_2"
+   ]
+  },
+  {
+   "name": "zombify",
+   "use": "Spore action: Zombify (enemies become Cordyceps thralls)",
+   "group": "abilities",
+   "seconds": 3,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 1: a ascending note like this",
+   "prompt_r1": "Eerie squelching infection, wet tendrils sliding and growing through flesh, twitching insect clicks, unsettling and close. Length: 3 seconds",
+   "prompts": [
+    "Eerie rising tonal sweep climbing steadily in pitch over wet squelching tendrils and twitching insect clicks, unsettling infection. Length: 3 seconds",
+    "Creepy ascending whine slowly rising to a high note, layered with slimy organic squelches, horror infection sound. Length: 3 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:zombify_3",
+    "r2:zombify_4"
+   ]
+  },
+  {
+   "name": "wildfire",
+   "use": "Spore action: Wildfire (burns an area clean)",
+   "group": "abilities",
+   "seconds": 4,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "round 1: more firey",
+   "prompt_r1": "Whoosh of flame catching dry leaf litter, quickly rising into a roaring crackling ground fire with popping twigs, outdoor. Length: 4 seconds",
+   "prompts": [
+    "Roaring wildfire igniting with a big whoosh, intense crackling flames, popping burning twigs and rushing hot wind, outdoor. Length: 4 seconds",
+    "Fireball bursting into dry brush, fierce fire roar swelling, loud crackle and spitting embers. Length: 4 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:wildfire_2"
+   ]
+  },
+  {
+   "name": "lure",
+   "use": "Spore action: Stench Lure (flies drag enemies in)",
+   "group": "abilities",
+   "seconds": 3,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Swarm of buzzing flies converging from all directions onto rotting meat, droning hum growing louder and denser, stereo movement inward. Length: 3 seconds",
+   "in_game": [
+    "r1:lure_1"
+   ]
+  },
+  {
+   "name": "barrage",
+   "use": "Spore action: Spore Barrage (shells rain down)",
+   "group": "abilities",
+   "seconds": 4,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Several whistling projectiles falling from the sky, descending pitch, followed by a rapid uneven series of soft heavy thuds into earth. Length: 4 seconds",
+   "in_game": [
+    "r1:barrage_1"
+   ]
+  },
+  {
+   "name": "puffball_grow",
+   "use": "Spore action: Giant Puffball starts swelling",
+   "group": "abilities",
+   "seconds": 4,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Huge rubbery mass stretching and swelling, slow creaking inflation of thick skin, deep low groans, building pressure. Length: 4 seconds",
+   "in_game": [
+    "r1:puffball_grow_1",
+    "r1:puffball_grow_2"
+   ]
+  },
+  {
+   "name": "puffball_burst",
+   "use": "Giant Puffball bursts",
+   "group": "abilities",
+   "seconds": 4,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Gigantic puffball bursting, deep boom with a massive rushing cloud of dust and powder sweeping outward, long airy hiss tail, outdoor. Length: 4 seconds",
+   "in_game": [
+    "r1:puffball_burst_1",
+    "r1:puffball_burst_2"
+   ]
+  },
+  {
+   "name": "ambient_terrarium",
+   "use": "Always-on background bed for the board",
+   "group": "ambience",
+   "seconds": 30,
+   "variants": 2,
+   "loop": true,
+   "status": "rejected",
+   "notes": "",
+   "prompt": "Quiet forest floor at dusk inside a glass terrarium, faint crickets and insects, tiny water drips, soft breeze through moss, calm and intimate ambience. Length: 30 seconds"
+  },
+  {
+   "name": "ambient_mycelium",
+   "use": "Quiet always-on layer of creeping growth",
+   "group": "ambience",
+   "seconds": 20,
+   "variants": 2,
+   "loop": true,
+   "status": "keep",
+   "notes": "round 1: slower clicks. maybe dont prompt clicks. more like waves?",
+   "prompt_r1": "Subtle crackling and fizzing of slowly creeping fungal growth in damp soil, tiny wet clicks and soft creaks, very quiet close-up ambience. Length: 20 seconds",
+   "prompts": [
+    "Slow deep breathing swells of soft organic texture, gentle low rumbling waves rising and falling every few seconds, damp underground ambience, calm and smooth. Length: 20 seconds",
+    "Soft muffled underground drone with slow wave-like swells, like distant breathing through damp soil, smooth and calm ambience. Length: 20 seconds"
+   ],
+   "round": 2,
+   "in_game": [
+    "r2:ambient_mycelium_3",
+    "r2:ambient_mycelium_4"
+   ]
+  },
+  {
+   "name": "ui_click",
+   "use": "Any button click in the interface",
+   "group": "ui",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Single soft wooden tick, very short click of a small wooden bead, dry and close, interface sound. Length: 1 seconds",
+   "in_game": [
+    "r1:ui_click_1"
+   ]
+  },
+  {
+   "name": "ui_error",
+   "use": "You try something that isn't allowed",
+   "group": "ui",
+   "seconds": 1,
+   "variants": 2,
+   "loop": false,
+   "status": "keep",
+   "notes": "",
+   "prompt": "Muted low wooden bonk, short dull knock on a hollow gourd, soft negative interface feedback. Length: 1 seconds",
+   "in_game": [
+    "r1:ui_error_1"
+   ]
+  }
+ ]
+}

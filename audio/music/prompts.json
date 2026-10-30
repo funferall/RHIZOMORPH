@@ -1,0 +1,89 @@
+{
+ "_about": "Music for RHIZOMORPH, generated locally with MusicGen medium through ComfyUI (tools/audio/gen_music.py). MusicGen caps a clip at 30 s; loop tracks get trailing quiet trimmed and their tail crossfaded into the head. status: todo / review / keep / redo. Put picked files in this folder as <name>.wav.",
+ "tracks": [
+  {
+   "name": "menu",
+   "use": "Start menu (loops)",
+   "seconds": 30,
+   "loop": true,
+   "variants": 2,
+   "status": "keep",
+   "notes": "",
+   "prompt": "slow ambient drone, deep evolving pads, soft breathy wooden flute, distant wind chimes, warm analog synth swells, organic and mysterious, forest floor at dusk, no drums, 60 bpm, D minor",
+   "in_game": [
+    "r1:menu_s23"
+   ]
+  },
+  {
+   "name": "calm",
+   "use": "In game while nothing is fighting (loops)",
+   "seconds": 30,
+   "loop": true,
+   "variants": 4,
+   "status": "keep",
+   "notes": "round 1: i think we need more some takes on this, this particular one isn't very calm, should be tension. but try a more calm take or 2.",
+   "prompt": "very calm sparse ambient, soft warm pads, slow gentle kalimba notes, quiet dripping water, peaceful and patient, meditative, forest floor at rest, no percussion, no drums, no bass pulse, 60 bpm",
+   "in_game": [
+    "r1:calm_s23",
+    "r2:calm_s37"
+   ],
+   "prompt_r1": "alien fungal ambient, slow pulsing sub bass, glassy bowed metal, gentle kalimba plucks, wet dripping textures, granular shimmering pads, patient and hypnotic, experimental, no drums, no vocals, 70 bpm",
+   "round": 2
+  },
+  {
+   "name": "tension",
+   "use": "In game when skirmishes start (loops)",
+   "seconds": 30,
+   "loop": true,
+   "variants": 2,
+   "status": "keep",
+   "notes": "",
+   "prompt": "dark ambient with a slow heartbeat pulse, low cello drones, creaking wood, dissonant microtonal strings, soft tribal hand percussion, growing unease, underground and organic, 85 bpm",
+   "in_game": [
+    "r1:tension_s23"
+   ]
+  },
+  {
+   "name": "battle",
+   "use": "In game during big fights (loops)",
+   "seconds": 30,
+   "loop": true,
+   "variants": 2,
+   "status": "keep",
+   "notes": "round 1: this should be much more up-tempo for fighting, hectic and then have it fade so we can go back to tension or calm after the battle",
+   "prompt": "fast hectic tribal battle music, rapid pounding taiko and hollow log drums, frantic driving percussion, aggressive low string ostinato, gurgling distorted bass, urgent and chaotic, high energy, no vocals, 150 bpm",
+   "prompt_r1": "tense organic percussion, deep taiko and hollow log drums, ostinato low strings, gurgling bass synth, eerie choir pads, primal and driving, not epic orchestral, no vocals, 110 bpm",
+   "round": 2,
+   "in_game": [
+    "r2:battle_s23"
+   ]
+  },
+  {
+   "name": "victory",
+   "use": "You win (plays once)",
+   "seconds": 20,
+   "loop": false,
+   "variants": 2,
+   "status": "keep",
+   "notes": "",
+   "prompt": "warm swelling ambient, golden pads, slow rising choir, gentle chimes, triumphant but quiet, sunlit forest, ends resolved",
+   "in_game": [
+    "r1:victory_s11"
+   ]
+  },
+  {
+   "name": "defeat",
+   "use": "Your Heart falls (plays once)",
+   "seconds": 20,
+   "loop": false,
+   "variants": 2,
+   "status": "keep",
+   "notes": "",
+   "prompt": "decaying ambient, detuned pads slowly falling in pitch, crumbling textures, a lonely low cello note, fading to silence",
+   "in_game": [
+    "r1:defeat_s11",
+    "r1:defeat_s23"
+   ]
+  }
+ ]
+}

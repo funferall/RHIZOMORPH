@@ -1,0 +1,267 @@
+extends Node3D
+# Scene glue: builds the terrarium, light, camera, GPU mycelium, then the game
+# and HUD. Command-line flags (after `--`) drive automated checks:
+#   --bot              the player's faction is also played by the AI
+#   --faction=N        play faction N (0 Amanita, 1 Morel, 2 Veiled)
+#   --seconds=N        fast-forward N game seconds before showing / screenshotting
+#   --shot=path.png    save a screenshot and quit
+#   --view=yaw,dist,x,z[,bias]  camera for the shot
+#   --speed=N          game speed multiplier while fast-forwarding
+#   --viewtest         board + mycelium only, with test sources
+#   --showcase         every species lined up
+
+const Data = preload("res://scripts/data.gd")
+const Board = preload("res://scripts/board.gd")
+const Mycelium = preload("res://scripts/mycelium.gd")
+const CameraRig = preload("res://scripts/camera_rig.gd")
+const FungusLib = preload("res://scripts/fungus_lib.gd")
+
+var args := {}
+var board: Node3D
+var myc: Node
+var rig: Node3D
+var sun := DirectionalLight3D.new()
+var env := Environment.new()
+var game: Node
+var hud: CanvasLayer
+var _elapsed := 0.0
+var _shot_done := false
+var _framed := false
+
+
+func _ready() -> void:
+	for a in OS.get_cmdline_user_args():
+		var kv := a.trim_prefix("--").split("=", true, 1)
+		args[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	var seed := int(args.get("seed", "7"))
+
+	board = Board.new()
+	add_child(board)
+	board.build(seed)
+	myc = Mycelium.new()
+	add_child(myc)
+	myc.setup(board.sub_img)
+	board.attach_visuals(myc.texture)
+	_build_light()
+
+	rig = CameraRig.new()
+	rig.board = board
+	add_child(rig)
+	_build_particles()
+
+	if args.has("viewtest"):
+		rig.set_view(0.5, 75.0, Vector3.ZERO)
+	elif args.has("showcase"):
+		_showcase()
+	else:
+		var Game = load("res://scripts/game.gd")
+		game = Game.new()
+		game.board = board
+		game.myc = myc
+		game.rig = rig
+		add_child(game)
+		var Audio = load("res://scripts/audio.gd")
+		var audio = Audio.new()
+		audio.game = game
+		audio.rig = rig
+		add_child(audio)
+		game.sound.connect(audio.play)
+		game.game_over.connect(audio.on_game_over)
+		var Hud = load("res://scripts/hud.gd")
+		hud = Hud.new()
+		hud.game = game
+		hud.audio = audio
+		add_child(hud)
+		var bot := args.has("bot")
+		if args.has("faction") or bot or (args.has("shot") and not args.has("menu")):
+			game.start(int(args.get("faction", "1")), bot)
+		else:
+			hud.show_menu()
+		if args.has("seconds"):
+			game.fast_forward(float(args["seconds"]), float(args.get("speed", "4")))
+	if args.has("view"):
+		var v: PackedStringArray = args["view"].split(",")
+		var at := Vector3(float(v[2]), 0, float(v[3])) if v.size() >= 4 else Vector3.ZERO
+		rig.set_view(deg_to_rad(float(v[0])), float(v[1]), at, float(v[4]) if v.size() >= 5 else 0.0)
+	rig.snap()
+
+
+func _build_light() -> void:
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.03, 0.02, 0.014)
+	# the sky is never seen; it only feeds golden-hour reflections on caps and water
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.32, 0.36, 0.45)
+	sky_mat.sky_horizon_color = Color(0.95, 0.66, 0.38)
+	sky_mat.ground_horizon_color = Color(0.35, 0.24, 0.15)
+	sky_mat.ground_bottom_color = Color(0.06, 0.045, 0.03)
+	sky_mat.sun_angle_max = 20.0
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
+	env.sky = sky
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.46, 0.44, 0.4)
+	env.ambient_light_energy = 0.42
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 0.92
+	env.tonemap_white = 6.0
+	env.ssr_enabled = true
+	env.ssr_max_steps = 48
+	env.ssao_enabled = true
+	env.ssao_radius = 1.4
+	env.ssao_intensity = 2.4
+	env.ssao_power = 1.7
+	env.ssil_enabled = true
+	env.ssil_intensity = 0.8
+	env.glow_enabled = true
+	env.glow_intensity = 0.75
+	env.glow_strength = 1.05
+	env.glow_bloom = 0.06
+	env.glow_hdr_threshold = 0.85
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.0
+	env.adjustment_contrast = 1.08
+	env.volumetric_fog_enabled = true
+	env.volumetric_fog_density = 0.005
+	env.volumetric_fog_albedo = Color(1.0, 0.8, 0.58)
+	env.volumetric_fog_anisotropy = 0.7
+	var we := WorldEnvironment.new()
+	we.environment = env
+	add_child(we)
+
+	sun.rotation_degrees = Vector3(-21, -38, 0)
+	sun.light_color = Color(1.0, 0.8, 0.6)
+	sun.light_energy = 2.2
+	sun.shadow_enabled = true
+	sun.shadow_blur = 1.5
+	sun.directional_shadow_max_distance = 160.0
+	sun.light_volumetric_fog_energy = 1.6
+	add_child(sun)
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-50, 150, 0)
+	fill.light_color = Color(0.5, 0.58, 0.78)
+	fill.light_energy = 0.28
+	add_child(fill)
+
+
+func _build_particles() -> void:
+	# drifting spores catching the low sun - pure GPU particles
+	var p := GPUParticles3D.new()
+	p.amount = 2500
+	p.lifetime = 14.0
+	p.preprocess = 14.0
+	p.visibility_aabb = AABB(Vector3(-60, -5, -45), Vector3(120, 30, 90))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(Data.HALF_W, 4.0, Data.HALF_D)
+	pm.direction = Vector3(0.3, 1, 0.1)
+	pm.spread = 60.0
+	pm.initial_velocity_min = 0.05
+	pm.initial_velocity_max = 0.3
+	pm.gravity = Vector3(0.05, 0.02, 0)
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 0.6
+	pm.turbulence_noise_scale = 6.0
+	pm.scale_min = 0.5
+	pm.scale_max = 1.4
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 0.9, 0.7, 0))
+	grad.add_point(0.2, Color(1, 0.9, 0.7, 0.8))
+	grad.add_point(0.8, Color(1, 0.9, 0.7, 0.8))
+	grad.set_color(grad.get_point_count() - 1, Color(1, 0.9, 0.7, 0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = grad
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.06, 0.06)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = Color(1.6, 1.4, 1.0)
+	q.material = m
+	p.draw_pass_1 = q
+	p.position.y = 4.0
+	add_child(p)
+
+
+func _showcase() -> void:
+	# a flat soil stage floating above the board; --group=0 structures, 1 units, 2 decor
+	board.visible = false
+	var groups := [
+		["giant_agaric", "fly_agaric", "clathrus", "death_cap", "armillaria", "chanterelle", "mycena_lantern", "bracket",
+			"giant_morel", "morel", "earthstar", "cordyceps", "giant_veiled", "veiled_lady", "birds_nest", "pilobolus", "giant_puffball"],
+		["u_wartling", "u_spitter", "u_angel", "u_bruiser", "u_slinger", "u_stalker", "u_zombie", "u_lure", "u_bomber", "u_sniper"],
+		["agaric_button", "mycena_white", "morel_small", "elf_cup_small", "puffball_small", "inkcap"],
+	]
+	var g := int(args.get("group", "0"))
+	var ids: Array = groups[g]
+	var stage := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(200, 200)
+	stage.mesh = pm
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0.09, 0.075, 0.055)
+	sm.roughness = 0.95
+	stage.material_override = sm
+	add_child(stage)
+	var cols := 6 if g == 0 else 5
+	var sp := 9.0 if g == 0 else (2.6 if g == 1 else 1.2)
+	for i in ids.size():
+		var mi := MeshInstance3D.new()
+		mi.mesh = FungusLib.mesh(ids[i])
+		var row := i / cols
+		var col := i % cols
+		mi.position = Vector3((col - (cols - 1) * 0.5) * sp, 0, (row - 1) * sp)
+		if ids[i].begins_with("u_"):
+			mi.set_instance_shader_parameter("walk", 1.0)
+		add_child(mi)
+	rig.board = null
+	rig.min_dist = 1.0
+	rig.set_view(0.0, [55.0, 17.0, 7.5][g], Vector3(0, 0, sp * 0.3), 4.0)
+
+
+func _process(delta: float) -> void:
+	_elapsed += delta
+	if args.has("viewtest"):
+		myc.clear_sources()
+		for f in 3:
+			var sp: Vector2 = Data.START_POS[f]
+			myc.add_disc(sp, 15.0, 1.0, f)
+			myc.add_capsule(sp, sp.lerp(Vector2.ZERO, 0.7), 3.0, 1.0, f)
+	if rig:
+		board.set_cut_height(lerpf(4.0, 30.0, 1.0 - inverse_lerp(rig.min_dist, rig.max_dist, rig.dist)))
+	if args.has("shot") and not _shot_done:
+		var wait := float(args.get("wait", "3"))
+		var ready: bool = game == null or not game.busy()
+		if ready and game != null and not _framed:
+			# one-off staging for automated shots, then let things settle for a second
+			_framed = true
+			if args.has("hot"):
+				var hp: Vector2 = game.hotspot()
+				rig.set_view(rig.yaw, float(args["hot"]) if args["hot"] != "1" else 26.0, Vector3(hp.x, 0, hp.y))
+				rig.snap()
+			if args.has("selheart"):
+				game.select([game.heart(game.player)])
+			if args.has("tech"):
+				hud._toggle_tech()
+			if args.has("selq"):
+				for s in game.structs:
+					if s.f == game.player and s.alive and s.queue.size() >= 2:
+						game.select([s])
+						rig.set_view(rig.yaw, 22.0, Vector3(s.pos.x, 0, s.pos.y))
+						rig.snap()
+						break
+			# the lineage strands take ~2.5 s to grow in
+			_elapsed = minf(_elapsed, wait - (3.0 if args.has("tech") else 1.0))
+		if _elapsed >= wait and ready:
+			_shot_done = true
+			await RenderingServer.frame_post_draw
+			var img := get_viewport().get_texture().get_image()
+			img.save_png(args["shot"])
+			print("SHOT ", args["shot"])
+			get_tree().quit()

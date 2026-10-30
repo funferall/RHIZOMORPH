@@ -1,0 +1,13 @@
+# Godot cache
+.godot/
+*.tmp
+
+# Generated audio candidates and review scratch (only reviewed takes ship)
+audio/*/candidates/
+audio/review_site/
+audio/review.html
+tools/audio/__pycache__/
+
+# Verification screenshots
+screenshots/
+massgis_data/

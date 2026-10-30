@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://wblu54cfeg2"
+path="res://.godot/imported/myc_sim.glsl-b93fd1f3512e2a040390732a830efa26.res"
+
+[deps]
+
+source_file="res://shaders/myc_sim.glsl"
+dest_files=["res://.godot/imported/myc_sim.glsl-b93fd1f3512e2a040390732a830efa26.res"]
+
+[params]
+
