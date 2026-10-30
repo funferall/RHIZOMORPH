@@ -69,6 +69,7 @@ class Ent:
 	var burst := -1.0      # sporulation countdown
 	var nest := 0          # insects: the nest that bred it
 	var infect := 0.0      # insects: how sick they are
+	var infect_t := 0.0    # insects: time until they next sniff for lures
 	var life := INF        # short-lived insects (borers) count down
 	# cords
 	var a: Ent = null
@@ -92,6 +93,8 @@ var paused := false
 var speed := 1.0
 var over := false
 var match_seed := 0       # --match=N varies the AI and the forest between bot games
+var sim := false          # headless balance run (main.gd --sim): records a summary
+var _sample_min := 0
 
 var units: Array[Ent] = []
 var structs: Array[Ent] = []
@@ -107,13 +110,16 @@ var weather = Weather.new()
 var zones: Array[Dictionary] = []
 var shots: Array[Dictionary] = []
 var _grid := {}
+var _sgrid := {}             # 8 m buckets of live structures, rebuilt every step
+var _tgrid := {}             # 8 m buckets of tree indices (trees never move)
+var _broods: Array[Ent] = []  # built Brood Chambers, for thrall decay
 var _conn_dirty := true
 var _econ_t := 0.0
 var _decor_t := 0.0
 var _ff_left := 0.0
 var _shake := 0.0
 var _rng := RandomNumberGenerator.new()
-var _log := OS.get_cmdline_user_args().has("--log")
+var _log := OS.get_cmdline_user_args().has("--log") or OS.get_cmdline_user_args().has("--sim")
 var _log_t := 0.0
 var _stats := {}
 
@@ -997,8 +1003,32 @@ func _process(delta: float) -> void:
 		var dt := minf(delta / steps, 0.05)
 		for s in steps:
 			_step(dt)
+	var tp := _prof_t()
 	_push_sources()
-	_update_visuals(delta)
+	_prof("push_sources", tp)
+	if not sim:
+		_update_visuals(delta)
+
+
+# --profile: wall time per phase of the simulation, reported in the sim summary.
+var _profiling := OS.get_cmdline_user_args().has("--profile")
+var prof := {}
+
+
+func _prof_t() -> int:
+	return Time.get_ticks_usec() if _profiling else 0
+
+
+func _prof(key: String, t0: int) -> void:
+	if _profiling:
+		prof[key] = prof.get(key, 0) + Time.get_ticks_usec() - t0
+
+
+func _prof_report() -> Dictionary:
+	var out := {"mycelium_cpu": myc.cpu_usec / 1000}
+	for k in prof:
+		out[k] = prof[k] / 1000
+	return out
 
 
 func _step(dt: float) -> void:
@@ -1008,7 +1038,9 @@ func _step(dt: float) -> void:
 	_econ_t -= dt
 	if _econ_t <= 0.0:
 		_econ_t = 0.5
+		var t0 := _prof_t()
 		_update_rates()
+		_prof("rates", t0)
 	for f in 3:
 		var r := res(f)
 		var rate: Array = fs[f]["rate"]
@@ -1019,12 +1051,17 @@ func _step(dt: float) -> void:
 		for k in cds:
 			cds[k] = maxf(cds[k] - dt, 0.0)
 	_rebuild_grid()
+	var t1 := _prof_t()
 	for s in structs:
 		if s.alive:
 			_update_struct(s, dt)
+	_prof("structs", t1)
+	t1 = _prof_t()
 	for u in units:
 		if u.alive:
 			_update_unit(u, dt)
+	_prof("units", t1)
+	t1 = _prof_t()
 	for c in cords:
 		if c.alive:
 			_update_cord(c, dt)
@@ -1033,21 +1070,37 @@ func _step(dt: float) -> void:
 			_update_puff(p, dt)
 	_update_zones(dt)
 	_update_shots(dt)
+	_prof("cords_zones_shots", t1)
+	t1 = _prof_t()
 	forest.tick(dt)
+	_prof("forest", t1)
+	t1 = _prof_t()
 	fog.tick(dt)
+	_prof("fog", t1)
 	weather.tick(dt)
 	for f in 3:
 		if econ(f) == "parasite":
 			res(f)[1] = thralls(f)
+	t1 = _prof_t()
 	for ai in ais:
 		ai.tick(dt)
+	_prof("ai", t1)
 	_cleanup(dt)
 	_decor_t -= dt
 	if _decor_t <= 0.0:
 		_decor_t = 0.4
-		_update_decor()
+		if not sim:
+			_update_decor()
 	_check_end()
-	if _log:
+	if int(time / 60.0) > _sample_min:
+		# a sample of every court's income each game minute, for the balance harness
+		_sample_min = int(time / 60.0)
+		for f in 3:
+			if not fs[f].has("hist"):
+				fs[f]["hist"] = []
+			var rt: Array = fs[f]["rate"]
+			fs[f]["hist"].append([snappedf(rt[0], 0.1), snappedf(rt[1], 0.1), snappedf(rt[2], 0.1), pop(f)])
+	if _log and not sim:
 		_log_t -= dt
 		if _log_t <= 0.0:
 			_log_t = 20.0
@@ -1070,6 +1123,38 @@ func _rebuild_grid() -> void:
 			if not _grid.has(k):
 				_grid[k] = []
 			_grid[k].append(u)
+	_sgrid.clear()
+	_broods.clear()
+	for s in structs:
+		if s.alive:
+			var k := Vector2i(floori(s.pos.x / 8.0), floori(s.pos.y / 8.0))
+			if not _sgrid.has(k):
+				_sgrid[k] = []
+			_sgrid[k].append(s)
+			if s.d.has("brood") and s.built >= 1.0:
+				_broods.append(s)
+	if _tgrid.is_empty():
+		for i in Data.TREES.size():
+			var tp: Vector2 = Data.TREES[i]["pos"]
+			var reach: float = Data.TREES[i]["radius"] * 1.5 + 3.0
+			for j in range(floori((tp.y - reach) / 8.0), floori((tp.y + reach) / 8.0) + 1):
+				for k in range(floori((tp.x - reach) / 8.0), floori((tp.x + reach) / 8.0) + 1):
+					var key := Vector2i(k, j)
+					if not _tgrid.has(key):
+						_tgrid[key] = []
+					_tgrid[key].append(i)
+
+
+# Live structures whose 8 m bucket is next to p's (enough for anything within ~8 m).
+func _near_structs(p: Vector2) -> Array:
+	var out := []
+	var c := Vector2i(floori(p.x / 8.0), floori(p.y / 8.0))
+	for j in range(-1, 2):
+		for i in range(-1, 2):
+			var k := c + Vector2i(i, j)
+			if _sgrid.has(k):
+				out.append_array(_sgrid[k])
+	return out
 
 
 func _near_units(p: Vector2, r: float) -> Array:
@@ -1091,7 +1176,11 @@ func _near_units(p: Vector2, r: float) -> Array:
 func _update_rates() -> void:
 	# bare soil: the Court digests minerals from it, the Hollow a little cellulose, the Choir nothing
 	var soil := [0.0, 0.0, 0.0]
-	if myc.ok and not myc.coarse.is_empty():
+	if myc.cpu:
+		soil = myc.soil_sums()
+		for f in 3:
+			soil[f] *= Data.NUTRIENT_RATE
+	elif myc.ok and not myc.coarse.is_empty():
 		var cz: PackedFloat32Array = myc.coarse
 		var n := Data.COARSE_W * Data.COARSE_H
 		for i in n:
@@ -1435,13 +1524,14 @@ func _update_unit(u: Ent, dt: float) -> void:
 			push += dv / dl * (md - dl) * (3.0 if o.f == u.f else 5.0)
 		elif dl <= 0.001:
 			push += Vector2(_rng.randf() - 0.5, _rng.randf() - 0.5)
-	for s in structs:
+	for s: Ent in _near_structs(u.pos):
 		if s.alive and s != u.target:
-			var dv := u.pos - s.pos
-			var md := s.radius + u.radius * 0.6
+			var dv: Vector2 = u.pos - s.pos
+			var md: float = s.radius + u.radius * 0.6
 			if dv.length() < md:
 				push += dv.normalized() * (md - dv.length()) * 8.0
-	for tr in Data.TREES:
+	for ti in _tgrid.get(Vector2i(floori(u.pos.x / 8.0), floori(u.pos.y / 8.0)), []):
+		var tr: Dictionary = Data.TREES[ti]
 		var dv: Vector2 = u.pos - tr["pos"]
 		var md: float = tr["radius"] * 1.5 + u.radius
 		if dv.length() < md + 1.5:
@@ -1773,8 +1863,8 @@ func _thrall_decay(u: Ent, dt: float) -> void:
 	var k := Data.THRALL_DECAY * (0.6 if has_tech(u.f, "chitin_lysis") else 1.0)
 	if myc.density(u.f, u.pos) > 0.3:
 		k *= 0.5
-	for s in structs:
-		if s.f == u.f and s.alive and s.d.has("brood") and s.built >= 1.0 and s.pos.distance_to(u.pos) < s.d["brood"]:
+	for s in _broods:
+		if s.f == u.f and s.alive and s.pos.distance_to(u.pos) < s.d["brood"]:
 			return
 	_damage(u, u.max_hp * k * dt, -1, null, true)
 
@@ -1809,7 +1899,10 @@ func _insect_think(u: Ent, dt: float) -> void:
 			u.goal = u.home + Vector2(_rng.randf_range(-1.0, 1.0), _rng.randf_range(-1.0, 1.0))
 		return
 	var ch := choir()
-	if ch >= 0 and d.get("host", "") != "":
+	u.infect_t -= dt
+	if ch >= 0 and d.get("host", "") != "" and u.infect_t <= 0.0:
+		var step := 0.5 - u.infect_t   # the time since the last sniff
+		u.infect_t = 0.5
 		var sick := 0.0
 		var pull := Vector2.INF
 		for s in structs:
@@ -1828,7 +1921,7 @@ func _insect_think(u: Ent, dt: float) -> void:
 					sick = 1.0 / 12.0
 					break
 		if sick > 0.0:
-			u.infect += sick * dt
+			u.infect += sick * step
 			if u.infect >= 1.0:
 				if thralls(ch) < pop_cap(ch):
 					_raise_thrall(u, ch)
@@ -1867,14 +1960,45 @@ func _insect_think(u: Ent, dt: float) -> void:
 
 func _faction_falls(f: int) -> void:
 	fs[f]["alive"] = false
+	fs[f]["died"] = time
 	emit_signal("message", "%s has fallen - its colony rots." % fs[f]["name"], Data.faction_color(f))
 	for s in structs:
 		if s.f == f:
 			s.connected = false
 
 
+# What a headless balance run reports (main.gd --sim).
+func sim_summary() -> Dictionary:
+	var alive := []
+	for f in 3:
+		if fs[f]["alive"]:
+			alive.append(f)
+	var per := []
+	for f in 3:
+		per.append({"court": fs[f]["key"], "alive": fs[f]["alive"], "died": fs[f].get("died", -1.0),
+			"trained": _stats.get("trained%d" % f, 0), "techs": fs[f]["techs"].size(),
+			"structs": structs.filter(func(e): return e.f == f and e.alive).size(), "pop": pop(f),
+			"hist": fs[f].get("hist", [])})
+	var casts := {}
+	for k in _stats:
+		if str(k).begins_with("cast_") or str(k).begins_with("spor"):
+			casts[k] = _stats[k]
+	return {"match": match_seed, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
+		"alive": alive, "courts": per, "casts": casts, "cpu_mycelium": myc.cpu, "profile_ms": _prof_report()}
+
+
 func _check_end() -> void:
 	if over:
+		return
+	if bot:
+		# all-bot games run until one court is left
+		var alive := 0
+		for f in 3:
+			if fs[f]["alive"]:
+				alive += 1
+		if alive <= 1:
+			over = true
+			emit_signal("game_over", fs[player]["alive"])
 		return
 	if not fs[player]["alive"]:
 		over = true
@@ -2078,6 +2202,8 @@ func _fx_common(e: Ent, delta: float) -> void:
 
 
 func _burst(at: Vector3, col: Color, amount: int, spd: float, life: float, spread := 0.3, size := 1.0) -> void:
+	if sim:
+		return
 	var p := GPUParticles3D.new()
 	p.one_shot = true
 	p.amount = amount
@@ -2111,6 +2237,8 @@ func _burst(at: Vector3, col: Color, amount: int, spd: float, life: float, sprea
 
 
 func _cloud(c: Vector2, r: float, col: Color, dur: float, amount: int) -> void:
+	if sim:
+		return
 	var p := GPUParticles3D.new()
 	p.amount = amount
 	p.lifetime = 1.6

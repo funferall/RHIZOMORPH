@@ -168,6 +168,31 @@ Then republish `screenshots/catalog/catalog.html` to that URL. Species come from
 insects, decor), plus the props listed in `main.gd _catalog_entries`. Add a binomial to `LATIN` in the builder.
 `tools/catalog/seen.json` dates each species' first render, so new ones get a "new" tag.
 
+## Balance harness (headless)
+
+```
+python tools/sim/run_batch.py --seeds 24 --label baseline          # parallel all-bot matches -> sim_runs/baseline/report.md
+python tools/sim/run_batch.py --seeds 24 --label after_change      # same seeds after a change
+python tools/sim/run_batch.py --compare baseline after_change      # win rates side by side
+$G --headless --path . --fixed-fps 10 -- --sim --profile --match=11 --seconds=900   # one match, time per phase
+```
+
+- **Sim mode.** `main.gd --sim` runs the real game code: no HUD, audio, visuals, particles or
+  decor. It ends when one court is left or at `--seconds`, and prints one `SIM {json}` line
+  (winner, deaths, income per minute, units trained, techs, spore actions, `profile_ms`).
+- **No frame clock.** `--headless --fixed-fps 10` steps 0.1 game-seconds per frame as fast as
+  the CPU allows.
+- **CPU mycelium.** With no GPU, `mycelium.gd` runs a 2 m port of `myc_sim.glsl`
+  (`CPU_SPREAD` 0.35). It was calibrated against a rendered game on the same seed: Hollow
+  cellulose income per minute 7.4 / 10.5 / 13.3 headless vs 7.4 / 11.2 / 14.8 on the GPU; the
+  Court within about 15%.
+- **Speed.** About 9× real time for one process alone; the parallel runs contend for the CPU
+  (each slows to about 3× with 6 running). The default is 10 jobs; tune `--jobs`.
+- **Seeds.** `--match=N` seeds the AI, the forest and the weather, so the same seed list compares
+  two versions like for like.
+- **First reading** (12 seeds, before the speed fixes): the Veiled Choir won 10 of 12, and the
+  Amanita Court fell first in 9 of 12.
+
 ## Verify loop
 
 ```

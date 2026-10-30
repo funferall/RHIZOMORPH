@@ -11,12 +11,11 @@ const Data = preload("res://scripts/data.gd")
 
 const W := Data.COARSE_W
 const H := Data.COARSE_H
-const SEEN := 1
-const VIS := 2
 
 var g: Node
 var enabled := not OS.get_cmdline_user_args().has("--nofog")
-var grid: Array[PackedByteArray] = []    # per faction: bit SEEN, bit VIS
+var vis: Array[PackedByteArray] = []     # per faction: 1 where in sight right now
+var seen_g: Array[PackedByteArray] = []  # per faction: 1 where ever seen
 var reveals: Array[Dictionary] = []       # f, pos, r, t
 var tex := ImageTexture.new()             # ground and minimap: r = 0 unseen, ~0.45 explored, 1 visible
 var _img := Image.create(W, H, false, Image.FORMAT_R8)
@@ -26,9 +25,11 @@ var _t := 0.0
 func setup(game: Node) -> void:
 	g = game
 	for f in 3:
-		var b := PackedByteArray()
-		b.resize(W * H)
-		grid.append(b)
+		for list in [vis, seen_g]:
+			var b := PackedByteArray()
+			b.resize(W * H)
+			b.fill(0)
+			list.append(b)
 	tex.set_image(_img)
 	update()
 
@@ -43,7 +44,7 @@ func tick(dt: float) -> void:
 	reveals = reveals.filter(func(rv): return rv["t"] > 0.0)
 	_t -= dt
 	if _t <= 0.0:
-		_t = 0.25
+		_t = 0.5 if g.sim else 0.25
 		update()
 
 
@@ -54,14 +55,16 @@ func _idx(p: Vector2) -> int:
 
 
 func visible(f: int, p: Vector2) -> bool:
-	return not enabled or f < 0 or f > 2 or grid[f][_idx(p)] & VIS != 0
+	return not enabled or f < 0 or f > 2 or vis[f][_idx(p)] != 0
 
 
 func seen(f: int, p: Vector2) -> bool:
-	return not enabled or f < 0 or f > 2 or grid[f][_idx(p)] & SEEN != 0
+	return not enabled or f < 0 or f > 2 or seen_g[f][_idx(p)] != 0
 
 
-func _disc(b: PackedByteArray, p: Vector2, r: float) -> void:
+func _disc(f: int, p: Vector2, r: float) -> void:
+	var b := vis[f]
+	var s := seen_g[f]
 	var x0 := clampi(int(p.x - r + Data.HALF_W), 0, W - 1)
 	var x1 := clampi(int(p.x + r + Data.HALF_W), 0, W - 1)
 	var z0 := clampi(int(p.y - r + Data.HALF_D), 0, H - 1)
@@ -72,7 +75,8 @@ func _disc(b: PackedByteArray, p: Vector2, r: float) -> void:
 		for x in range(x0, x1 + 1):
 			var dx := x - Data.HALF_W + 0.5 - p.x
 			if dx * dx + dz * dz <= r2:
-				b[z * W + x] = SEEN | VIS
+				b[z * W + x] = 1
+				s[z * W + x] = 1
 
 
 func sight(e) -> float:
@@ -85,40 +89,43 @@ func sight(e) -> float:
 
 func update() -> void:
 	for f in 3:
-		var b := grid[f]
-		# last frame's sight fades to explored
-		for i in b.size():
-			b[i] &= SEEN
+		vis[f].fill(0)   # last update's sight fades to explored
+		var b := vis[f]
+		var sb := seen_g[f]
 		if not g.fs[f]["alive"]:
 			continue
 		for u in g.units:
 			if u.alive and u.f == f:
-				_disc(b, u.pos, sight(u))
+				_disc(f, u.pos, sight(u))
 		for s in g.structs:
 			if s.alive and s.f == f:
-				_disc(b, s.pos, sight(s))
+				_disc(f, s.pos, sight(s))
 		for rv in reveals:
 			if rv["f"] == f:
-				_disc(b, rv["pos"], rv["r"])
+				_disc(f, rv["pos"], rv["r"])
 		var eco: String = g.econ(f)
-		if eco != "parasite" and g.myc.ok and not g.myc.coarse.is_empty():
+		if eco != "parasite" and g.myc.cpu:
+			g.myc.stamp_sight(f, 0.25, b, sb)
+		elif eco != "parasite" and g.myc.ok and not g.myc.coarse.is_empty():
 			var cz: PackedFloat32Array = g.myc.coarse
 			for i in W * H:
 				if cz[i * 4 + f] > 0.25:
-					b[i] = SEEN | VIS
+					b[i] = 1
+					sb[i] = 1
 		if eco == "mycorrhizal":
-			_root_sight(f, b)
+			_root_sight(f)
 	# every court remembers the structures it has had in sight
 	for s in g.structs:
 		if s.alive:
 			for f in 3:
 				if visible(f, s.pos):
 					s.seen_by |= 1 << f
-	_bake()
+	if not g.sim:
+		_bake()
 
 
 # The Court hears through the roots: fed trees, and their neighbours one hop out.
-func _root_sight(f: int, b: PackedByteArray) -> void:
+func _root_sight(f: int) -> void:
 	var trees: Array = g.forest.trees
 	var hops := 2 if g.has_tech(f, "root_signalling") else 1
 	var lit := {}
@@ -136,19 +143,18 @@ func _root_sight(f: int, b: PackedByteArray) -> void:
 					nxt.append(li)
 		front = nxt
 	for i in lit:
-		_disc(b, trees[i]["pos"], trees[i]["roots"])
+		_disc(f, trees[i]["pos"], trees[i]["roots"])
 
 
 func _bake() -> void:
 	var f: int = g.player
 	if f < 0 or f > 2:
 		return
-	var b := grid[f]
+	var b := vis[f]
+	var sb := seen_g[f]
 	var data := PackedByteArray()
 	data.resize(W * H)
 	for i in W * H:
-		var v := b[i]
-		var k := 255 if v & VIS else (115 if v & SEEN else 0)
-		data[i] = k
+		data[i] = 255 if b[i] else (115 if sb[i] else 0)
 	_img.set_data(W, H, false, Image.FORMAT_R8, data)
 	tex.update(_img)

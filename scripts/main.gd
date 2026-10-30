@@ -10,6 +10,8 @@ extends Node3D
 #   --viewtest         board + mycelium only, with test sources
 #   --showcase         every species lined up
 #   --catalog=DIR      one close-up plate per species + catalog.json, then quit
+#   --sim              headless balance run (with --headless --fixed-fps): all bots, no HUD or
+#                      audio, ends when one court is left or at --seconds, prints one SIM {json} line
 
 const Data = preload("res://scripts/data.gd")
 const Board = preload("res://scripts/board.gd")
@@ -56,6 +58,20 @@ func _ready() -> void:
 		_showcase()
 	elif args.has("catalog"):
 		_catalog.call_deferred()
+	elif args.has("sim"):
+		var Game = load("res://scripts/game.gd")
+		game = Game.new()
+		game.board = board
+		game.myc = myc
+		game.match_seed = int(args.get("match", "0"))
+		game.rig = rig
+		if not game.has_method("sim_summary"):
+			print("SIM {\"failed\": true}")   # the game script did not load
+			get_tree().quit(1)
+			return
+		game.sim = true
+		add_child(game)
+		game.start(0, true)
 	else:
 		var Game = load("res://scripts/game.gd")
 		game = Game.new()
@@ -335,6 +351,10 @@ func _catalog() -> void:
 
 func _process(delta: float) -> void:
 	_elapsed += delta
+	if args.has("sim") and game and (game.over or game.time >= float(args.get("seconds", "1200"))):
+		print("SIM " + JSON.stringify(game.sim_summary()))
+		get_tree().quit()
+		return
 	if args.has("viewtest"):
 		myc.clear_sources()
 		for f in 3:

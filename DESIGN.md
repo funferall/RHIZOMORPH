@@ -535,7 +535,7 @@ starts.
 The AI now acts only on what its court can see now or has spotted before, plus the three start
 positions. It sends a scout early, and armies with no spotted target march on the rival's start.
 
-### Tooling — a headless simulation harness for balance
+### Tooling — a headless simulation harness for balance (built: `tools/sim/run_batch.py`, see ROADMAP)
 
 Today every balance test is a full rendered game at 8× speed: about 1.5 min of wall time per
 10-min match. That allows three seeds per change, and three seeds are mostly noise.

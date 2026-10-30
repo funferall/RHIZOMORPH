@@ -11,3 +11,4 @@ tools/audio/__pycache__/
 # Verification screenshots
 screenshots/
 massgis_data/
+sim_runs/
