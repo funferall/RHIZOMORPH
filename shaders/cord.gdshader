@@ -11,6 +11,7 @@ instance uniform float progress = 1.0;
 instance uniform float severed = 0.0;
 instance uniform float flash = 0.0;
 instance uniform float length_m = 10.0;
+instance uniform float load = 0.0;    // carried income / capacity; over 1 the cord runs hot
 
 void fragment() {
 	float u = UV.x;
@@ -27,10 +28,14 @@ void fragment() {
 	float tipglow = smoothstep(progress - 0.04, progress, u) * step(progress, 0.999);
 	float bead = 0.0;
 	if (severed < 0.5) {
-		float s = fract(u * length_m * 0.45 - TIME * 0.7);
+		// busier cords carry more, faster beads
+		float busy = clamp(load, 0.0, 1.0);
+		float s = fract(u * length_m * mix(0.25, 0.8, busy) - TIME * mix(0.4, 1.3, busy));
 		bead = smoothstep(0.9, 0.95, s) * (1.0 - smoothstep(0.96, 1.0, s));
 	}
 	vec3 gold = mix(vec3(1.0, 0.62, 0.15), team.rgb, 0.3);
+	float hot = smoothstep(1.0, 1.3, load);
+	gold = mix(gold, vec3(1.0, 0.22, 0.08) * (1.2 + 0.5 * sin(TIME * 6.0)), hot);
 	ALBEDO = mix(col, gold, bead * 0.7);
 	ROUGHNESS = mix(0.5, 0.25, bead);
 	SPECULAR = 0.6;

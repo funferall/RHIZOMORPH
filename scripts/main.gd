@@ -9,6 +9,7 @@ extends Node3D
 #   --speed=N          game speed multiplier while fast-forwarding
 #   --viewtest         board + mycelium only, with test sources
 #   --showcase         every species lined up
+#   --catalog=DIR      one close-up plate per species + catalog.json, then quit
 
 const Data = preload("res://scripts/data.gd")
 const Board = preload("res://scripts/board.gd")
@@ -53,11 +54,14 @@ func _ready() -> void:
 		rig.set_view(0.5, 75.0, Vector3.ZERO)
 	elif args.has("showcase"):
 		_showcase()
+	elif args.has("catalog"):
+		_catalog.call_deferred()
 	else:
 		var Game = load("res://scripts/game.gd")
 		game = Game.new()
 		game.board = board
 		game.myc = myc
+		game.match_seed = int(args.get("match", "0"))
 		game.rig = rig
 		add_child(game)
 		var Audio = load("res://scripts/audio.gd")
@@ -136,7 +140,7 @@ func _build_light() -> void:
 	sun.light_energy = 2.2
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.5
-	sun.directional_shadow_max_distance = 160.0
+	sun.directional_shadow_max_distance = 220.0
 	sun.light_volumetric_fog_energy = 1.6
 	add_child(sun)
 	var fill := DirectionalLight3D.new()
@@ -194,8 +198,9 @@ func _showcase() -> void:
 	board.visible = false
 	var groups := [
 		["giant_agaric", "fly_agaric", "clathrus", "death_cap", "armillaria", "chanterelle", "mycena_lantern", "bracket",
-			"giant_morel", "morel", "earthstar", "cordyceps", "giant_veiled", "veiled_lady", "birds_nest", "pilobolus", "giant_puffball"],
-		["u_wartling", "u_spitter", "u_angel", "u_bruiser", "u_slinger", "u_stalker", "u_zombie", "u_lure", "u_bomber", "u_sniper"],
+			"giant_morel", "morel", "earthstar", "cordyceps", "giant_veiled", "veiled_lady", "birds_nest", "pilobolus", "giant_puffball", "inkcap_bed", "anthill"],
+		["u_wartling", "u_spitter", "u_angel", "u_bruiser", "u_slinger", "u_bomber", "u_sniper", "u_stalker", "u_zombie",
+			"i_ant", "t_ant", "i_beetle", "t_beetle", "i_fly", "t_fly", "i_springtail"],
 		["agaric_button", "mycena_white", "morel_small", "elf_cup_small", "puffball_small", "inkcap"],
 	]
 	var g := int(args.get("group", "0"))
@@ -223,6 +228,109 @@ func _showcase() -> void:
 	rig.board = null
 	rig.min_dist = 1.0
 	rig.set_view(0.0, [55.0, 17.0, 7.5][g], Vector3(0, 0, sp * 0.3), 4.0)
+
+
+# Every species in the game, with who uses it: structures and units by court,
+# the forest's insects, decor sprouts and spore-action props.
+func _catalog_entries() -> Array:
+	var out := {}
+	var add := func(id: String, kind: String, f: int, used: String):
+		if not out.has(id):
+			out[id] = {"id": id, "kind": kind, "faction": f, "used_by": []}
+		if not used in out[id]["used_by"]:
+			out[id]["used_by"].append(used)
+	for f in 3:
+		var fd: Dictionary = Data.FACTIONS[f]
+		var sids: Array = [fd["heart"]] + fd["build"]
+		for sid in sids:
+			var sd: Dictionary = Data.STRUCTURES[sid]
+			add.call(sd["species"], "structure", f, sd["name"])
+			for uid in sd.get("trains", []):
+				add.call(Data.UNITS[uid]["species"], "unit", f, Data.UNITS[uid]["name"])
+		for uid in fd["starters"]:
+			add.call(Data.UNITS[uid]["species"], "unit", f, Data.UNITS[uid]["name"])
+		for sp in fd["decor"]:
+			add.call(sp, "decor", f, "Ground sprouts")
+	for uid in Data.UNITS:
+		var ud: Dictionary = Data.UNITS[uid]
+		if ud.get("insect", false):
+			add.call(ud["species"], "insect", Data.NEUTRAL, ud["name"])
+		elif ud.get("thrall", false):
+			add.call(ud["species"], "unit", 2, ud["name"])
+	add.call("giant_puffball", "prop", 1, "Giant Puffball (spore action)")
+	add.call("agaric_button", "prop", 0, "Fairy Ring (spore action)")
+	add.call("death_cap", "prop", 0, "Death Cap Bloom (spore action)")
+	add.call("anthill", "prop", Data.NEUTRAL, "Anthill (insect nest)")
+	return out.values()
+
+
+func _catalog() -> void:
+	board.visible = false
+	for c in get_children():
+		if c is GPUParticles3D:
+			c.visible = false   # the drifting spore motes read as specks on a plate
+	var dir: String = args["catalog"]
+	DirAccess.make_dir_recursive_absolute(dir)
+	var stage := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(400, 400)
+	stage.mesh = pm
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0.09, 0.075, 0.055)
+	sm.roughness = 0.95
+	stage.material_override = sm
+	add_child(stage)
+	var cam := Camera3D.new()
+	cam.fov = 28.0
+	add_child(cam)
+	cam.make_current()
+	var only: PackedStringArray = args.get("only", "").split(",", false)
+	var entries := _catalog_entries()
+	for e in entries:
+		if not only.is_empty() and not e["id"] in only:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.mesh = FungusLib.mesh(e["id"])
+		var f: int = e["faction"]
+		if f < 3 and e["kind"] != "decor" and e["kind"] != "prop":
+			var c: Color = Data.faction_color(f)
+			var thrall: bool = e["id"].begins_with("t_") or e["id"] == "u_zombie"
+			mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, 0.18 if thrall else (0.45 if e["kind"] == "unit" else 0.3)))
+		if e["kind"] in ["unit", "insect"]:
+			mi.set_instance_shader_parameter("walk", 0.6)
+		add_child(mi)
+		var ab: AABB = mi.mesh.get_aabb()
+		var ctr := ab.get_center()
+		var r := maxf(ab.size.length() * 0.5, 0.2)
+		var dist := r / sin(deg_to_rad(cam.fov * 0.5)) * 1.12
+		var yaw := 0.65
+		var pitch := 0.4
+		cam.near = maxf(dist * 0.02, 0.01)
+		cam.position = ctr + Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * dist
+		cam.look_at(ctr)
+		for k in 24:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		var s := mini(img.get_width(), img.get_height())
+		img = img.get_region(Rect2i((img.get_width() - s) / 2, (img.get_height() - s) / 2, s, s))
+		img.resize(640, 640, Image.INTERPOLATE_LANCZOS)
+		img.save_webp(dir.path_join(e["id"] + ".webp"), true, 0.86)
+		e["height_m"] = snappedf(ab.size.y, 0.01)
+		e["width_m"] = snappedf(maxf(ab.size.x, ab.size.z), 0.01)
+		mi.queue_free()
+	if not only.is_empty() and FileAccess.file_exists(dir.path_join("catalog.json")):
+		# a partial re-render keeps the sizes measured last time for everything else
+		var old = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("catalog.json")))
+		for o in (old if old is Array else []):
+			for e in entries:
+				if e["id"] == o["id"] and not e.has("height_m"):
+					e["height_m"] = o.get("height_m", 0.0)
+					e["width_m"] = o.get("width_m", 0.0)
+	var fa := FileAccess.open(dir.path_join("catalog.json"), FileAccess.WRITE)
+	fa.store_string(JSON.stringify(entries, " "))
+	fa.close()
+	get_tree().quit()
 
 
 func _process(delta: float) -> void:

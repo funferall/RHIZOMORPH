@@ -8,7 +8,59 @@ legged mushroom units, faction-tinted territory, glowing root network in the cut
 top-centre resource pill, left portrait column, bottom build bar with mushroom icons,
 ability group, bottom-right minimap with territory + node graph).
 
-## Design (agreed)
+## Overhaul in progress (started 2026-10-30): see DESIGN.md
+
+DESIGN.md is now the source of truth. The section below this one describes the original
+symmetric design, kept for history.
+
+**Phase 1 — the three economies on the current map: first pass DONE (2026-10-30).**
+
+| Piece | Where |
+|---|---|
+| Forest state: trees (vigor, partners, root links, Honey Rot, death into a snag), deposits (log/litter/snag/corpse/rubble with stock and drain), humus, insect nests and breeding | `scripts/forest.gd` (new) |
+| Insects are units of `Data.NEUTRAL` (3). They wander near their nest, retaliate only when hit, ants carry off corpses, beetles bore trees, springtails graze, and they fall sick at Lures | `game.gd` `_insect_think`, `_bore` |
+| Court: mantles pay minerals for sugar scaled by vigor and partner species; Web bonus for linked trees, Mother Tree, fruiting spores; Root Snare scales with tree vigor; units cull pests on fed trees | `forest.gd` `_court`, `game.gd` `_hunts` |
+| Hollow: Rot Bracket on wood deposits; corpses and rubble give nitrogen under Hollow mycelium; Inkcap Bed gathers and keeps corpses and digests litter; Honey Rot kills trees | `forest.gd` `_hollow` |
+| Choir: no cords and never starves; structures grow from a thrall within 6 m; infection rules (`_infector`), thrall decay, sporulation (F key, `order_sporulate`), Lures, Brood Chamber, Pandemic, Heart spits | `game.gd` |
+| Per-court rosters, resource names, start resources, starters, tech trees (7 each) | `data.gd` |
+| AI: one build brain per economy; Choir builder thrall, hunting grounds (`_ours`), auto-sporulate; Court sends its army at Honey Rot on its trees | `ai.gd` |
+| HUD: per-court resource names and costs, tree vigor bars, deposit stock bars (Hollow), Pandemic glyph, F sporulate, mute moved to Ctrl+M (M was eating the M build key) | `hud.gd` |
+| Meshes: `i_ant/beetle/fly/springtail`, `t_ant/beetle/fly` (with cordyceps clubs), `inkcap_bed`, `anthill`; bark `dead` uniform for snags | `fungus_lib.gd`, `bark.gdshader` |
+
+Bot balance (`--match=N` varies seeds): across 3 seeds after tuning, the Hollow won 2 and the Choir 1,
+and the Court survived to 10:00 in one. The Hollow still banks too much nitrogen late. Results swing a
+lot by seed, so judge balance from several matches. Run: `bash` loop over `--match=1..3 --seconds=600 --speed=8`.
+
+**Phase 3 + map (2026-10-30, while the user was away):**
+- **2× forest map:** 192 × 144 m, 16 trees with an old-growth centre, a stream with a log bridge
+  and stepping stones, a windfall, 6 anthills. Everything that maps world to UV now reads the
+  real `half_size`. Startup is about 8 s.
+- **Fog of war:** `scripts/fog.gd`. The Court sees through its roots (fed trees plus their
+  neighbours); the Choir sees only through thralls, structures and sporulation. Enemy units hide
+  outside sight; enemy structures stay once spotted. `--nofog` disables it.
+- **Cord throughput:** `game.gd _route_flows`. Mantle sugar and bracket cellulose ride the cords
+  home, losing 3% per hop, and each cord carries 4/s (8/s with Bootlaces). Overloaded cords glow red.
+- **AI:** armies come home when their Heart is attacked, and all three Hearts now have a
+  defensive attack.
+- **Agrilus Swarm** (Choir T3, V key), **stag beetles** (logs), **bark beetles** (snags and weak
+  trees), and Ophiocordyceps-style thrall models.
+- **Weather and treefall** (`scripts/weather.gd`): rain, dry spells, windstorms that fell snags
+  into logs, branch falls and leaf fall. See DESIGN §9.
+- **Bot balance after all of this:** five three-seed batches on the big map. Every court has won
+  at least once, and games now last 5–15 min. Small changes swing the winner, so the last batch
+  (Hollow 3/3) is noise as much as signal. Hand-play next.
+- **New test flags:** `--nofog`, `--weather=wind|rain|dry`, `--snag=N`, `--match=N`.
+
+**Next in the overhaul:**
+1. Hand playtest on the big map with fog.
+2. Phase 4 leftovers: saplings, burn scar, fern understory, stream crossings for cords.
+3. Phase 5: an AI that respects fog, the Physarum hazard, ecological victories.
+
+The older note follows: hand playtest Phase 1 (especially the Choir's grow-from-thrall placement and
+sporulation by hand), then Phase 2 is mostly done in data (per-court tech trees exist), so Phase 3: fog
+of war (the Court sees trees one hop out on the root graph), cord throughput, then Phase 4: the forest map.
+
+## Design (original, superseded by DESIGN.md)
 
 - **Factions**: Amanita Court (red, poison), Morel Hollow (gold, tanky/regenerating,
   Cordyceps zombies, wildfire), Veiled Choir (violet, stinkhorns/puffballs, speed,
@@ -50,9 +102,9 @@ camera_rig.gd, main.gd, fungus_lib.gd + fungus/legs shaders.
 | `shaders/myc_sim.glsl` | source reach is noise-wobbled, so territory edges are lobed, not circles |
 
 Controls (in game): LMB select / drag box / double-click same type, RMB move / attack / set rally,
-A attack-move, S stop, N M B T G L K build (Shift keeps placing), Z X C spore actions, 1-3 train,
+A attack-move, S stop, F sporulate (Choir thralls), N M B T G L K H build (Shift keeps placing), Z X C spore actions, 1-3 train,
 Tab lineages, Q/E or MMB-drag rotate, wheel zoom, arrows / screen edge pan, Space Heart, P pause,
-+/- speed, Esc cancel.
++/- speed, Ctrl+M mute, Esc cancel.
 
 ## Pick up here next
 
@@ -96,6 +148,18 @@ Tab lineages, Q/E or MMB-drag rotate, wheel zoom, arrows / screen edge pan, Spac
   --base-directory Documents\ComfyUI --models-directory C:\Users\mmulq\ComfyUI-Shared\models --port 8199
   --user-directory <scratch> --output-directory <scratch>` with `PYTHONUTF8=1 PYTHONIOENCODING=utf-8`
   (a node prints emoji and crashes the server on cp1252 when output is redirected).
+
+## Asset catalog (keep it current)
+
+https://claude.ai/artifact/RbSKyxbFiprYQz7kWZBFqK holds one in-engine plate per species, grouped by court.
+The user asked for it to grow as assets are built. **After adding or changing any model**, run:
+```
+$G --path . -- --catalog=screenshots/catalog/img          # --only=id1,id2 re-renders just those
+python tools/catalog/build_catalog.py                      # writes screenshots/catalog/catalog.html
+```
+Then republish `screenshots/catalog/catalog.html` to that URL. Species come from data.gd (structures, units,
+insects, decor), plus the props listed in `main.gd _catalog_entries`. Add a binomial to `LATIN` in the builder.
+`tools/catalog/seen.json` dates each species' first render, so new ones get a "new" tag.
 
 ## Verify loop
 

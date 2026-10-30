@@ -1,7 +1,10 @@
 extends RefCounted
 # One computer-run faction. Thinks once a second through the same public calls
-# the HUD uses: research down a fixed order, grow a cord network toward trees and
-# the enemy, keep the fruiting bodies training, gather an army at the front and
+# the HUD uses. Each court plays to its economy: the Court mantles trees, guards
+# them with root snares and culls the pests on them; the Hollow grows toward
+# wood and corpses, plants brackets and Honey Rot; the Choir hunts insects,
+# grows lures beside their nests and sporulates its dying thralls. All three
+# research down a fixed order, keep training, gather an army at the front and
 # send it in waves, raid enemy cords, defend, and cast spore actions on clumps.
 
 const Data = preload("res://scripts/data.gd")
@@ -9,6 +12,7 @@ const Data = preload("res://scripts/data.gd")
 var g: Node
 var f := 0
 var fd: Dictionary
+var eco := ""
 var rng := RandomNumberGenerator.new()
 var think_t := 1.0
 var wave := 0
@@ -17,17 +21,19 @@ var attack_t := 170.0
 var attacking := false
 var raid_t := 95.0
 var tech_order: Array = []
+var builder = null          # Choir: the thrall walking off to become a structure
+var build_plan := {}        # Choir: {sid, at}
 
 
 func setup(game: Node, faction: int) -> void:
 	g = game
 	f = faction
 	fd = Data.FACTIONS[f]
-	rng.seed = 99 + f * 7
+	eco = fd["economy"]
+	rng.seed = 99 + f * 7 + game.match_seed * 104729
 	think_t = 1.0 + f * 0.33
 	attack_t = 160.0 + rng.randf() * 40.0
-	var t: Array = fd["techs"]
-	tech_order = [t[0], t[1], t[3], t[2], t[4]]
+	tech_order = fd["ai_techs"]
 
 
 func tick(dt: float) -> void:
@@ -39,7 +45,14 @@ func tick(dt: float) -> void:
 	think_t = 1.0
 	_research()
 	_train()
-	_build()
+	match eco:
+		"mycorrhizal":
+			_build_court()
+		"saprotroph":
+			_build_hollow()
+		"parasite":
+			_build_choir()
+			_sporulate()
 	_army()
 	_abilities()
 
@@ -52,75 +65,44 @@ func _mine(sid := "") -> Array:
 	return out
 
 
+func _n(sid: String) -> int:
+	return _mine(sid).size()
+
+
 func _research() -> void:
 	var h = g.heart(f)
 	if h == null or h.research != "":
 		return
 	for t in tech_order:
 		if g.tech_state(f, t) == 1:
-			if g.afford(f, Data.TECHS[t]["cost"]) and g.res(f)[0] > Data.TECHS[t]["cost"][0] + 40.0:
+			var c: Array = Data.TECHS[t]["cost"]
+			if g.afford(f, c, Data.TECHS[t].get("spores", 0.0)) and g.res(f)[0] > c[0] + 40.0:
 				g.start_research(f, t)
 			return
 
 
-# --- building ------------------------------------------------------------------
-
-func _build() -> void:
-	var growing := 0
+func _growing() -> int:
+	var n := 0
 	for s in _mine():
 		if s.built < 1.0:
-			growing += 1
-	if growing >= 2:
-		return
-	var bl: Array = fd["build"]
-	var t: float = g.time
-	var n_node := _mine("node").size()
-	var n_bar := _mine(bl[2]).size()
-	var n_tower := _mine(bl[3]).size()
-	var n_elite := _mine(bl[4]).size()
-	var n_lantern := _mine("lantern").size()
-	var n_bracket := _mine("bracket").size()
-	var n_mantle := _mine("mantle").size()
-	var wants := []
-	if n_bar == 0:
-		wants.append(bl[2])
-	if n_mantle < 1:
-		wants.append("mantle")
-	if n_node < 2:
-		wants.append("node")
-	if n_mantle < 2:
-		wants.append("mantle")
-	if g.has_tech(f, "spore_sacs") and n_lantern < 1:
-		wants.append("lantern")
-	if g.has_tech(f, "exoenzymes") and n_bracket < 1:
-		wants.append("bracket")
-	var elite_req: String = Data.STRUCTURES[bl[4]]["req"]
-	if g.has_tech(f, elite_req) and n_elite == 0:
-		wants.append(bl[4])
-	if t > 110.0 and n_tower < mini(1 + int(t / 220.0), 4):
-		wants.append(bl[3])
-	if t > 230.0 and n_bar < 2:
-		wants.append(bl[2])
-	if t > 300.0 and n_mantle < 3:
-		wants.append("mantle")
-	if n_node < mini(3 + int(t / 80.0), 11):
-		wants.append("node")
-	if g.res(f)[0] > 350.0 and n_bar < 4:
-		wants.append(bl[2])
+			n += 1
+	return n
+
+
+# Try each wanted structure in order; the first that has a spot gets placed (or waited for).
+func _try_wants(wants: Array) -> void:
 	for sid in wants:
 		var cost: Array = Data.STRUCTURES[sid]["cost"]
 		if g.res(f)[1] < cost[1]:
-			continue   # short on sugar: don't let it block the nutrient-only builds
+			continue   # short on the elite resource: don't let it block the cheap builds
 		var spot := _spot(sid)
 		if spot == Vector2.INF:
-			if sid == "mantle" or sid == "bracket":
-				# can't reach a free tree yet: grow toward one
-				var tp := _free_tree()
-				if tp != Vector2.INF:
-					var ns := _spot("node", tp)
-					if ns != Vector2.INF:
-						_place("node", ns)
-						return
+			var reach := _reach_for(sid)
+			if reach != Vector2.INF:
+				var ns := _spot("node", reach)
+				if ns != Vector2.INF:
+					_place("node", ns)
+					return
 			continue
 		_place(sid, spot)
 		return
@@ -132,18 +114,235 @@ func _place(sid: String, p: Vector2) -> void:
 		g.try_place(f, sid, p)
 
 
-func _free_tree() -> Vector2:
+# --- the Court -----------------------------------------------------------------
+
+func _build_court() -> void:
+	if _growing() >= 2:
+		return
+	var t: float = g.time
+	var mantled := 0
+	for tr in g.forest.trees:
+		if tr["alive"] and tr["fed"][f] > 0:
+			mantled += 1
+	var wants := []
+	if _n("agaric_ring") == 0:
+		wants.append("agaric_ring")
+	if _n("mantle") < 2:
+		wants.append("mantle")
+	if _n("node") < 2:
+		wants.append("node")
+	if g.has_tech(f, "phalloides") and _n("deathcap_grove") == 0:
+		wants.append("deathcap_grove")
+	if t > 100.0 and _n("root_snare") < mini(mantled, 1 + int(t / 150.0)):
+		wants.append("root_snare")
+	if _n("mantle") < mini(2 + int(t / 70.0), 9):
+		wants.append("mantle")
+	if t > 110.0 and _n("agaric_ring") < 2:
+		wants.append("agaric_ring")
+	if _n("node") < mini(3 + int(t / 90.0), 10):
+		wants.append("node")
+	if g.res(f)[0] > 220.0 and _n("agaric_ring") < 4:
+		wants.append("agaric_ring")
+	_try_wants(wants)
+
+
+# --- the Hollow ----------------------------------------------------------------
+
+func _build_hollow() -> void:
+	if _growing() >= 2:
+		return
+	var t: float = g.time
+	var wants := []
+	if _n("morel_patch") == 0:
+		wants.append("morel_patch")
+	if _n("rot_bracket") < 1:
+		wants.append("rot_bracket")
+	if _n("node") < 2:
+		wants.append("node")
+	if t > 50.0 and _n("inkcap_bed") < 1:
+		wants.append("inkcap_bed")
+	if _n("rot_bracket") < mini(1 + int(t / 80.0), 6):
+		wants.append("rot_bracket")
+	if g.has_tech(f, "pilobolus") and _n("pilobolus_bed") == 0:
+		wants.append("pilobolus_bed")
+	if g.has_tech(f, "armillaria") and _n("honey_rot") < 2:
+		wants.append("honey_rot")
+	if t > 110.0 and _n("earthstar") < mini(1 + int(t / 220.0), 3):
+		wants.append("earthstar")
+	if t > 200.0 and _n("birds_nest") < 1:
+		wants.append("birds_nest")
+	if t > 90.0 and _n("morel_patch") < 2 or t > 240.0 and _n("morel_patch") < 3:
+		wants.append("morel_patch")
+	if t > 240.0 and _n("inkcap_bed") < 2:
+		wants.append("inkcap_bed")
+	if _n("node") < mini(3 + int(t / 80.0), 11):
+		wants.append("node")
+	if g.res(f)[0] > 220.0 and _n("morel_patch") < 4:
+		wants.append("morel_patch")
+	_try_wants(wants)
+
+
+# --- the Choir -----------------------------------------------------------------
+
+func _build_choir() -> void:
+	var t: float = g.time
+	# a thrall already walking off to become something: place it once it arrives
+	if not build_plan.is_empty():
+		var sid: String = build_plan["sid"]
+		var at: Vector2 = build_plan["at"]
+		if builder == null or not builder.alive or t - build_plan["t0"] > 40.0:
+			_drop_plan()
+		elif g.place_error(f, sid, at, false) == "":
+			if g.afford(f, Data.STRUCTURES[sid]["cost"]):
+				g.try_place(f, sid, at)
+				_drop_plan()
+			return
+		else:
+			builder.goal = at
+			return
+	if _growing() >= 2:
+		return
+	var wants := []
+	if _n("stinkhorn_lure") < 1:
+		wants.append("stinkhorn_lure")
+	if t > 60.0 and _n("clathrus_cage") < 1:
+		wants.append("clathrus_cage")
+	if g.has_tech(f, "hypocreales") and _n("cordyceps_spire") == 0:
+		wants.append("cordyceps_spire")
+	if _n("stinkhorn_lure") < mini(1 + int(t / 60.0), 6):
+		wants.append("stinkhorn_lure")
+	if g.has_tech(f, "brood") and _n("brood_chamber") == 0:
+		wants.append("brood_chamber")
+	if t > 150.0 and _n("clathrus_cage") < mini(1 + int(t / 110.0), 6):
+		wants.append("clathrus_cage")
+	for sid in wants:
+		if not g.afford(f, Data.STRUCTURES[sid]["cost"]):
+			return
+		var at := _choir_spot(sid)
+		if at == Vector2.INF:
+			continue
+		var host = _nearest_thrall(at)
+		if host == null:
+			return
+		builder = host
+		builder.squad = "build"
+		g.order_move([builder], at)
+		build_plan = {"sid": sid, "at": at, "t0": t}
+		return
+
+
+func _drop_plan() -> void:
+	if builder and builder.alive:
+		builder.squad = ""
+	builder = null
+	build_plan = {}
+
+
+func _nearest_thrall(p: Vector2):
+	var best = null
+	var bd := INF
+	for u in g.units:
+		if u.f == f and u.alive and u.d.get("thrall", false) and u.squad == "" and u.burst < 0.0 and u.summit == Vector2.INF:
+			var d: float = u.pos.distance_to(p)
+			if d < bd:
+				bd = d
+				best = u
+	return best
+
+
+# Lures go beside insect nests nobody of ours is farming yet; cages guard the
+# Heart and the lures; the rest sit near home.
+func _choir_spot(sid: String) -> Vector2:
+	var h = g.heart(f)
+	var targets: Array[Vector2] = []
+	if sid == "stinkhorn_lure":
+		var nests: Array = g.forest.nests.duplicate()
+		nests.sort_custom(func(a, b): return a["pos"].distance_to(h.pos) < b["pos"].distance_to(h.pos))
+		for n in nests:
+			var taken := false
+			for s in _mine("stinkhorn_lure"):
+				if s.pos.distance_to(n["pos"]) < 12.0:
+					taken = true
+			if not taken and n["pos"].distance_to(h.pos) < 90.0:
+				targets.append(n["pos"])
+		if targets.is_empty():
+			targets.append(h.pos.lerp(_front(), 0.25))
+	elif sid == "clathrus_cage":
+		var lures := _mine("stinkhorn_lure")
+		if not lures.is_empty() and rng.randf() < 0.6:
+			targets.append(lures[rng.randi() % lures.size()].pos.lerp(_front(), 0.1))
+		targets.append(h.pos.lerp(_front(), 0.2))
+	else:
+		targets.append(h.pos.lerp(_front(), 0.1))
+	var d: Dictionary = Data.STRUCTURES[sid]
+	for tp in targets:
+		for k in 16:
+			var a := TAU * k / 16.0 + rng.randf() * 0.4
+			for rr in [5.0, 7.5, 10.0]:
+				var q: Vector2 = tp + Vector2(cos(a), sin(a)) * (rr + d["radius"])
+				var err: String = g.place_error(f, sid, q, false)
+				if err == "" or err.begins_with("Needs a thrall"):
+					return q
+	return Vector2.INF
+
+
+func _sporulate() -> void:
+	var th := []
+	for u in g.units:
+		if u.f == f and u.alive and u.d.get("thrall", false) and u.squad != "build" and u.burst < 0.0 and u.summit == Vector2.INF:
+			th.append(u)
+	var cap: int = g.pop_cap(f)
+	var burst := []
+	for u in th:
+		# a dying thrall is worth more as spores than as a corpse
+		if u.hp < u.max_hp * 0.45 and u.target == null:
+			burst.append(u)
+	if th.size() >= int(cap * 0.6):
+		th.sort_custom(func(a, b): return a.hp / a.max_hp < b.hp / b.max_hp)
+		for u in th.slice(0, 3):
+			if not u in burst:
+				burst.append(u)
+	if not burst.is_empty():
+		g.order_sporulate(burst)
+
+
+# --- spots ---------------------------------------------------------------------
+
+# Where to grow a node toward when sid has nowhere to go yet.
+func _reach_for(sid: String) -> Vector2:
 	var h = g.heart(f)
 	var best := Vector2.INF
 	var bd := INF
-	for i in Data.TREES.size():
-		if g.mantles_on(i) >= Data.MANTLES_PER_TREE:
-			continue
-		var tp: Vector2 = Data.TREES[i]["pos"]
-		var d: float = tp.distance_to(h.pos)
-		if d < bd:
-			bd = d
-			best = tp
+	match sid:
+		"mantle", "root_snare", "honey_rot":
+			for tr in g.forest.trees:
+				if not tr["alive"]:
+					continue
+				if sid == "mantle" and g.mantles_on(tr["i"]) >= g.mantle_cap(f):
+					continue
+				if sid == "root_snare" and tr["fed"][f] == 0:
+					continue
+				var d: float = tr["pos"].distance_to(h.pos)
+				if sid == "honey_rot" and tr["fed"][f] == 0:
+					d *= 0.6   # rot the trees the others feed on first
+				if d < bd:
+					bd = d
+					best = tr["pos"]
+		"rot_bracket":
+			for dep in g.forest.deposits:
+				if dep["kind"] in ["log", "snag", "branch"] and dep["c"] > 80.0:
+					var q: Vector2 = dep["a"] + (dep["b"] - dep["a"]) * clampf((h.pos - dep["a"]).dot(dep["b"] - dep["a"]) / maxf((dep["b"] - dep["a"]).length_squared(), 0.01), 0.0, 1.0)
+					var d: float = q.distance_to(h.pos)
+					if d < bd:
+						bd = d
+						best = q
+		"inkcap_bed":
+			for dep in g.forest.deposits:
+				if dep["kind"] == "litter" and dep["c"] > 40.0:
+					var d: float = dep["pos"].distance_to(h.pos)
+					if d < bd:
+						bd = d
+						best = dep["pos"]
 	return best
 
 
@@ -181,41 +380,56 @@ func _spot(sid: String, toward := Vector2.INF) -> Vector2:
 	var d: Dictionary = Data.STRUCTURES[sid]
 	var h = g.heart(f)
 	var cands: Array[Vector2] = []
-	if sid == "mantle":
-		for i in Data.TREES.size():
-			var tr: Dictionary = Data.TREES[i]
-			for k in 14:
-				var a := TAU * k / 14.0 + rng.randf() * 0.3
-				for rr in [tr["radius"] * 1.6 + 3.0, tr["radius"] * 1.6 + 5.5]:
-					cands.append(tr["pos"] + Vector2(cos(a), sin(a)) * rr)
-		toward = h.pos
-	elif sid == "bracket":
-		for tr in Data.TREES:
-			for k in 14:
-				var a := TAU * k / 14.0
-				cands.append(tr["pos"] + Vector2(cos(a), sin(a)) * (tr["radius"] * 1.6 + 2.6))
-		for lg in Data.LOGS:
-			for k in 9:
-				var p: Vector2 = lg[0].lerp(lg[1], k / 8.0)
-				var n: Vector2 = (lg[1] - lg[0]).orthogonal().normalized()
-				cands.append(p + n * (lg[2] + 2.4))
-				cands.append(p - n * (lg[2] + 2.4))
-		toward = h.pos
-	else:
-		var lr: float = g.link_range(f)
-		if toward == Vector2.INF:
-			if sid == "node":
-				toward = _front()
-			else:
-				toward = h.pos.lerp(_front(), 0.4 if sid == fd["build"][3] else 0.2)
-		for s in _mine():
-			if s.built < 1.0 or not s.connected:
-				continue
-			for k in 10:
-				var a := TAU * k / 10.0 + rng.randf() * 0.5
-				var dists := [lr * 0.6, lr * 0.9] if sid == "node" else [s.radius + d["radius"] + 1.5, s.radius + d["radius"] + 4.5]
-				for dd in dists:
-					cands.append(s.pos + Vector2(cos(a), sin(a)) * dd)
+	match d.get("on", ""):
+		"tree":
+			for tr in g.forest.trees:
+				if not tr["alive"]:
+					continue
+				if sid == "root_snare" and tr["fed"][f] == 0:
+					continue
+				for k in 14:
+					var a := TAU * k / 14.0 + rng.randf() * 0.3
+					for rr in [tr["radius"] * 1.6 + 3.0, tr["radius"] * 1.6 + 5.5, tr["radius"] * 1.6 + 8.0]:
+						if rr < tr["roots"]:
+							cands.append(tr["pos"] + Vector2(cos(a), sin(a)) * rr)
+			if sid == "honey_rot":
+				toward = _enemy_tree()
+			if toward == Vector2.INF:
+				toward = h.pos
+		"deposit":
+			for dep in g.forest.deposits:
+				if not dep["kind"] in ["log", "snag", "branch"] or dep["c"] <= 0.0:
+					continue
+				var ab: Vector2 = dep["b"] - dep["a"]
+				var n: Vector2 = ab.orthogonal().normalized() if ab.length() > 0.1 else Vector2.RIGHT
+				for k in 9:
+					var p: Vector2 = dep["a"].lerp(dep["b"], k / 8.0)
+					for side in [1.0, -1.0]:
+						cands.append(p + n * side * (dep["radius"] + 2.0))
+					if ab.length() <= 0.1:
+						var a := TAU * k / 9.0
+						cands.append(p + Vector2(cos(a), sin(a)) * (dep["radius"] + 2.0))
+			toward = h.pos
+		_:
+			var lr: float = g.link_range(f)
+			if toward == Vector2.INF:
+				if sid == "node":
+					toward = _front()
+				elif sid == "inkcap_bed":
+					toward = _reach_for("inkcap_bed")
+					if toward == Vector2.INF:
+						toward = h.pos.lerp(_front(), 0.4)
+				else:
+					var towers := ["root_snare", "earthstar", "birds_nest"]
+					toward = h.pos.lerp(_front(), 0.4 if sid in towers else 0.2)
+			for s in _mine():
+				if s.built < 1.0 or not s.connected:
+					continue
+				for k in 10:
+					var a := TAU * k / 10.0 + rng.randf() * 0.5
+					var dists := [lr * 0.6, lr * 0.9] if sid == "node" else [s.radius + d["radius"] + 1.5, s.radius + d["radius"] + 4.5]
+					for dd in dists:
+						cands.append(s.pos + Vector2(cos(a), sin(a)) * dd)
 	var best := Vector2.INF
 	var bs := INF
 	for p in cands:
@@ -228,22 +442,41 @@ func _spot(sid: String, toward := Vector2.INF) -> Vector2:
 	return best
 
 
+# The tree some rival is getting the most sugar from.
+func _enemy_tree() -> Vector2:
+	var best := Vector2.INF
+	var bn := 0
+	for tr in g.forest.trees:
+		if not tr["alive"] or g.mantles_on(tr["i"], "honey_rot") > 0:
+			continue
+		var n := 0
+		for o in 3:
+			if o != f:
+				n += tr["fed"][o]
+		if n > bn:
+			bn = n
+			best = tr["pos"]
+	return best
+
+
 # --- army ----------------------------------------------------------------------
 
 func _train() -> void:
-	var bl: Array = fd["build"]
 	# keep the army near a target that grows with time; past it, save for buildings
 	var army: int = g.pop(f) + g.queued(f)
-	var reserve := 0.0 if army < mini(4 + int(g.time / 12.0), Data.POP_CAP) else 110.0
+	var reserve := 0.0 if army < mini(4 + int(g.time / 12.0), g.pop_cap(f)) else 110.0
 	for s in _mine():
 		if s.built < 1.0 or not s.connected or s.d.get("trains", []).is_empty():
 			continue
 		if s.queue.size() >= 2:
 			continue
 		var trains: Array = s.d["trains"]
-		var uid: String = trains[0] if trains.size() == 1 or rng.randf() < 0.55 else trains[1]
-		var c: Array = Data.UNITS[uid]["cost"]
-		if g.res(f)[0] < c[0] + reserve:
+		var uid: String = trains[rng.randi() % trains.size()]
+		var ud: Dictionary = Data.UNITS[uid]
+		var c: Array = ud["cost"]
+		if g.res(f)[0] < c[0] + reserve or g.res(f)[1] < c[1]:
+			continue
+		if ud.get("spores", 0.0) > 0.0 and g.res(f)[2] < ud["spores"] + 30.0:
 			continue
 		g.queue_train(s, uid)
 
@@ -251,7 +484,7 @@ func _train() -> void:
 func _army() -> void:
 	var army := []
 	for u in g.units:
-		if u.f == f and u.alive and u.squad == "":
+		if u.f == f and u.alive and u.squad == "" and u.summit == Vector2.INF:
 			army.append(u)
 	# raids on supply cords
 	raid_t -= 1.0
@@ -266,8 +499,17 @@ func _army() -> void:
 				u.squad = "raid"
 			g.order_attack(squad, cord)
 	for u in g.units:
-		if u.f == f and u.alive and u.squad == "raid" and u.target == null and u.goal == Vector2.INF:
+		if u.f == f and u.alive and u.squad in ["raid", "pest"] and u.target == null and u.goal == Vector2.INF:
 			u.squad = ""
+	# the Heart under attack: drop everything and come home
+	var hp: Vector2 = g.heart(f).pos
+	for u in g.units:
+		if u.alive and u.f != f and u.f != Data.NEUTRAL and u.pos.distance_to(hp) < 24.0:
+			if attacking:
+				attacking = false
+				attack_t = g.time + 40.0
+			g.order_move(army, u.pos, true)
+			return
 	# defend anything under attack
 	var threat := _threat()
 	if threat != Vector2.INF and not attacking:
@@ -277,6 +519,8 @@ func _army() -> void:
 				idle.append(u)
 		g.order_move(idle, threat, true)
 		return
+	if eco == "mycorrhizal":
+		_cull_pests(army)
 	var rally := _rally()
 	if attacking:
 		if army.size() < 3:
@@ -301,13 +545,71 @@ func _army() -> void:
 			wave_size = mini(6 + wave * 2, 22)
 			g.order_move(army, tgt, true)
 			return
-	# gather idle units at the front node
+	if eco == "parasite" and _hunt(army):
+		return
+	# gather idle units at the front
 	var gather := []
 	for u in army:
 		if u.target == null and u.goal == Vector2.INF and u.pos.distance_to(rally) > 7.0:
 			gather.append(u)
 	if not gather.is_empty():
 		g.order_move(gather, rally, true)
+
+
+# The Choir's idle army goes looking for hosts: the nearest insects, in bites of a few.
+func _hunt(army: Array) -> bool:
+	var idle := []
+	for u in army:
+		if u.target == null and u.goal == Vector2.INF:
+			idle.append(u)
+	if idle.size() < 3:
+		return false
+	var h = g.heart(f)
+	var best = null
+	var bd := 85.0
+	for u in g.units:
+		if u.f == Data.NEUTRAL and u.alive and u.d.get("host", "") != "" and _ours(u.pos):
+			var d: float = u.pos.distance_to(h.pos)
+			if d < bd:
+				bd = d
+				best = u
+	if best == null:
+		return false
+	g.order_move(idle.slice(0, 6), best.pos, true)
+	return true
+
+
+# Closer to our Heart than to anyone else's: the hunting grounds we can hold.
+func _ours(p: Vector2) -> bool:
+	var mine: float = p.distance_to(g.heart(f).pos)
+	for o in 3:
+		if o != f and g.fs[o]["alive"] and p.distance_to(g.heart(o).pos) < mine * 1.1:
+			return false
+	return true
+
+
+# Send a pair to clear bugs off the trees the Court feeds, and the army after
+# any Honey Rot eating one of them.
+func _cull_pests(army: Array) -> void:
+	for s in g.structs:
+		if s.alive and s.id == "honey_rot" and s.f != f and s.tree >= 0 and g.forest.trees[s.tree]["fed"][f] > 0:
+			var idle := army.filter(func(a): return a.target == null)
+			if idle.size() >= 3:
+				g.order_attack(idle, s)
+				return
+	for u in g.units:
+		if u.f != Data.NEUTRAL or not u.alive:
+			continue
+		var t: int = g.forest.tree_in_roots(u.pos)
+		if t < 0 or g.forest.trees[t]["fed"][f] == 0:
+			continue
+		var idle := army.filter(func(a): return a.target == null and a.squad == "")
+		idle.sort_custom(func(a, b): return a.pos.distance_to(u.pos) < b.pos.distance_to(u.pos))
+		var pair := idle.slice(0, 2)
+		for a in pair:
+			a.squad = "pest"
+		g.order_attack(pair, u)
+		return
 
 
 func _rally() -> Vector2:
@@ -325,7 +627,7 @@ func _rally() -> Vector2:
 
 func _threat() -> Vector2:
 	for u in g.units:
-		if u.f == f or not u.alive:
+		if u.f == f or not u.alive or u.f == Data.NEUTRAL:
 			continue
 		for s in _mine():
 			if s.pos.distance_to(u.pos) < 16.0:
@@ -362,8 +664,21 @@ func _enemy_cord():
 # --- spore actions -------------------------------------------------------------
 
 func _abilities() -> void:
+	# keep enough spores back for the next lineage that is paid in them
+	var keep := 0.0
+	for t in tech_order:
+		if g.tech_state(f, t) == 1:
+			keep = Data.TECHS[t].get("spores", 0.0)
+			break
 	for ab in fd["abilities"]:
-		if g.ability_ready(f, ab) != "":
+		if g.ability_ready(f, ab) != "" or g.res(f)[2] - Data.ABILITIES[ab]["cost"] < keep:
+			continue
+		if ab == "borer_swarm":
+			# girdle the tree a rival feeds on hardest
+			var tp := _enemy_tree()
+			if tp != Vector2.INF and g.cast_error(f, ab, tp) == "":
+				g.cast(f, ab, tp)
+				return
 			continue
 		var d: Dictionary = Data.ABILITIES[ab]
 		var r: float = d["radius"]
@@ -372,7 +687,7 @@ func _abilities() -> void:
 		var bn := 0.0
 		var pts := []
 		for u in g.units:
-			if u.f != f and u.alive:
+			if u.f != f and u.alive and u.f != Data.NEUTRAL:
 				pts.append(u.pos)
 		if vs_structs:
 			for s in g.structs:

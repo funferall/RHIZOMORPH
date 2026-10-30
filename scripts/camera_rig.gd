@@ -11,7 +11,7 @@ var yaw := 0.0
 var dist := 70.0
 var pitch_bias := 0.0
 var min_dist := 5.0
-var max_dist := 110.0
+var max_dist := 170.0
 var board: Node3D
 
 var _goal_target := Vector3.ZERO

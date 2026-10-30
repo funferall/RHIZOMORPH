@@ -4,7 +4,7 @@ extends Node3D
 # feed sugar to mycorrhizal mantles.
 
 const Data = preload("res://scripts/data.gd")
-const VRES := 4                 # height vertices per world unit
+const VRES := 3                 # height vertices per world unit (= Data.SIM_RES)
 const WATER_Y := -0.45
 const BOTTOM_Y := -11.0
 const MOSS_SHELLS := 20
@@ -21,7 +21,10 @@ var sub_img: Image
 var terrain_mat: ShaderMaterial
 var moss_mat: ShaderMaterial
 var sides_mat: ShaderMaterial
+var water_mat: ShaderMaterial
 var bark_mats: Array[ShaderMaterial] = []
+var tree_parts: Array = []       # per tree: [butt MeshInstance3D, upper MeshInstance3D]
+var felled := {}                 # tree index -> true: keeps its stump height
 
 var _n_base := FastNoiseLite.new()
 var _n_mound := FastNoiseLite.new()
@@ -60,6 +63,7 @@ func _gen_fields() -> void:
 	water.resize(count)
 	wood.resize(count)
 	litter.resize(count)
+	# the open floor everywhere, then each feature stamps only its own patch
 	for j in nz:
 		var z := -Data.HALF_D + float(j) / VRES
 		for i in nx:
@@ -70,53 +74,88 @@ func _gen_fields() -> void:
 			h += maxf(mound, -0.2) * 0.75
 			if h < 0.0:
 				h = -0.3 * (1.0 - exp(h / 0.3))   # only the puddles dip below the waterline
-			var r := 0.0
-			var w := 0.0
-			var wd := 0.0
-			var lt := clampf(_n_litter.get_noise_2d(x, z) * 1.6 - 0.15, 0.0, 1.0) * 0.6
-			var p := Vector2(x, z)
-			for rk in Data.ROCKS:
-				var d: float = p.distance_to(rk[0]) / rk[1]
-				if d < 1.25:
-					var rough := 0.75 + 0.5 * _n_rough.get_noise_2d(x, z)
-					var bump: float = pow(maxf(1.0 - d * d, 0.0), 1.2) * rk[2] * rough
-					h = maxf(h, h * 0.4 + bump)
-					r = maxf(r, clampf((1.0 - d) * 3.0 + _n_rough.get_noise_2d(x * 2, z * 2) * 0.6, 0.0, 1.0))
-			for lg in Data.LOGS:
-				var a: Vector2 = lg[0]
-				var b: Vector2 = lg[1]
-				var R: float = lg[2]
-				var ab := b - a
-				var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
-				var d := p.distance_to(a + ab * t)
-				if d < R * 1.3:
-					var top := sqrt(maxf(R * R - d * d, 0.0)) * 1.05 + 0.1
-					h = maxf(h, top)
-					wd = maxf(wd, clampf(1.0 - d / (R * 1.3), 0.0, 1.0))
-			for pd in Data.PUDDLES:
-				var d: float = p.distance_to(pd[0]) / pd[1]
-				d += _n_rough.get_noise_2d(x * 0.5, z * 0.5) * 0.25
-				if d < 1.4:
-					h = lerpf(h, -1.3, smoothstep(1.4, 0.55, d))
-			for tr in Data.TREES:
-				var tp: Vector2 = tr["pos"]
-				var d := p.distance_to(tp)
-				var rr: float = tr["radius"]
-				if d < rr * 5.0:
-					var ang := atan2(z - tp.y, x - tp.x)
-					var ridge := pow(maxf(cos(ang * 6.0 + rr), 0.0), 6.0) * maxf(1.0 - d / (rr * 4.5), 0.0)
-					h += 0.9 * exp(-pow(d / (rr * 2.0), 2.0)) + ridge * 0.9
-					lt = maxf(lt, 0.7 * (1.0 - d / (rr * 5.0)))
-			for sp in Data.START_POS:
-				var d: float = p.distance_to(sp)
-				h = lerpf(h, 0.15 + h * 0.25, smoothstep(10.0, 5.0, d))
-			if h < WATER_Y + 0.08:
-				w = clampf((WATER_Y + 0.08 - h) * 3.0, 0.0, 1.0)
 			heights[k] = h
-			rock[k] = r
-			water[k] = w
-			wood[k] = wd
-			litter[k] = lt
+			rock[k] = 0.0
+			water[k] = 0.0
+			wood[k] = 0.0
+			litter[k] = clampf(_n_litter.get_noise_2d(x, z) * 1.6 - 0.15, 0.0, 1.0) * 0.6
+	# the stream: a channel along a polyline (cut before the rocks and logs that cross it)
+	for si in Data.STREAM.size() - 1:
+		var a: Vector2 = Data.STREAM[si]
+		var b: Vector2 = Data.STREAM[si + 1]
+		var reach := Data.STREAM_W * 2.2
+		_stamp(Rect2(a, Vector2.ZERO).expand(b).grow(reach), func(k: int, p: Vector2):
+			var ab := b - a
+			var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+			var d := p.distance_to(a + ab * t) / Data.STREAM_W + _n_rough.get_noise_2d(p.x * 0.6, p.y * 0.6) * 0.2
+			if d < 2.2:
+				heights[k] = minf(heights[k], lerpf(heights[k], -1.4, smoothstep(2.2, 0.7, d))))
+	for rk in Data.ROCKS:
+		_stamp(Rect2(rk[0], Vector2.ZERO).grow(rk[1] * 1.25), func(k: int, p: Vector2):
+			var d: float = p.distance_to(rk[0]) / rk[1]
+			if d < 1.25:
+				var rough := 0.75 + 0.5 * _n_rough.get_noise_2d(p.x, p.y)
+				var bump: float = pow(maxf(1.0 - d * d, 0.0), 1.2) * rk[2] * rough
+				heights[k] = maxf(heights[k], heights[k] * 0.4 + bump)
+				rock[k] = maxf(rock[k], clampf((1.0 - d) * 3.0 + _n_rough.get_noise_2d(p.x * 2, p.y * 2) * 0.6, 0.0, 1.0)))
+	for lg in Data.LOGS:
+		var a: Vector2 = lg[0]
+		var b: Vector2 = lg[1]
+		var R: float = lg[2]
+		_stamp(Rect2(a, Vector2.ZERO).expand(b).grow(R * 1.3), func(k: int, p: Vector2):
+			var ab := b - a
+			var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+			var d := p.distance_to(a + ab * t)
+			if d < R * 1.3:
+				var top := sqrt(maxf(R * R - d * d, 0.0)) * 1.05 + 0.1
+				heights[k] = maxf(heights[k], top)
+				wood[k] = maxf(wood[k], clampf(1.0 - d / (R * 1.3), 0.0, 1.0)))
+	for pd in Data.PUDDLES:
+		_stamp(Rect2(pd[0], Vector2.ZERO).grow(pd[1] * 1.7), func(k: int, p: Vector2):
+			var d: float = p.distance_to(pd[0]) / pd[1]
+			d += _n_rough.get_noise_2d(p.x * 0.5, p.y * 0.5) * 0.25
+			if d < 1.4:
+				heights[k] = lerpf(heights[k], -1.3, smoothstep(1.4, 0.55, d)))
+	for tr in Data.TREES:
+		var tp: Vector2 = tr["pos"]
+		var rr: float = tr["radius"]
+		_stamp(Rect2(tp, Vector2.ZERO).grow(rr * 5.0), func(k: int, p: Vector2):
+			var d := p.distance_to(tp)
+			if d < rr * 5.0:
+				var ang := atan2(p.y - tp.y, p.x - tp.x)
+				var ridge := pow(maxf(cos(ang * 6.0 + rr), 0.0), 6.0) * maxf(1.0 - d / (rr * 4.5), 0.0)
+				heights[k] += 0.9 * exp(-pow(d / (rr * 2.0), 2.0)) + ridge * 0.9
+				litter[k] = maxf(litter[k], 0.7 * (1.0 - d / (rr * 5.0))))
+	for lp in Data.LITTER:
+		_stamp(Rect2(lp[0], Vector2.ZERO).grow(5.0), func(k: int, p: Vector2):
+			var d: float = p.distance_to(lp[0]) + _n_rough.get_noise_2d(p.x * 1.5, p.y * 1.5) * 0.8
+			if d < 4.2:
+				litter[k] = maxf(litter[k], smoothstep(4.2, 1.5, d))
+				heights[k] += 0.3 * smoothstep(4.2, 0.5, d))
+	for ah in Data.ANTHILLS:
+		_stamp(Rect2(ah, Vector2.ZERO).grow(3.4), func(k: int, p: Vector2):
+			var d: float = p.distance_to(ah)
+			if d < 3.4:
+				heights[k] = maxf(heights[k], heights[k] * 0.5 + smoothstep(3.4, 0.0, d) * 0.4))
+	for sp in Data.START_POS:
+		_stamp(Rect2(sp, Vector2.ZERO).grow(10.0), func(k: int, p: Vector2):
+			var d: float = p.distance_to(sp)
+			heights[k] = lerpf(heights[k], 0.15 + heights[k] * 0.25, smoothstep(10.0, 5.0, d)))
+	for k in count:
+		if heights[k] < WATER_Y + 0.08:
+			water[k] = clampf((WATER_Y + 0.08 - heights[k]) * 3.0, 0.0, 1.0)
+
+
+# Calls fn(index, world position) for every height vertex inside r.
+func _stamp(r: Rect2, fn: Callable) -> void:
+	var i0 := clampi(int((r.position.x + Data.HALF_W) * VRES), 0, nx - 1)
+	var i1 := clampi(int((r.end.x + Data.HALF_W) * VRES) + 1, 0, nx - 1)
+	var j0 := clampi(int((r.position.y + Data.HALF_D) * VRES), 0, nz - 1)
+	var j1 := clampi(int((r.end.y + Data.HALF_D) * VRES) + 1, 0, nz - 1)
+	for j in range(j0, j1 + 1):
+		var z := -Data.HALF_D + float(j) / VRES
+		for i in range(i0, i1 + 1):
+			fn.call(j * nx + i, Vector2(-Data.HALF_W + float(i) / VRES, z))
 
 
 func _make_sub_image() -> void:
@@ -209,6 +248,7 @@ func _build_terrain(myc_texture: Texture2D) -> void:
 	terrain_mat = ShaderMaterial.new()
 	terrain_mat.shader = load("res://shaders/terrain.gdshader")
 	terrain_mat.set_shader_parameter("myc_tex", myc_texture)
+	terrain_mat.set_shader_parameter("half_size", Vector2(Data.HALF_W, Data.HALF_D))
 	terrain_mat.set_shader_parameter("sub_tex", _sub_texture())
 	_set_faction_tints(terrain_mat, 0.4)
 	var mi := MeshInstance3D.new()
@@ -228,6 +268,7 @@ func _build_moss(myc_texture: Texture2D) -> void:
 	moss_mat = ShaderMaterial.new()
 	moss_mat.shader = load("res://shaders/moss.gdshader")
 	moss_mat.set_shader_parameter("myc_tex", myc_texture)
+	moss_mat.set_shader_parameter("half_size", Vector2(Data.HALF_W, Data.HALF_D))
 	moss_mat.set_shader_parameter("sub_tex", _sub_texture())
 	moss_mat.set_shader_parameter("shells", float(MOSS_SHELLS))
 	var mm := MultiMesh.new()
@@ -248,6 +289,7 @@ func _build_sides(myc_texture: Texture2D) -> void:
 	sides_mat = ShaderMaterial.new()
 	sides_mat.shader = load("res://shaders/sides.gdshader")
 	sides_mat.set_shader_parameter("myc_tex", myc_texture)
+	sides_mat.set_shader_parameter("half_size", Vector2(Data.HALF_W, Data.HALF_D))
 	sides_mat.set_shader_parameter("bottom_y", BOTTOM_Y)
 	_set_faction_tints(sides_mat, 0.7)
 	var st := SurfaceTool.new()
@@ -284,6 +326,8 @@ func _build_water() -> void:
 	# one sheet at the waterline; the terrain hides it everywhere but the puddles
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/water.gdshader")
+	mat.set_shader_parameter("half_size", Vector2(Data.HALF_W, Data.HALF_D))
+	water_mat = mat
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(Data.HALF_W * 2.0, Data.HALF_D * 2.0)
 	var mi := MeshInstance3D.new()
@@ -319,6 +363,7 @@ func _build_trees() -> void:
 		var p: Vector2 = tr["pos"]
 		# only the butt casts a shadow, so the low sun doesn't stripe the board
 		var parts := _trunk_meshes(tr["radius"], 46.0, kind, 7.0)
+		tree_parts.append([])
 		for i in 2:
 			var mi := MeshInstance3D.new()
 			mi.mesh = parts[i]
@@ -327,6 +372,7 @@ func _build_trees() -> void:
 			if i == 1:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(mi)
+			tree_parts[-1].append(mi)
 
 
 func _trunk_meshes(r: float, h: float, kind: int, split_y: float) -> Array[ArrayMesh]:
@@ -364,5 +410,34 @@ func _trunk_meshes(r: float, h: float, kind: int, split_y: float) -> Array[Array
 
 
 func set_cut_height(cut: float) -> void:
-	for m in bark_mats:
-		m.set_shader_parameter("cut_h", cut)
+	for i in bark_mats.size():
+		if not felled.has(i):
+			bark_mats[i].set_shader_parameter("cut_h", cut)
+
+
+# A felled tree: the trunk snaps to a ragged stump and a log lies along dir.
+func fell_tree(i: int, dir: Vector2, length: float) -> void:
+	felled[i] = true
+	var tr: Dictionary = Data.TREES[i]
+	var p: Vector2 = tr["pos"]
+	bark_mats[i].set_shader_parameter("cut_h", height_at(p.x, p.y) + 1.6)
+	tree_parts[i][1].visible = false
+	var r: float = tr["radius"]
+	var cm := CylinderMesh.new()
+	cm.top_radius = r * 0.75
+	cm.bottom_radius = r * 0.95
+	cm.height = length - r * 1.6
+	cm.radial_segments = 24
+	cm.rings = 8
+	var mat: ShaderMaterial = bark_mats[i].duplicate()
+	mat.set_shader_parameter("cut_h", 999.0)
+	mat.set_shader_parameter("dead", 1.0)
+	var mi := MeshInstance3D.new()
+	mi.mesh = cm
+	mi.material_override = mat
+	var mid := p + dir * (r * 1.6 + length) * 0.5
+	var at := Vector3(mid.x, height_at(mid.x, mid.y) + r * 0.6, mid.y)
+	add_child(mi)
+	# lay the cylinder's axis along dir
+	mi.look_at_from_position(at, at + Vector3(dir.x, 0, dir.y), Vector3.UP)
+	mi.rotate_object_local(Vector3.RIGHT, PI * 0.5)

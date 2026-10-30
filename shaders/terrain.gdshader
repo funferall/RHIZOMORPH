@@ -6,6 +6,7 @@ render_mode cull_disabled;
 // pale grey-beige gravel laced with white hyphae, tinted by the owning faction.
 
 #include "res://shaders/noise.gdshaderinc"
+#include "res://shaders/fog.gdshaderinc"
 
 uniform sampler2D myc_tex : filter_linear, repeat_disable;
 uniform sampler2D sub_tex : filter_linear, repeat_disable;
@@ -17,10 +18,7 @@ uniform float show_grid = 0.0;
 uniform vec2 ghost_pos = vec2(9999.0);
 uniform float ghost_r = 0.0;
 uniform vec3 ghost_col : source_color = vec3(1.0);
-uniform vec4 zone0 = vec4(0.0, 0.0, 0.0, 0.0);
-uniform vec4 zone1 = vec4(0.0, 0.0, 0.0, 0.0);
-uniform vec4 zone2 = vec4(0.0, 0.0, 0.0, 0.0);
-uniform vec4 zone3 = vec4(0.0, 0.0, 0.0, 0.0);
+uniform vec4 zones[24];       // tree root zones: x, z, radius (0 = none)
 
 varying vec3 wpos;
 
@@ -91,10 +89,13 @@ void fragment() {
 		float gd = length(p - ghost_pos);
 		col = mix(col, ghost_col, (1.0 - smoothstep(0.0, 0.12, abs(gd - ghost_r))) * 0.8);
 	}
-	float z = zone_ring(zone0, p) + zone_ring(zone1, p) + zone_ring(zone2, p) + zone_ring(zone3, p);
+	float z = 0.0;
+	for (int zi = 0; zi < 24; zi++) {
+		z += zone_ring(zones[zi], p);
+	}
 	col = mix(col, vec3(1.0, 0.82, 0.3), clamp(z, 0.0, 1.0) * show_grid);
 
-	ALBEDO = col;
+	ALBEDO = fogged(col, fog_at(uv));
 	ROUGHNESS = mix(0.95, 0.25, wet);
 	SPECULAR = 0.35;
 }

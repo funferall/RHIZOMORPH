@@ -12,7 +12,6 @@ const EDGE := Color(0.85, 0.74, 0.45, 0.35)
 const TEXT := Color(0.93, 0.89, 0.8)
 const DIM := Color(0.62, 0.58, 0.5)
 const RES_COL := [Color(0.72, 0.88, 0.4), Color(1.0, 0.74, 0.28), Color(0.78, 0.68, 1.0)]
-const RES_NAME := ["Nutrients", "Sugar", "Spores"]
 
 var game: Node
 var audio: Node
@@ -26,6 +25,7 @@ var ability_bar := HBoxContainer.new()
 var ctx := PanelContainer.new()
 var ctx_box := VBoxContainer.new()
 var minimap := Control.new()
+var _mm_mat: ShaderMaterial
 var mm_tex := TextureRect.new()
 var msgs := VBoxContainer.new()
 var tech_panel := Control.new()
@@ -195,7 +195,7 @@ func _build_pill() -> void:
 	info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	info_lbl.add_theme_color_override("font_color", DIM)
 	root.add_child(info_lbl)
-	help.text = "LMB select / drag box   RMB move, attack   A attack-move   S stop   Tab lineages   Q/E rotate   Space Heart   P pause   +/- speed   M mute"
+	help.text = "LMB select / drag box   RMB move, attack   A attack-move   S stop   F sporulate   Tab lineages   Q/E rotate   Space Heart   P pause   +/- speed   Ctrl+M mute"
 	help.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	help.position = Vector2(-430, -20)
 	help.size = Vector2(860, 16)
@@ -225,19 +225,34 @@ func _draw_pill() -> void:
 		if i < 3:
 			val = "%d" % int(r[i])
 			frac = clampf(r[i] / (game.spore_cap(f) if i == 2 else 400.0), 0.0, 1.0)
-			tips.append("%s %d  (+%.1f/s)" % [RES_NAME[i], int(r[i]), rate[i]])
+			tips.append("%s %d  (%+.1f/s)" % [_res_name(i), int(r[i]), rate[i]])
 		else:
 			var p: int = game.pop(f)
-			val = "%d/%d" % [p, Data.POP_CAP]
-			frac = float(p) / Data.POP_CAP
+			val = "%d/%d" % [p, game.pop_cap(f)]
+			frac = float(p) / game.pop_cap(f)
 		pill.draw_string(_font, Vector2(x0 + 26, cy - 1), val, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, TEXT)
 		if i < 3:
-			pill.draw_string(_font, Vector2(x0 + 26, cy + 13), "+%.1f" % rate[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, DIM)
+			pill.draw_string(_font, Vector2(x0 + 26, cy + 13), _res_name(i).to_lower() if game.econ(f) == "parasite" and i == 1 else "%+.1f" % rate[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, DIM)
 		var bx := x0 + 72.0
 		var bw := seg - 96.0
 		pill.draw_rect(Rect2(bx, cy - 3, bw, 6), Color(1, 1, 1, 0.08))
 		pill.draw_rect(Rect2(bx, cy - 3, bw * frac, 6), col)
 	pill.tooltip_text = "\n".join(tips)
+
+
+func _res_name(i: int) -> String:
+	return Data.FACTIONS[game.player]["res_names"][i]
+
+
+# "80 cellulose, 20 nitrogen, 70 spores" in the player's own currencies.
+func _cost_text(c: Array, spores := 0.0) -> String:
+	var parts := []
+	for i in 2:
+		if c[i] > 0:
+			parts.append("%d %s" % [c[i], _res_name(i).to_lower()])
+	if spores > 0.0:
+		parts.append("%d spores" % spores)
+	return "free" if parts.is_empty() else ", ".join(parts)
 
 
 func _glyph_res(c: Control, i: int, at: Vector2, col: Color) -> void:
@@ -373,13 +388,15 @@ func _populate_bars() -> void:
 	var abs: Array = fd["abilities"]
 	for i in abs.size():
 		var ab: String = abs[i]
-		var b := _tile(null, ["Z", "X", "C"][i], "%d" % Data.ABILITIES[ab]["cost"], ab)
+		var b := _tile(null, ["Z", "X", "C", "V"][i], "%d" % Data.ABILITIES[ab]["cost"], ab)
 		b.pressed.connect(func(): _enter_cast(ab))
 		ability_bar.add_child(b)
 		_ab_btns.append([b, ab])
 
 
-func _cost_str(c: Array) -> String:
+func _cost_str(c: Array, spores := 0.0) -> String:
+	if spores > 0.0:
+		return "%d sp" % spores
 	return "%d" % c[0] if c[1] == 0 else "%d·%d" % [c[0], c[1]]
 
 
@@ -448,6 +465,22 @@ func _draw_ability_glyph(c: Control, ab: String) -> void:
 		"wildfire":
 			c.draw_colored_polygon(PackedVector2Array([ctr + Vector2(0, -22), ctr + Vector2(12, 4), ctr + Vector2(6, 18), ctr + Vector2(-6, 18), ctr + Vector2(-12, 4)]), Color(1.0, 0.55, 0.2))
 			c.draw_colored_polygon(PackedVector2Array([ctr + Vector2(0, -8), ctr + Vector2(6, 8), ctr + Vector2(0, 16), ctr + Vector2(-6, 8)]), Color(1.0, 0.9, 0.5))
+		"borer_swarm":
+			# jewel beetles converging on a trunk
+			c.draw_rect(Rect2(ctr + Vector2(-5, -22), Vector2(10, 44)), Color(0.55, 0.42, 0.3))
+			for k in 5:
+				var a := TAU * k / 5.0 + 0.3
+				var q := ctr + Vector2(cos(a) * 15.0, sin(a) * 18.0)
+				var dir := (ctr - q).normalized()
+				c.draw_line(q - dir * 5.0, q + dir * 4.0, Color(0.3, 0.85, 0.45), 4.0)
+		"pandemic":
+			# a host, and clubs bursting from it in every direction
+			c.draw_circle(ctr, 6.0, col)
+			for k in 7:
+				var a := TAU * k / 7.0 - PI * 0.5
+				var d := Vector2(cos(a), sin(a))
+				c.draw_line(ctr + d * 7.0, ctr + d * 19.0, Color(1.0, 0.6, 0.2), w)
+				c.draw_circle(ctr + d * 20.0, 3.0, Color(1.0, 0.6, 0.2))
 		"giant_puffball":
 			c.draw_circle(ctr + Vector2(0, 3), 15.0, col)
 			for k in 10:
@@ -463,8 +496,9 @@ func _update_bars() -> void:
 		var locked: bool = d.has("req") and not game.has_tech(f, d["req"])
 		var poor: bool = not game.afford(f, d["cost"])
 		b.modulate = Color(1, 1, 1, 0.35) if locked else (Color(1, 0.75, 0.7, 0.8) if poor else Color.WHITE)
-		var tip := "%s  [%s]\n%s\nCost: %d nutrients%s" % [d["name"], Data.BUILD_KEYS[_build_btns.find(pair)], d["desc"], d["cost"][0],
-			(", %d sugar" % d["cost"][1]) if d["cost"][1] > 0 else ""]
+		var tip := "%s  [%s]\n%s\nCost: %s" % [d["name"], Data.BUILD_KEYS[_build_btns.find(pair)], d["desc"], _cost_text(d["cost"])]
+		if game.econ(f) == "parasite":
+			tip += "\nGrows out of a thrall standing within %d m." % int(Data.HOST_RANGE)
 		if locked:
 			tip += "\nRequires %s" % Data.TECHS[d["req"]]["name"]
 		b.tooltip_text = tip
@@ -538,11 +572,11 @@ func _refresh_ctx() -> void:
 	for i in trains.size():
 		var uid: String = trains[i]
 		var ud: Dictionary = Data.UNITS[uid]
-		var b := _tile(icon(ud["species"]), str(i + 1), _cost_str(ud["cost"]))
+		var b := _tile(icon(ud["species"]), str(i + 1), _cost_str(ud["cost"], ud.get("spores", 0.0)))
 		b.custom_minimum_size = Vector2(64, 70)
-		b.tooltip_text = "%s [%d]\n%s\nhp %d  dmg %d  range %.1f" % [ud["name"], i + 1, ud["desc"], ud["hp"], ud["dmg"], ud["range"]]
+		b.tooltip_text = "%s [%d]\n%s\nhp %d  dmg %d  range %.1f\nCost: %s" % [ud["name"], i + 1, ud["desc"], ud["hp"], ud["dmg"], ud["range"], _cost_text(ud["cost"], ud.get("spores", 0.0))]
 		b.pressed.connect(func(): _train(uid))
-		if not game.afford(f, ud["cost"]):
+		if not game.afford(f, ud["cost"], ud.get("spores", 0.0)):
 			b.modulate = Color(1, 0.75, 0.7, 0.8)
 		row.add_child(b)
 	if not e.queue.is_empty():
@@ -633,6 +667,8 @@ shader_type canvas_item;
 uniform sampler2D myc_tex : filter_linear;
 uniform sampler2D sub_tex : filter_linear;
 uniform vec3 c0; uniform vec3 c1; uniform vec3 c2;
+uniform sampler2D fog_tex : filter_linear;
+uniform float fog_on = 0.0;
 void fragment() {
 	vec4 s = texture(sub_tex, UV);
 	vec3 d = clamp(texture(myc_tex, UV).rgb, 0.0, 1.0);
@@ -642,6 +678,9 @@ void fragment() {
 	float tot = clamp(d.r + d.g + d.b, 0.0, 1.0);
 	vec3 tint = (d.r * c0 + d.g * c1 + d.b * c2) / max(d.r + d.g + d.b, 0.001);
 	col = mix(col, tint * 0.75, smoothstep(0.1, 0.5, tot) * 0.8);
+	float fv = fog_on > 0.5 ? texture(fog_tex, UV).r : 1.0;
+	vec3 grey = vec3(dot(col, vec3(0.3, 0.5, 0.2)));
+	col = mix(mix(col * 0.05, grey * 0.5, smoothstep(0.05, 0.4, fv)), col, smoothstep(0.6, 0.95, fv));
 	COLOR = vec4(col, 1.0);
 }
 """
@@ -652,7 +691,10 @@ void fragment() {
 	for f in 3:
 		var c: Color = Data.FACTIONS[f]["color"]
 		mat.set_shader_parameter("c%d" % f, Vector3(c.r, c.g, c.b))
+	mat.set_shader_parameter("fog_tex", game.fog.tex)
+	mat.set_shader_parameter("fog_on", 1.0 if game.fog.enabled else 0.0)
 	mm_tex.material = mat
+	_mm_mat = mat
 	mm_tex.texture = ImageTexture.create_from_image(game.board.sub_img)
 	holder.add_child(mm_tex)
 	minimap.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -675,20 +717,20 @@ func _draw_minimap() -> void:
 	if not game.started:
 		return
 	for c in game.cords:
-		if c.alive:
+		if c.alive and c.node.visible:
 			var col: Color = Data.faction_color(c.f)
 			if c.regrow > 0.0:
 				col = Color(col, 0.3)
 			minimap.draw_line(_w2m(c.a.pos), _w2m(c.b.pos), col.lightened(0.3), 1.5)
 	for s in game.structs:
-		if s.alive:
+		if s.alive and s.node.visible:
 			var col: Color = Data.faction_color(s.f).lightened(0.35)
 			var r := 4.5 if s.d.has("research") else 2.6
 			minimap.draw_circle(_w2m(s.pos), r + 1.0, Color(0, 0, 0, 0.6))
 			minimap.draw_circle(_w2m(s.pos), r, col if s.connected else Color(0.5, 0.45, 0.4))
 	for u in game.units:
-		if u.alive:
-			minimap.draw_rect(Rect2(_w2m(u.pos) - Vector2(1, 1), Vector2(2.2, 2.2)), Data.faction_color(u.f))
+		if u.alive and u.node.visible:
+			minimap.draw_rect(Rect2(_w2m(u.pos) - Vector2(1, 1), Vector2(2.2, 2.2)), Data.faction_color(u.f) if u.f != Data.NEUTRAL else Color(0.7, 0.62, 0.45, 0.6))
 	for tr in Data.TREES:
 		minimap.draw_circle(_w2m(tr["pos"]), tr["radius"] * 2.0, Color(0.25, 0.16, 0.08))
 	# camera footprint
@@ -1050,7 +1092,7 @@ func _draw_knot(id: String, t: float, now: float, gold: Color, f: int) -> void:
 			sub = "%d%%" % int(prog * 100.0)
 			tech_canvas.draw_arc(c, r + 7.0, -PI * 0.5, -PI * 0.5 + TAU * prog, 48, gold, 3.0, true)
 		1:
-			sub = "%d" % td["cost"][0] + ((" + %d sugar" % td["cost"][1]) if td["cost"][1] > 0 else "")
+			sub = _cost_text(td["cost"], td.get("spores", 0.0))
 		_:
 			sub = "dormant"
 	tech_canvas.draw_string(_font, Vector2(c.x - r, y0 + lines.size() * 18.0 + 2.0), sub, HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 11, Color(name_col, 0.8))
@@ -1083,7 +1125,7 @@ func _show_tech_tip(id: String) -> void:
 	var td: Dictionary = Data.TECHS[id]
 	var st := _tech_state(id)
 	var reqs := ", ".join(td["req"].map(func(x): return Data.TECHS[x]["name"]))
-	var status: String = ["Needs " + reqs, "Click to grow it: %d nutrients, %d sugar, %d s" % [td["cost"][0], td["cost"][1], int(td["time"])],
+	var status: String = ["Needs " + reqs, "Click to grow it: %s, %d s" % [_cost_text(td["cost"], td.get("spores", 0.0)), int(td["time"])],
 		"Growing now", "Already grown"][st]
 	tech_tip_lbl.text = "%s\n\n%s\n\n%s" % [td["name"], td["desc"], status]
 	var n: Dictionary = _tech_nodes[id]
@@ -1235,7 +1277,11 @@ func _process(delta: float) -> void:
 	_update_ghost()
 	if tech_panel.visible:
 		tech_canvas.queue_redraw()
-	info_lbl.text = "%s%s  x%s   %d:%02d" % ["PAUSED  " if game.paused else "", Data.FACTIONS[game.player]["name"], str(game.speed), int(game.time) / 60, int(game.time) % 60]
+	var w: String = {"rain": "Rain", "dry": "Dry spell", "wind": "Windstorm"}.get(game.weather.now, "")
+	if w == "" and game.weather.next_t <= game.weather.ANNOUNCE:
+		w = "%s in %ds" % [{"rain": "Rain", "dry": "Dry spell", "wind": "Windstorm"}[game.weather.next], int(game.weather.next_t)]
+	info_lbl.text = "%s%s  x%s   %d:%02d%s" % ["PAUSED  " if game.paused else "", Data.FACTIONS[game.player]["name"], str(game.speed), int(game.time) / 60, int(game.time) % 60, ("
+" + w) if w != "" else ""]
 	pill.queue_redraw()
 	overlay.queue_redraw()
 	minimap.queue_redraw()
@@ -1291,17 +1337,59 @@ func _update_ghost() -> void:
 			tm.set_shader_parameter("ghost_pos", p)
 			tm.set_shader_parameter("ghost_r", r)
 			tm.set_shader_parameter("ghost_col", Color(0.6, 1.0, 0.5) if place_err == "" else Color(1.0, 0.35, 0.3))
-		var trees := mode == "build" and (mode_arg == "mantle")
+		var trees: bool = mode == "build" and Data.STRUCTURES[mode_arg].get("on", "") == "tree"
 		tm.set_shader_parameter("show_grid", 1.0 if trees else 0.0)
-		for i in 4:
-			var tr: Dictionary = Data.TREES[i]
-			tm.set_shader_parameter("zone%d" % i, Vector4(tr["pos"].x, tr["pos"].y, tr["roots"], 1.0))
+		var zs := []
+		for i in 24:
+			var tr: Dictionary = game.forest.trees[i] if i < game.forest.trees.size() else {}
+			zs.append(Vector4(tr["pos"].x, tr["pos"].y, tr["roots"] if tr["alive"] else 0.0, 1.0) if not tr.is_empty() else Vector4.ZERO)
+		tm.set_shader_parameter("zones", zs)
 	else:
 		tm.set_shader_parameter("ghost_r", 0.0)
 		tm.set_shader_parameter("show_grid", 0.0)
 
 
 # --- overlay: health bars, drag box, placement hints ---------------------------
+
+# Each tree's vigor as a leaf-green bar at its base; for the Hollow, how much is
+# left in every log, snag and litter pile.
+func _draw_forest(cam: Camera3D, vs: Vector2) -> void:
+	for t in game.forest.trees:
+		if not game.fog.visible(game.player, t["pos"]):
+			continue
+		var at: Vector3 = game._v3(t["pos"], 3.2)
+		if cam.is_position_behind(at):
+			continue
+		var sp := cam.unproject_position(at)
+		if not Rect2(Vector2.ZERO, vs).has_point(sp):
+			continue
+		if not t["alive"]:
+			overlay.draw_string(_font, sp + Vector2(-20, 0), "snag", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.7, 0.55, 0.8))
+			continue
+		var v: float = t["vigor"]
+		var col := Color(0.55, 0.4, 0.2).lerp(Color(0.5, 0.95, 0.35), v)
+		var r := Rect2(sp + Vector2(-26, 0), Vector2(52, 4))
+		overlay.draw_rect(r.grow(1.0), Color(0, 0, 0, 0.55))
+		overlay.draw_rect(Rect2(r.position, Vector2(52 * v, 4)), col)
+		var fed: int = t["fed"][0] + t["fed"][1] + t["fed"][2]
+		if fed > 0:
+			overlay.draw_string(_font, sp + Vector2(30, 5), "x%d" % fed, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+	if game.econ(game.player) != "saprotroph":
+		return
+	for d in game.forest.deposits:
+		if d["kind"] == "corpse" or d["kind"] == "rubble":
+			continue
+		var full: float = d["c0"] + d["n0"]
+		if full <= 0.0 or not game.fog.seen(game.player, d["pos"]):
+			continue
+		var at: Vector3 = game._v3(d["pos"], 1.5)
+		if cam.is_position_behind(at):
+			continue
+		var sp := cam.unproject_position(at)
+		var k := clampf((d["c"] + d["n"]) / full, 0.0, 1.0)
+		var r := Rect2(sp + Vector2(-18, 0), Vector2(36, 3))
+		overlay.draw_rect(r.grow(1.0), Color(0, 0, 0, 0.5))
+		overlay.draw_rect(Rect2(r.position, Vector2(36 * k, 3)), Color(0.85, 0.66, 0.38))
 
 func _draw_overlay() -> void:
 	if not game.started:
@@ -1310,7 +1398,7 @@ func _draw_overlay() -> void:
 	var vs := root.get_viewport_rect().size
 	for list in [game.units, game.structs, game.puffs]:
 		for e in list:
-			if not e.alive:
+			if not e.alive or not e.node.visible:
 				continue
 			var show: bool = e.selected or e.hp < e.max_hp - 0.5 or (e.kind == game.STRUCT and (e.built < 1.0 or not e.queue.is_empty() or e.research != ""))
 			if not show:
@@ -1339,6 +1427,7 @@ func _draw_overlay() -> void:
 					overlay.draw_rect(Rect2(r.position + Vector2(0, 6), Vector2(w * prog, 3)), Color(1, 0.92, 0.6))
 				if not e.connected and e.built >= 1.0:
 					overlay.draw_string(_font, sp + Vector2(-30, -18), "CUT OFF", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 0.5, 0.4))
+	_draw_forest(cam, vs)
 	# rally points of selected trainers
 	for e in game.selected:
 		if e.kind == game.STRUCT and e.f == game.player and not e.d.get("trains", []).is_empty() and e.rally != Vector2.INF:
@@ -1529,7 +1618,7 @@ func _key(ev: InputEventKey) -> void:
 	if k == KEY_P:
 		game.toggle_pause()
 		return
-	if k == KEY_M and audio:
+	if k == KEY_M and ev.ctrl_pressed and audio:
 		audio.toggle_mute()
 		_on_message("Sound off" if audio.muted else "Sound on", TEXT)
 		return
@@ -1551,6 +1640,9 @@ func _key(ev: InputEventKey) -> void:
 	if k == KEY_S and _own_units_selected():
 		game.order_stop(_own_selected(game.UNIT))
 		return
+	if k == KEY_F and _own_units_selected():
+		game.order_sporulate(_own_selected(game.UNIT))
+		return
 	if k >= KEY_1 and k <= KEY_3:
 		var i := k - KEY_1
 		for s in _own_selected(game.STRUCT):
@@ -1565,8 +1657,8 @@ func _key(ev: InputEventKey) -> void:
 			_enter_build(bl[i])
 			return
 	var abs: Array = Data.FACTIONS[f]["abilities"]
-	var ak := [KEY_Z, KEY_X, KEY_C]
-	for i in 3:
+	var ak := [KEY_Z, KEY_X, KEY_C, KEY_V]
+	for i in mini(abs.size(), ak.size()):
 		if k == ak[i]:
 			_enter_cast(abs[i])
 			return

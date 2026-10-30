@@ -48,6 +48,22 @@ const MATS := {
 	"wood": {"base": Color(0.24, 0.16, 0.1), "accent": Color(0.14, 0.09, 0.06), "pattern": 8, "pscale": 10.0, "rough": 0.9},
 	"inkcap": {"base": Color(0.93, 0.91, 0.86), "accent": Color(0.4, 0.34, 0.28), "pattern": 6, "pscale": 11.0, "bump": 0.03, "rough": 0.7, "sss": 0.5},
 	"chitin": {"base": Color(0.09, 0.06, 0.05), "rough": 0.3, "accent": Color(0.2, 0.12, 0.08), "pattern": 8, "pscale": 20.0},
+	"ant_red": {"base": Color(0.45, 0.14, 0.06), "rough": 0.3, "accent": Color(0.3, 0.08, 0.04), "pattern": 8, "pscale": 24.0},
+	"ant_black": {"base": Color(0.05, 0.04, 0.035), "rough": 0.22},
+	"beetle": {"base": Color(0.17, 0.1, 0.05), "accent": Color(0.1, 0.06, 0.03), "pattern": 4, "pscale": 40.0, "rough": 0.18},
+	"fly": {"base": Color(0.1, 0.17, 0.12), "accent": Color(0.05, 0.08, 0.06), "pattern": 8, "pscale": 18.0, "rough": 0.15, "sss": 0.1},
+	"fly_eye": {"base": Color(0.62, 0.08, 0.04), "rough": 0.2, "sss": 0.4},
+	"wing": {"base": Color(0.78, 0.82, 0.86), "rough": 0.08, "sss": 0.95},
+	"springtail": {"base": Color(0.36, 0.4, 0.48), "accent": Color(0.25, 0.27, 0.33), "pattern": 8, "pscale": 30.0, "rough": 0.5, "sss": 0.3},
+	"stag": {"base": Color(0.075, 0.05, 0.04), "accent": Color(0.14, 0.09, 0.06), "pattern": 8, "pscale": 34.0, "rough": 0.14},
+	"mandible": {"base": Color(0.46, 0.17, 0.07), "accent": Color(0.3, 0.1, 0.04), "pattern": 8, "pscale": 40.0, "rough": 0.18, "sss": 0.15},
+	"emerald": {"base": Color(0.02, 0.2, 0.08), "accent": Color(0.06, 0.38, 0.22), "pattern": 8, "pscale": 70.0, "rough": 0.06, "sss": 0.05},
+	"hypha": {"base": Color(0.94, 0.92, 0.86), "rough": 0.95, "sss": 0.7},
+	"stalk": {"base": Color(0.5, 0.33, 0.2), "accent": Color(0.35, 0.22, 0.13), "pattern": 8, "pscale": 50.0, "rough": 0.75, "sss": 0.2},
+	"ascoma": {"base": Color(0.86, 0.82, 0.7), "accent": Color(0.55, 0.5, 0.4), "pattern": 7, "pscale": 40.0, "bump": 0.01, "rough": 0.95, "sss": 0.4},
+	"stalk_pink": {"base": Color(0.8, 0.52, 0.4), "rough": 0.6, "sss": 0.45},
+	"perithecia": {"base": Color(0.92, 0.82, 0.55), "accent": Color(0.66, 0.5, 0.26), "pattern": 7, "pscale": 30.0, "bump": 0.025, "rough": 0.7, "sss": 0.4},
+	"earth": {"base": Color(0.24, 0.17, 0.11), "accent": Color(0.33, 0.24, 0.15), "pattern": 7, "pscale": 12.0, "bump": 0.02, "rough": 0.95},
 }
 
 
@@ -137,8 +153,11 @@ class B:
 			var o1 := u * cos(t1) + v * sin(t1)
 			var verts := [[a + o0 * r0, o0, ca], [a + o1 * r0, o1, ca], [b + o1 * r1, o1, cb],
 				[a + o0 * r0, o0, ca], [b + o1 * r1, o1, cb], [b + o0 * r1, o0, cb]]
-			for q in verts:
+			for i in verts.size():
+				var q: Array = verts[i]
 				s.set_color(q[2])
+				# UVs too, so a lathe can share this surface whichever comes first
+				s.set_uv(Vector2(float(k) / segs, 0.0 if i in [0, 1, 3] else 1.0))
 				s.set_normal(q[1])
 				s.add_vertex(q[0] * sc)
 
@@ -501,5 +520,155 @@ static func _build(b: B, id: String) -> void:
 			b.lathe("glass", stem_prof(0.9, 0.09, 0.07), 8, Transform3D(Basis(), Vector3(0, 0.25, 0)))
 			b.lathe("glass", sphere_prof(0.28, 1.25), 12, Transform3D(Basis(), Vector3(0, 1.05, 0)))
 			b.lathe("black", sphere_prof(0.14, 0.6), 10, Transform3D(Basis(), Vector3(0, 1.72, 0)))
+		"inkcap_bed":
+			b.lathe("black", PackedVector2Array([Vector2(1.5, 0.02), Vector2(0.8, 0.05), Vector2(0.001, 0.06)]), 18, Transform3D(Basis(), O))
+			for i in 6:
+				var a := TAU * i / 6.0 + r.randf() * 0.5
+				var d := 0.25 + r.randf() * 0.9 if i > 0 else 0.0
+				var at := Vector3(cos(a) * d, 0, sin(a) * d)
+				var h := r.randf_range(0.6, 1.3) if i > 0 else 1.6
+				var bas := _rot(0.0, r.randf_range(0.0, 0.15), a)
+				b.lathe("stem_white", stem_prof(h * 0.7, 0.07, 0.06), 8, Transform3D(bas, at))
+				b.lathe("inkcap", egg_prof(0.24 * h / 1.3 + 0.08, 0.9 * h / 1.3 + 0.2), 12, Transform3D(bas, at + bas * Vector3(0, h * 0.55, 0)))
+		"anthill":
+			b.lathe("earth", PackedVector2Array([Vector2(2.6, -0.1), Vector2(2.0, 0.5), Vector2(1.2, 1.15), Vector2(0.5, 1.5), Vector2(0.001, 1.6)]), 20, Transform3D(Basis(), O))
+
+		# --- the forest's insects, and the Choir's thralls grown from them --------
+		"i_ant", "t_ant":
+			insect_ant(b, id == "t_ant")
+		"i_beetle", "t_beetle":
+			insect_beetle(b, id == "t_beetle")
+		"i_fly", "t_fly":
+			insect_fly(b, id == "t_fly")
+		"i_stag", "t_stag":
+			insect_stag(b, id == "t_stag")
+		"i_borer":
+			insect_borer(b)
+		"i_springtail":
+			for i in 6:
+				var a := r.randf() * TAU
+				var at := Vector3(cos(a), 0, sin(a)) * r.randf_range(0.0, 0.55)
+				var bas := Basis(Vector3.UP, r.randf() * TAU) * Basis().scaled(Vector3(2.2, 1, 1))
+				b.lathe("springtail", sphere_prof(0.07, 0.9, 0.02), 8, Transform3D(bas, at))
 		_:
 			agaric(b, O, 1.0, 0.6)
+
+
+# --- insects -------------------------------------------------------------------
+
+static func _long(x: float) -> Basis:
+	return Basis().scaled(Vector3(x, 1, 1))
+
+
+# Cordyceps clubs bursting from a thrall's back.
+static func _sprouts(b: B, at: Vector3, n: int, h: float) -> void:
+	for i in n:
+		var a := TAU * i / n + b.rng.randf() * 0.4
+		club(b, at + Vector3(cos(a) * 0.06, 0, sin(a) * 0.06), b.rng.randf_range(0.6, 1.0) * h, 0.035, "cordyceps", b.rng.randf_range(0.15, 0.55), a)
+
+
+static func insect_ant(b: B, thrall: bool) -> void:
+	var nz := Color(0, 0, 0, 1)
+	legs(b, Vector3(0.05, 0, 0), 6, 0.55, 0.2, 0.022)
+	b.lathe("ant_black", sphere_prof(0.19, 0.85, 0.14), 12, Transform3D(_long(1.45), Vector3(-0.36, 0, 0)))
+	b.lathe("ant_black", sphere_prof(0.05, 1.0, 0.26), 6, Transform3D(Basis(), Vector3(-0.13, 0, 0)))
+	b.lathe("ant_red", sphere_prof(0.1, 0.9, 0.22), 10, Transform3D(_long(2.0), Vector3(0.05, 0, 0)))
+	b.lathe("ant_red", sphere_prof(0.12, 0.9, 0.22), 10, Transform3D(_long(1.1), Vector3(0.33, 0, 0)))
+	for sd in [-1.0, 1.0]:
+		b.tube("ant_black", Vector3(0.4, 0.4, sd * 0.05), Vector3(0.55, 0.55, sd * 0.14), 0.014, 0.012, 4, nz, nz)
+		b.tube("ant_black", Vector3(0.55, 0.55, sd * 0.14), Vector3(0.72, 0.45, sd * 0.2), 0.012, 0.008, 4, nz, nz)
+	if thrall:
+		# Ophiocordyceps: white hyphae bursting from every joint, one stalk out of the back of the head
+		_tufts(b, Vector3(-0.13, 0.3, 0), 16, 0.34)
+		_tufts(b, Vector3(0.2, 0.34, 0), 12, 0.26)
+		_tufts(b, Vector3(-0.45, 0.4, 0), 18, 0.4)
+		_tufts(b, Vector3(0.05, 0.28, 0), 10, 0.24)
+		_bent(b, "stalk", [Vector3(0.3, 0.42, 0), Vector3(0.24, 0.75, 0.02), Vector3(0.3, 1.05, 0.05), Vector3(0.44, 1.24, 0.06)], 0.04, 0.014)
+		b.lathe("ascoma", sphere_prof(0.075, 1.3, -0.06), 12, Transform3D(Basis(), Vector3(0.245, 0.74, 0.02)))
+
+
+static func insect_beetle(b: B, thrall: bool) -> void:
+	legs(b, Vector3.ZERO, 6, 0.75, 0.2, 0.032)
+	b.lathe("beetle", sphere_prof(0.33, 0.78, 0.1), 16, Transform3D(_long(1.5), Vector3(-0.14, 0, 0)))
+	b.lathe("beetle", sphere_prof(0.23, 0.8, 0.13), 14, Transform3D(_long(1.05), Vector3(0.34, 0, 0)))
+	b.lathe("ant_black", sphere_prof(0.12, 0.9, 0.15), 10, Transform3D(Basis(), Vector3(0.56, 0, 0)))
+	if thrall:
+		_sprouts(b, Vector3(-0.1, 0.6, 0), 4, 0.8)
+		_tufts(b, Vector3(0.22, 0.42, 0), 8, 0.16)
+
+
+static func insect_fly(b: B, thrall: bool) -> void:
+	legs(b, Vector3(0.0, 0.42, 0), 6, 0.3, 0.08, 0.014)
+	b.lathe("fly", sphere_prof(0.15, 0.9, 0.5), 12, Transform3D(_long(1.4), Vector3(-0.16, 0, 0)))
+	b.lathe("fly", sphere_prof(0.14, 0.95, 0.5), 12, Transform3D(Basis(), Vector3(0.08, 0, 0)))
+	b.lathe("fly", sphere_prof(0.1, 0.9, 0.56), 10, Transform3D(Basis(), Vector3(0.27, 0, 0)))
+	for sd in [-1.0, 1.0]:
+		b.lathe("fly_eye", sphere_prof(0.065, 1.0, 0.6), 8, Transform3D(Basis(), Vector3(0.3, 0, sd * 0.07)))
+		var wb := Basis(Vector3.UP, sd * 0.45) * Basis().scaled(Vector3(1.7, 1, 0.65))
+		b.lathe("wing", sphere_prof(0.2, 0.08, 0.0), 10, Transform3D(wb, Vector3(-0.12, 0.79, sd * 0.2)))
+	if thrall:
+		# two long stalks topped with dotted perithecial heads, as on a parasitised fly
+		for sd in [-1.0, 1.0]:
+			var top := Vector3(0.02 + sd * 0.03, 1.5, sd * 0.13)
+			_bent(b, "stalk_pink", [Vector3(0.08, 0.72, sd * 0.04), Vector3(0.0, 1.05, sd * 0.1), top], 0.024, 0.016)
+			b.lathe("perithecia", sphere_prof(0.1, 0.85, 0.0), 14, Transform3D(Basis(), top - Vector3(0, 0.02, 0)))
+		_tufts(b, Vector3(-0.2, 0.62, 0), 6, 0.1)
+
+
+# A tube bent through several points, tapering from r0 to r1.
+static func _bent(b: B, key: String, pts: Array, r0: float, r1: float) -> void:
+	var nz := Color(0, 0, 0, 1)
+	for i in pts.size() - 1:
+		var t0 := float(i) / (pts.size() - 1)
+		var t1 := float(i + 1) / (pts.size() - 1)
+		b.tube(key, pts[i], pts[i + 1], lerpf(r0, r1, t0), lerpf(r0, r1, t1), 6, nz, nz)
+
+
+# White mycelial tufts bursting from a body joint, mostly upward and outward.
+static func _tufts(b: B, at: Vector3, n: int, length: float) -> void:
+	var nz := Color(0, 0, 0, 1)
+	for i in n:
+		var a := b.rng.randf() * TAU
+		var up := b.rng.randf_range(0.2, 1.0)
+		var d := Vector3(cos(a) * (1.0 - up * 0.6), up, sin(a) * (1.0 - up * 0.6)).normalized()
+		var l := length * b.rng.randf_range(0.5, 1.0)
+		var mid := at + d * l * 0.55 + Vector3(b.rng.randf_range(-0.03, 0.03), 0.0, b.rng.randf_range(-0.03, 0.03))
+		b.tube("hypha", at, mid, 0.02, 0.012, 4, nz, nz)
+		b.tube("hypha", mid, at + d * l, 0.012, 0.002, 4, nz, nz)
+
+
+# Lucanus cervus, a male: glossy elytra, broad head, red-brown antlers.
+static func insect_stag(b: B, thrall: bool) -> void:
+	var nz := Color(0, 0, 0, 1)
+	legs(b, Vector3(0.05, 0, 0), 6, 1.0, 0.22, 0.035)
+	b.lathe("mandible", sphere_prof(0.34, 0.62, 0.12), 18, Transform3D(_long(1.75), Vector3(-0.34, 0, 0)))
+	b.lathe("stag", sphere_prof(0.27, 0.6, 0.15), 16, Transform3D(Basis().scaled(Vector3(0.85, 1, 1.2)), Vector3(0.42, 0, 0)))
+	b.lathe("stag", sphere_prof(0.2, 0.55, 0.17), 14, Transform3D(Basis().scaled(Vector3(0.9, 1, 1.4)), Vector3(0.74, 0, 0)))
+	for sd in [-1.0, 1.0]:
+		# a male's antlers sweep up and in, so they read from above
+		_bent(b, "mandible", [Vector3(0.84, 0.3, sd * 0.13), Vector3(1.08, 0.5, sd * 0.3), Vector3(1.32, 0.74, sd * 0.3), Vector3(1.5, 0.86, sd * 0.1)], 0.075, 0.018)
+		_bent(b, "mandible", [Vector3(1.2, 0.63, sd * 0.31), Vector3(1.36, 0.72, sd * 0.42)], 0.032, 0.008)
+		_bent(b, "mandible", [Vector3(1.44, 0.83, sd * 0.17), Vector3(1.6, 0.86, sd * 0.1)], 0.024, 0.006)
+		_bent(b, "ant_black", [Vector3(0.8, 0.32, sd * 0.17), Vector3(0.9, 0.46, sd * 0.33), Vector3(1.04, 0.44, sd * 0.4)], 0.014, 0.01)
+		b.lathe("ant_black", sphere_prof(0.035, 1.0, 0.27), 6, Transform3D(Basis(), Vector3(0.86, 0, sd * 0.24)))
+	if thrall:
+		_tufts(b, Vector3(0.14, 0.42, 0), 10, 0.22)
+		_tufts(b, Vector3(0.6, 0.4, 0), 8, 0.18)
+		_tufts(b, Vector3(-0.8, 0.36, 0), 8, 0.2)
+		for i in 3:
+			var at := Vector3(-0.2 - i * 0.22, 0.52, (i - 1) * 0.12)
+			var top := at + Vector3(b.rng.randf_range(-0.1, 0.1), b.rng.randf_range(0.55, 0.85), b.rng.randf_range(-0.1, 0.1))
+			_bent(b, "stalk_pink", [at, (at + top) * 0.5 + Vector3(0.05, 0, 0), top], 0.03, 0.02)
+			b.lathe("perithecia", sphere_prof(0.09, 0.85, 0.0), 12, Transform3D(Basis(), top - Vector3(0, 0.02, 0)))
+
+
+# Agrilus planipennis, the emerald ash borer: a slim metallic bullet.
+static func insect_borer(b: B) -> void:
+	var nz := Color(0, 0, 0, 1)
+	legs(b, Vector3(0.02, 0, 0), 6, 0.34, 0.1, 0.012)
+	var prof := PackedVector2Array([Vector2(0.001, 0.0), Vector2(0.045, 0.06), Vector2(0.07, 0.2), Vector2(0.08, 0.36), Vector2(0.078, 0.44), Vector2(0.06, 0.5), Vector2(0.001, 0.52)])
+	b.lathe("emerald", prof, 12, Transform3D(Basis(Vector3(0, 0, 1), -PI * 0.5), Vector3(-0.3, 0.17, 0)))
+	b.lathe("emerald", sphere_prof(0.065, 0.9, 0.11), 10, Transform3D(Basis().scaled(Vector3(0.8, 1, 1.1)), Vector3(0.25, 0, 0)))
+	for sd in [-1.0, 1.0]:
+		b.lathe("ant_black", sphere_prof(0.03, 1.0, 0.15), 6, Transform3D(Basis(), Vector3(0.28, 0, sd * 0.05)))
+		_bent(b, "ant_black", [Vector3(0.3, 0.2, sd * 0.03), Vector3(0.4, 0.26, sd * 0.08)], 0.008, 0.005)

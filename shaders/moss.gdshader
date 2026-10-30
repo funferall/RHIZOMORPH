@@ -8,6 +8,7 @@ render_mode cull_disabled, depth_draw_opaque;
 // (deep green, yellow-green, grey olive, dry gold) drift across the board.
 
 #include "res://shaders/noise.gdshaderinc"
+#include "res://shaders/fog.gdshaderinc"
 
 uniform sampler2D myc_tex : filter_linear, repeat_disable;
 uniform sampler2D sub_tex : filter_linear, repeat_disable;
@@ -75,6 +76,7 @@ void fragment() {
 	col *= 0.8 + 0.4 * hash12(cell + 9.0);
 	// pale sporophyte tips on a few strands
 	col = mix(col, vec3(0.55, 0.42, 0.18), step(0.985, r) * step(0.8, up));
+	col = fogged(col, fog_at((p + half_size) / (half_size * 2.0)));
 	ALBEDO = col;
 	ROUGHNESS = 0.8;
 	SPECULAR = 0.25;
