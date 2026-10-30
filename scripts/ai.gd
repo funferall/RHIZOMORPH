@@ -126,9 +126,23 @@ func _research() -> void:
 	for t in tech_order:
 		if g.tech_state(f, t) == 1:
 			var c: Array = Data.TECHS[t]["cost"]
-			if g.afford(f, c, Data.TECHS[t].get("spores", 0.0)) and g.res(f)[0] > c[0] + 40.0:
+			if g.afford(f, c, Data.TECHS[t].get("spores", 0.0)):
 				g.start_research(f, t)
 			return
+
+
+# What to hold back for the next lineage. Training and spare buildings otherwise
+# spend every second's income, and a court that never researches never reaches
+# its elites or its tier-3 spore actions. Once the colony has a small army, save.
+func _saving() -> Array:
+	var h = g.heart(f)
+	if h == null or h.research != "" or g.time < 120.0 or g.pop(f) < 10:
+		return [0.0, 0.0]
+	for t in tech_order:
+		if g.tech_state(f, t) == 1:
+			var c: Array = Data.TECHS[t]["cost"]
+			return [c[0], c[1]]
+	return [0.0, 0.0]
 
 
 func _growing() -> int:
@@ -141,10 +155,13 @@ func _growing() -> int:
 
 # Try each wanted structure in order; the first that has a spot gets placed (or waited for).
 func _try_wants(wants: Array) -> void:
+	var save := _saving()
 	for sid in wants:
 		var cost: Array = Data.STRUCTURES[sid]["cost"]
 		if g.res(f)[1] < cost[1]:
 			continue   # short on the elite resource: don't let it block the cheap builds
+		if _n(sid) > 0 and (g.res(f)[0] - cost[0] < save[0] or g.res(f)[1] - cost[1] < save[1]):
+			continue   # saving for a lineage: only first-of-a-kind buildings go ahead
 		var spot := _spot(sid)
 		if spot == Vector2.INF:
 			var reach := _reach_for(sid)
@@ -185,6 +202,12 @@ func _build_court() -> void:
 		wants.append("deathcap_grove")
 	if t > 100.0 and _n("root_snare") < mini(mantled, 1 + int(t / 150.0)):
 		wants.append("root_snare")
+	if t > 110.0 and mantled > 0 and (_n("cortina_thicket") < 1 or t > 300.0 and _n("cortina_thicket") < 2):
+		wants.append("cortina_thicket")
+	if t > 90.0 and _n("truffle") < mini(1 + int(t / 120.0), 5):
+		wants.append("truffle")
+	if t > 180.0 and _n("nursery") == 0 and g.res(f)[0] > 150.0 and g.res(f)[1] > 80.0:
+		wants.append("nursery")
 	if _n("mantle") < mini(2 + int(t / 70.0), 9):
 		wants.append("mantle")
 	if t > 110.0 and _n("agaric_ring") < 2:
@@ -364,13 +387,13 @@ func _reach_for(sid: String) -> Vector2:
 	var best := Vector2.INF
 	var bd := INF
 	match sid:
-		"mantle", "root_snare", "honey_rot":
+		"mantle", "root_snare", "honey_rot", "cortina_thicket":
 			for tr in g.forest.trees:
 				if not tr["alive"]:
 					continue
 				if sid == "mantle" and g.mantles_on(tr["i"]) >= g.mantle_cap(f):
 					continue
-				if sid == "root_snare" and tr["fed"][f] == 0:
+				if sid in ["root_snare", "cortina_thicket"] and tr["fed"][f] == 0:
 					continue
 				var d: float = tr["pos"].distance_to(h.pos)
 				if sid == "honey_rot" and tr["fed"][f] == 0:
@@ -437,7 +460,7 @@ func _spot(sid: String, toward := Vector2.INF) -> Vector2:
 			for tr in g.forest.trees:
 				if not tr["alive"]:
 					continue
-				if sid == "root_snare" and tr["fed"][f] == 0:
+				if sid in ["root_snare", "cortina_thicket"] and tr["fed"][f] == 0:
 					continue
 				for k in 14:
 					var a := TAU * k / 14.0 + rng.randf() * 0.3
@@ -448,6 +471,16 @@ func _spot(sid: String, toward := Vector2.INF) -> Vector2:
 				toward = _enemy_tree()
 			if toward == Vector2.INF:
 				toward = h.pos
+		"territory", "gap":
+			# truffles on the approach to the front; nurseries back home, in the open
+			for s in _mine():
+				if s.built < 1.0 or not s.connected:
+					continue
+				for k in 10:
+					var a := TAU * k / 10.0 + rng.randf() * 0.5
+					for dd in [6.0, 10.0, 13.0]:
+						cands.append(s.pos + Vector2(cos(a), sin(a)) * dd)
+			toward = h.pos.lerp(_front(), 0.45) if d["on"] == "territory" else h.pos
 		"deposit":
 			for dep in g.forest.deposits:
 				if not dep["kind"] in ["log", "snag", "branch"] or dep["c"] <= 0.0:
@@ -517,6 +550,8 @@ func _train() -> void:
 	# keep the army near a target that grows with time; past it, save for buildings
 	var army: int = g.pop(f) + g.queued(f)
 	var reserve := 0.0 if army < mini(4 + int(g.time / 12.0), g.pop_cap(f)) else 110.0
+	var save := _saving()
+	reserve = maxf(reserve, save[0])
 	for s in _mine():
 		if s.built < 1.0 or not s.connected or s.d.get("trains", []).is_empty():
 			continue
@@ -526,7 +561,7 @@ func _train() -> void:
 		var uid: String = trains[rng.randi() % trains.size()]
 		var ud: Dictionary = Data.UNITS[uid]
 		var c: Array = ud["cost"]
-		if g.res(f)[0] < c[0] + reserve or g.res(f)[1] < c[1]:
+		if g.res(f)[0] < c[0] + reserve or g.res(f)[1] < c[1] + save[1]:
 			continue
 		if ud.get("spores", 0.0) > 0.0 and g.res(f)[2] < ud["spores"] + 30.0:
 			continue
@@ -732,6 +767,19 @@ func _abilities() -> void:
 			break
 	for ab in fd["abilities"]:
 		if g.ability_ready(f, ab) != "" or g.res(f)[2] - Data.ABILITIES[ab]["cost"] < keep:
+			continue
+		if ab == "carbon_transfer":
+			# pour sugar into a fed tree that is failing
+			for tr in g.forest.trees:
+				if tr["alive"] and tr["fed"][f] > 0 and tr["vigor"] < 0.4 and g.cast_error(f, ab, tr["pos"]) == "":
+					g.cast(f, ab, tr["pos"])
+					return
+			continue
+		if ab == "mast_year":
+			var ripe: Array = g.forest.trees.filter(func(tr): return tr["alive"] and tr["fed"][f] > 0 and tr["vigor"] >= 0.5)
+			if ripe.size() >= 3 and g.cast_error(f, ab, ripe[0]["pos"]) == "":
+				g.cast(f, ab, ripe[0]["pos"])
+				return
 			continue
 		if ab == "borer_swarm":
 			# girdle the tree a rival feeds on hardest

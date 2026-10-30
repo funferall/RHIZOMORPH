@@ -118,7 +118,7 @@ func update() -> void:
 	for s in g.structs:
 		if s.alive:
 			for f in 3:
-				if visible(f, s.pos):
+				if visible(f, s.pos) and (not s.d.get("hidden", false) or g._unit_within(f, s.pos, 3.0)):
 					s.seen_by |= 1 << f
 	if not g.sim:
 		_bake()

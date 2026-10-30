@@ -352,27 +352,32 @@ func _build_table() -> void:
 
 func _build_trees() -> void:
 	for tr in Data.TREES:
-		var kind := 0
-		match tr["kind"]:
-			"birch": kind = 1
-			"hemlock": kind = 2
-		var mat := ShaderMaterial.new()
-		mat.shader = load("res://shaders/bark.gdshader")
-		mat.set_shader_parameter("kind", kind)
-		bark_mats.append(mat)
-		var p: Vector2 = tr["pos"]
-		# only the butt casts a shadow, so the low sun doesn't stripe the board
-		var parts := _trunk_meshes(tr["radius"], 46.0, kind, 7.0)
-		tree_parts.append([])
-		for i in 2:
-			var mi := MeshInstance3D.new()
-			mi.mesh = parts[i]
-			mi.material_override = mat
-			mi.position = Vector3(p.x, height_at(p.x, p.y) - 0.6, p.y)
-			if i == 1:
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			add_child(mi)
-			tree_parts[-1].append(mi)
+		add_tree(tr)
+
+
+# A trunk for one tree; trees grown mid-match (the Court's nurseries) call this too.
+func add_tree(tr: Dictionary) -> void:
+	var kind := 0
+	match tr["kind"]:
+		"birch": kind = 1
+		"hemlock": kind = 2
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/bark.gdshader")
+	mat.set_shader_parameter("kind", kind)
+	bark_mats.append(mat)
+	var p: Vector2 = tr["pos"]
+	# only the butt casts a shadow, so the low sun doesn't stripe the board
+	var parts := _trunk_meshes(tr["radius"], 46.0, kind, 7.0)
+	tree_parts.append([])
+	for i in 2:
+		var mi := MeshInstance3D.new()
+		mi.mesh = parts[i]
+		mi.material_override = mat
+		mi.position = Vector3(p.x, height_at(p.x, p.y) - 0.6, p.y)
+		if i == 1:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		tree_parts[-1].append(mi)
 
 
 func _trunk_meshes(r: float, h: float, kind: int, split_y: float) -> Array[ArrayMesh]:
@@ -416,9 +421,8 @@ func set_cut_height(cut: float) -> void:
 
 
 # A felled tree: the trunk snaps to a ragged stump and a log lies along dir.
-func fell_tree(i: int, dir: Vector2, length: float) -> void:
+func fell_tree(i: int, tr: Dictionary, dir: Vector2, length: float) -> void:
 	felled[i] = true
-	var tr: Dictionary = Data.TREES[i]
 	var p: Vector2 = tr["pos"]
 	bark_mats[i].set_shader_parameter("cut_h", height_at(p.x, p.y) + 1.6)
 	tree_parts[i][1].visible = false

@@ -388,7 +388,7 @@ func _populate_bars() -> void:
 	var abs: Array = fd["abilities"]
 	for i in abs.size():
 		var ab: String = abs[i]
-		var b := _tile(null, ["Z", "X", "C", "V"][i], "%d" % Data.ABILITIES[ab]["cost"], ab)
+		var b := _tile(null, Data.ABILITY_KEYS[i], "%d" % Data.ABILITIES[ab]["cost"], ab)
 		b.pressed.connect(func(): _enter_cast(ab))
 		ability_bar.add_child(b)
 		_ab_btns.append([b, ab])
@@ -465,6 +465,21 @@ func _draw_ability_glyph(c: Control, ab: String) -> void:
 		"wildfire":
 			c.draw_colored_polygon(PackedVector2Array([ctr + Vector2(0, -22), ctr + Vector2(12, 4), ctr + Vector2(6, 18), ctr + Vector2(-6, 18), ctr + Vector2(-12, 4)]), Color(1.0, 0.55, 0.2))
 			c.draw_colored_polygon(PackedVector2Array([ctr + Vector2(0, -8), ctr + Vector2(6, 8), ctr + Vector2(0, 16), ctr + Vector2(-6, 8)]), Color(1.0, 0.9, 0.5))
+		"carbon_transfer":
+			# sugar flowing from two trees into a third
+			for sd in [-1.0, 1.0]:
+				var src := ctr + Vector2(sd * 18.0, 12.0)
+				c.draw_line(src, src + Vector2(0, -14), Color(0.55, 0.42, 0.3), 3.0)
+				c.draw_line(src + Vector2(0, -6), ctr + Vector2(sd * 4.0, -6.0), Color(1.0, 0.8, 0.35), w)
+			c.draw_line(ctr + Vector2(0, 16), ctr + Vector2(0, -16), Color(0.55, 0.42, 0.3), 4.0)
+			c.draw_circle(ctr + Vector2(0, -18), 6.0, Color(0.5, 0.85, 0.35))
+		"mast_year":
+			# acorns raining from a crown
+			c.draw_circle(ctr + Vector2(0, -10), 12.0, Color(0.45, 0.7, 0.3))
+			for k in 6:
+				var q := ctr + Vector2(-15 + k * 6, 6 + (k % 2) * 7)
+				c.draw_circle(q, 3.0, Color(0.8, 0.6, 0.3))
+				c.draw_rect(Rect2(q + Vector2(-3, -4), Vector2(6, 2)), Color(0.45, 0.32, 0.18))
 		"borer_swarm":
 			# jewel beetles converging on a trunk
 			c.draw_rect(Rect2(ctr + Vector2(-5, -22), Vector2(10, 44)), Color(0.55, 0.42, 0.3))
@@ -731,7 +746,7 @@ func _draw_minimap() -> void:
 	for u in game.units:
 		if u.alive and u.node.visible:
 			minimap.draw_rect(Rect2(_w2m(u.pos) - Vector2(1, 1), Vector2(2.2, 2.2)), Data.faction_color(u.f) if u.f != Data.NEUTRAL else Color(0.7, 0.62, 0.45, 0.6))
-	for tr in Data.TREES:
+	for tr in game.forest.trees:
 		minimap.draw_circle(_w2m(tr["pos"]), tr["radius"] * 2.0, Color(0.25, 0.16, 0.08))
 	# camera footprint
 	var vs := root.get_viewport_rect().size
@@ -1337,7 +1352,7 @@ func _update_ghost() -> void:
 			tm.set_shader_parameter("ghost_pos", p)
 			tm.set_shader_parameter("ghost_r", r)
 			tm.set_shader_parameter("ghost_col", Color(0.6, 1.0, 0.5) if place_err == "" else Color(1.0, 0.35, 0.3))
-		var trees: bool = mode == "build" and Data.STRUCTURES[mode_arg].get("on", "") == "tree"
+		var trees: bool = mode == "build" and Data.STRUCTURES[mode_arg].get("on", "") in ["tree", "gap"]
 		tm.set_shader_parameter("show_grid", 1.0 if trees else 0.0)
 		var zs := []
 		for i in 24:
@@ -1657,7 +1672,7 @@ func _key(ev: InputEventKey) -> void:
 			_enter_build(bl[i])
 			return
 	var abs: Array = Data.FACTIONS[f]["abilities"]
-	var ak := [KEY_Z, KEY_X, KEY_C, KEY_V]
+	var ak := [KEY_Z, KEY_X, KEY_C, KEY_V, KEY_R]
 	for i in mini(abs.size(), ak.size()):
 		if k == ak[i]:
 			_enter_cast(abs[i])

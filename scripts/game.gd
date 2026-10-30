@@ -71,6 +71,7 @@ class Ent:
 	var infect := 0.0      # insects: how sick they are
 	var infect_t := 0.0    # insects: time until they next sniff for lures
 	var life := INF        # short-lived insects (borers) count down
+	var grove := false     # Court units: standing in the roots of a tree their court feeds
 	# cords
 	var a: Ent = null
 	var b: Ent = null
@@ -323,6 +324,43 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 	return e
 
 
+# A buried truffle bursts when an enemy walks over it.
+func _check_mine(s: Ent) -> void:
+	var m: Dictionary = s.d["mine"]
+	for u in _near_units(s.pos, m["trigger"]):
+		if u.alive and u.f != s.f and u.f != Data.NEUTRAL:
+			for e in _enemies_in(s.f, s.pos, m["radius"], true, false):
+				if e.f == Data.NEUTRAL:
+					continue
+				_damage(e, m["dmg"], s.f, s)
+				e.slow = maxf(e.slow, m["slow"])
+				e.slow_t = maxf(e.slow_t, m["slow_t"])
+			s.seen_by = 7
+			_burst(_v3(s.pos, 0.6), Color(0.55, 0.42, 0.3), 140, 6.0, 1.2, 1.0, 1.4)
+			_cloud(s.pos, m["radius"], Color(0.5, 0.4, 0.28), 2.5, 160)
+			emit_signal("sound", "puffball_burst", _v3(s.pos))
+			if s.f == player:
+				emit_signal("message", "A truffle mine burst under the enemy!", Data.faction_color(s.f))
+			s.alive = false
+			s.dying = 0.001
+			_conn_dirty = true
+			return
+
+
+# A nursery's sapling has grown up: it becomes a real tree of the forest.
+func _nursery_done(s: Ent) -> void:
+	var i: int = forest.add_tree(s.pos, Data.NURSERY_TREE)
+	_tgrid_add(i)
+	s.alive = false
+	s.dying = 0.001
+	for c in s.cords:
+		c.alive = false
+	_conn_dirty = true
+	emit_signal("sound", "fruited", _v3(s.pos))
+	if s.f == player:
+		emit_signal("message", "A young birch has risen from the nursery. Mantle it.", Data.faction_color(s.f))
+
+
 func spawn_insect(uid: String, p: Vector2, nest_id: int) -> Ent:
 	p.x = clampf(p.x, -Data.HALF_W + 1.0, Data.HALF_W - 1.0)
 	p.y = clampf(p.y, -Data.HALF_D + 1.0, Data.HALF_D - 1.0)
@@ -341,7 +379,7 @@ func on_tree_died(i: int) -> void:
 
 
 func on_tree_felled(i: int, dir: Vector2, length: float) -> void:
-	board.fell_tree(i, dir, length)
+	board.fell_tree(i, forest.trees[i], dir, length)
 	var t: Dictionary = forest.trees[i]
 	_shake = maxf(_shake, 0.7)
 	_burst(_v3(t["pos"] + dir * length * 0.5, 1.0), Color(0.6, 0.5, 0.35), 160, 6.0, 1.6, length * 0.3, 1.6)
@@ -541,6 +579,13 @@ func mantles_on(tree: int, sid := "mantle") -> int:
 	return n
 
 
+func _near_own(f: int, p: Vector2, r: float) -> Ent:
+	for s in structs:
+		if s.f == f and s.alive and s.pos.distance_to(p) < r:
+			return s
+	return null
+
+
 func mantle_cap(f: int) -> int:
 	return Data.MANTLES_PER_TREE + (1 if has_tech(f, "old_growth") else 0)
 
@@ -572,8 +617,7 @@ func place_error(f: int, sid: String, p: Vector2, check_cost := true) -> String:
 		return "Not enough resources"
 	if board.water_at(p) > 0.2:
 		return "Too wet"
-	for i in Data.TREES.size():
-		var tr: Dictionary = Data.TREES[i]
+	for tr in forest.trees:
 		if p.distance_to(tr["pos"]) < tr["radius"] * 1.6 + r:
 			return "Blocked by the trunk"
 	for s in structs:
@@ -591,13 +635,22 @@ func place_error(f: int, sid: String, p: Vector2, check_cost := true) -> String:
 				return "This tree already feeds %d mantles" % mantle_cap(f)
 			if sid == "honey_rot" and mantles_on(t, "honey_rot") > 0:
 				return "This tree is already rotting"
+			if d.get("fed_tree", false) and forest.trees[t]["fed"][f] == 0:
+				return "Must be in the roots of a tree you feed"
 		"deposit":
 			if forest.wood_near(p, 3.0).is_empty():
 				return "Must sit on a log, snag or fallen branch"
+		"territory":
+			if not forest.owns(f, p) and _near_own(f, p, 16.0) == null:
+				return "Must be buried in your own territory"
+		"gap":
+			for tr in forest.trees:
+				if tr["alive"] and p.distance_to(tr["pos"]) < 14.0:
+					return "Too shaded - plant it in a gap at least 14 m from any trunk"
 	if econ(f) == "parasite":
 		if host_for(f, p) == null:
 			return "Needs a thrall within %d m to grow from" % int(Data.HOST_RANGE)
-	elif _link_parents(f, p).is_empty():
+	elif not d.get("unlinked", false) and _link_parents(f, p).is_empty():
 		return "Out of cord reach - build closer to your network"
 	return ""
 
@@ -617,6 +670,8 @@ func try_place(f: int, sid: String, p: Vector2) -> String:
 	if err != "":
 		return err
 	pay(f, Data.STRUCTURES[sid]["cost"])
+	if _log:
+		_stats["built_" + sid] = _stats.get("built_" + sid, 0) + 1
 	if econ(f) == "parasite":
 		# the host dies where it stands and the fruiting body bursts out of it
 		var host := host_for(f, p)
@@ -624,6 +679,8 @@ func try_place(f: int, sid: String, p: Vector2) -> String:
 		host.dying = 0.001
 		_burst(_v3(host.pos, 0.6), Data.faction_color(f).lightened(0.3), 30, 2.0, 0.8)
 		_spawn_struct(f, sid, p)
+	elif Data.STRUCTURES[sid].get("unlinked", false):
+		_spawn_struct(f, sid, p)   # buried on its own: no cord to give it away
 	else:
 		var parents := _link_parents(f, p)
 		var e := _spawn_struct(f, sid, p)
@@ -789,6 +846,8 @@ func cast_error(f: int, ab: String, p: Vector2) -> String:
 		return "You have never seen that ground"
 	if ab == "borer_swarm" and _swarm_tree(p) < 0:
 		return "Cast it on a living tree"
+	if ab in ["carbon_transfer", "mast_year"] and _fed_tree(f, p) < 0:
+		return "Cast it on a tree you feed"
 	for e in units:
 		if e.f == f and e.alive and e.pos.distance_to(p) < Data.CAST_RANGE:
 			return ""
@@ -845,6 +904,15 @@ func cast(f: int, ab: String, p: Vector2) -> String:
 			_cloud(p, r, Color(0.55, 0.45, 0.25), 4.0, 160)
 		"barrage":
 			zones.append({"kind": ab, "f": f, "p": p, "r": r, "t": 0.0, "dur": 3.0, "next": 0.0})
+		"carbon_transfer":
+			_carbon_transfer(f, _fed_tree(f, p))
+		"mast_year":
+			fs[f]["mast"] = Data.MAST_TIME
+			for t in forest.trees:
+				if t["alive"] and t["fed"][f] > 0 and t["vigor"] >= 0.5:
+					_burst(_v3(t["pos"], 3.0), Color(1.0, 0.8, 0.35), 120, 4.0, 1.6, t["radius"] * 2.0, 1.4)
+			if f == player:
+				emit_signal("message", "Mast Year! Every healthy tree you feed is fruiting.", Color(1.0, 0.85, 0.4))
 		"borer_swarm":
 			var t: Dictionary = forest.trees[_swarm_tree(p)]
 			var edge: float = t["radius"] * 1.6 + 0.9
@@ -1081,6 +1149,12 @@ func _step(dt: float) -> void:
 	for f in 3:
 		if econ(f) == "parasite":
 			res(f)[1] = thralls(f)
+		if fs[f].get("mast", 0.0) > 0.0:
+			fs[f]["mast"] -= dt
+			if fs[f]["mast"] <= 0.0:
+				for t in forest.trees:
+					if t["alive"] and t["fed"][f] > 0:
+						t["vigor"] = maxf(t["vigor"] - Data.MAST_COST, 0.05)
 	t1 = _prof_t()
 	for ai in ais:
 		ai.tick(dt)
@@ -1134,18 +1208,29 @@ func _rebuild_grid() -> void:
 			if s.d.has("brood") and s.built >= 1.0:
 				_broods.append(s)
 	if _tgrid.is_empty():
-		for i in Data.TREES.size():
-			var tp: Vector2 = Data.TREES[i]["pos"]
-			var reach: float = Data.TREES[i]["radius"] * 1.5 + 3.0
-			for j in range(floori((tp.y - reach) / 8.0), floori((tp.y + reach) / 8.0) + 1):
-				for k in range(floori((tp.x - reach) / 8.0), floori((tp.x + reach) / 8.0) + 1):
-					var key := Vector2i(k, j)
-					if not _tgrid.has(key):
-						_tgrid[key] = []
-					_tgrid[key].append(i)
+		for i in forest.trees.size():
+			_tgrid_add(i)
+
+
+func _tgrid_add(i: int) -> void:
+	var tp: Vector2 = forest.trees[i]["pos"]
+	var reach: float = forest.trees[i]["radius"] * 1.5 + 3.0
+	for j in range(floori((tp.y - reach) / 8.0), floori((tp.y + reach) / 8.0) + 1):
+		for k in range(floori((tp.x - reach) / 8.0), floori((tp.x + reach) / 8.0) + 1):
+			var key := Vector2i(k, j)
+			if not _tgrid.has(key):
+				_tgrid[key] = []
+			_tgrid[key].append(i)
 
 
 # Live structures whose 8 m bucket is next to p's (enough for anything within ~8 m).
+func _unit_within(f: int, p: Vector2, r: float) -> bool:
+	for u in _near_units(p, r):
+		if u.f == f and u.alive:
+			return true
+	return false
+
+
 func _near_structs(p: Vector2) -> Array:
 	var out := []
 	var c := Vector2i(floori(p.x / 8.0), floori(p.y / 8.0))
@@ -1280,6 +1365,9 @@ func _recompute_connectivity() -> void:
 				if s.f == f and s.alive:
 					s.connected = true
 			continue
+		for s in structs:
+			if s.f == f and s.alive and s.d.get("unlinked", false):
+				s.connected = true
 		var stack: Array[Ent] = [h]
 		h.connected = true
 		while not stack.is_empty():
@@ -1316,6 +1404,9 @@ func _update_struct(s: Ent, dt: float) -> void:
 			s.hp = minf(s.hp + s.max_hp * 0.9 * dt / bt, s.max_hp)
 			if s.built >= 1.0:
 				_conn_dirty = true
+				if d.get("grows_tree", false):
+					_nursery_done(s)
+					return
 				_burst(_v3(s.pos, 1.0), Data.faction_color(s.f).lightened(0.5), 40, 3.0, 1.0, s.radius)
 				emit_signal("sound", "fruited", _v3(s.pos))
 				if s.f == player:
@@ -1323,6 +1414,9 @@ func _update_struct(s: Ent, dt: float) -> void:
 		return
 	if not s.connected:
 		_damage(s, s.max_hp * Data.STARVE_DPS * dt, -1, null, true)
+		return
+	if d.has("mine"):
+		_check_mine(s)
 		return
 	if has_tech(s.f, "pyrophilous") and s.hp < s.max_hp:
 		s.hp = minf(s.hp + 3.0 * dt, s.max_hp)
@@ -1451,6 +1545,8 @@ func _update_unit(u: Ent, dt: float) -> void:
 		return
 	if d.has("regen") and u.hp < u.max_hp:
 		u.hp = minf(u.hp + d["regen"] * dt, u.max_hp)
+	if u.grove and u.hp < u.max_hp:
+		u.hp = minf(u.hp + Data.GROVE_REGEN * dt, u.max_hp)
 	if d.get("thrall", false):
 		_thrall_decay(u, dt)
 		if not u.alive:
@@ -1482,6 +1578,10 @@ func _update_unit(u: Ent, dt: float) -> void:
 	u.think_t -= dt
 	if u.think_t <= 0.0:
 		u.think_t = 0.3
+		if econ(u.f) == "mycorrhizal":
+			# the Wood Wide Web feeds the Court's defenders among its trees
+			var t: int = forest.tree_in_roots(u.pos)
+			u.grove = t >= 0 and forest.trees[t]["fed"][u.f] > 0
 		if u.target == null and (u.goal == Vector2.INF or u.amove) and u.f != Data.NEUTRAL and u.summit == Vector2.INF:
 			var t := _find_target(u, Data.AGGRO + d["range"] * 0.5, true)
 			if t:
@@ -1531,7 +1631,7 @@ func _update_unit(u: Ent, dt: float) -> void:
 			if dv.length() < md:
 				push += dv.normalized() * (md - dv.length()) * 8.0
 	for ti in _tgrid.get(Vector2i(floori(u.pos.x / 8.0), floori(u.pos.y / 8.0)), []):
-		var tr: Dictionary = Data.TREES[ti]
+		var tr: Dictionary = forest.trees[ti]
 		var dv: Vector2 = u.pos - tr["pos"]
 		var md: float = tr["radius"] * 1.5 + u.radius
 		if dv.length() < md + 1.5:
@@ -1588,7 +1688,7 @@ func _find_target(e: Ent, r: float, include_cords: bool) -> Ent:
 	best = null
 	bs = INF
 	for s in structs:
-		if s.f != e.f and s.alive:
+		if s.f != e.f and s.alive and (not s.d.get("hidden", false) or s.seen_by & (1 << e.f) != 0):
 			var dd: float = e.pos.distance_to(s.pos) - s.radius
 			if dd < r:
 				var sc := dd - (6.0 if s.d.has("attack") else 0.0)
@@ -1653,6 +1753,7 @@ func _shot_node(shot: String, f: int) -> MeshInstance3D:
 		var c: Color
 		match shot:
 			"spit": c = Data.faction_color(f).lerp(Color(0.7, 1.0, 0.3), 0.35)
+			"web": c = Color(0.82, 0.74, 0.95)
 			"puff": c = Color(0.85, 0.75, 0.55)
 			_: c = Color(0.25, 0.22, 0.2)
 		m.albedo_color = c
@@ -1738,6 +1839,15 @@ func _damage(e: Ent, amt: float, src_f: int, src: Ent, quiet := false, d := {}) 
 		return
 	if e.d.has("armor") and d.get("shot", "") != "":
 		amt *= 1.0 - e.d["armor"]
+	if e.d.has("latex") and src and src.alive and src.kind == UNIT and src.pos.distance_to(e.pos) < 2.5:
+		# a milkcap bleeds sticky latex over whoever bit it
+		var lx: Dictionary = e.d["latex"]
+		src.slow = maxf(src.slow, lx["slow"])
+		src.slow_t = maxf(src.slow_t, lx["slow_t"])
+		_damage(src, lx["dmg"], e.f, null, true)
+	if d.has("root") and e.kind == UNIT:
+		e.slow = 0.95   # caught in the cortina's cobweb
+		e.slow_t = maxf(e.slow_t, d["root"])
 	e.hp -= amt
 	if not quiet:
 		e.flash = 1.0
@@ -1819,7 +1929,7 @@ func _infector(e: Ent, killer: Ent) -> int:
 	# the other courts' sporelings rise when a Stalker brings them down, and
 	# sometimes when any Choir body does
 	if e.f != Data.NEUTRAL:
-		if killer and killer.f == ch and (killer.d.get("infects", false) and _rng.randf() < 0.6 or _rng.randf() < 0.2):
+		if killer and killer.f == ch and (killer.d.get("infects", false) and _rng.randf() < 0.4 or _rng.randf() < 0.2):
 			return ch
 		return -1
 	if killer and killer.f == ch:
@@ -1832,6 +1942,37 @@ func _infector(e: Ent, killer: Ent) -> int:
 			if u.f == ch and u.alive:
 				return ch
 	return -1
+
+
+# The fed tree (one with this court's mantles) nearest p, within the spell's reach.
+func _fed_tree(f: int, p: Vector2) -> int:
+	var best := -1
+	var bd := 8.0
+	for t in forest.trees:
+		var d: float = p.distance_to(t["pos"]) - t["radius"] * 1.6
+		if t["alive"] and t["fed"][f] > 0 and d < bd:
+			bd = d
+			best = t["i"]
+	return best
+
+
+# The network pours vigor into one tree, drawn evenly from the court's other fed trees.
+func _carbon_transfer(f: int, ti: int) -> void:
+	var target: Dictionary = forest.trees[ti]
+	var donors: Array = forest.trees.filter(func(t): return t["alive"] and t["fed"][f] > 0 and t["i"] != ti and t["vigor"] > 0.25)
+	var want := minf(Data.CARBON_GIVE, 1.0 - target["vigor"])
+	if donors.is_empty():
+		want = Data.CARBON_GIVE * 0.4   # a lone tree still gets a little from the soil network
+	var given := 0.0
+	for d in donors:
+		var take := minf(want / donors.size(), d["vigor"] - 0.2)
+		d["vigor"] -= take
+		given += take
+		_burst(_v3(d["pos"], 2.0), Color(1.0, 0.75, 0.3), 30, 2.0, 1.0, d["radius"])
+	if donors.is_empty():
+		given = want
+	target["vigor"] = minf(target["vigor"] + given, 1.0)
+	_burst(_v3(target["pos"], 2.5), Color(1.0, 0.85, 0.4), 120, 3.5, 1.6, target["radius"] * 1.5, 1.4)
 
 
 # The living tree an Agrilus Swarm cast at p lands on.
@@ -1981,7 +2122,7 @@ func sim_summary() -> Dictionary:
 			"hist": fs[f].get("hist", [])})
 	var casts := {}
 	for k in _stats:
-		if str(k).begins_with("cast_") or str(k).begins_with("spor"):
+		if str(k).begins_with("cast_") or str(k).begins_with("spor") or str(k).begins_with("built_"):
 			casts[k] = _stats[k]
 	return {"match": match_seed, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
 		"alive": alive, "courts": per, "casts": casts, "cpu_mycelium": myc.cpu, "profile_ms": _prof_report()}
@@ -2025,6 +2166,10 @@ func _cleanup(dt: float) -> void:
 				elif e.kind == PUFF:
 					e.node.queue_free()
 					list.remove_at(i)
+				elif not is_instance_valid(e.node):
+					# its corpse was already eaten or carried off mid-wither
+					list.remove_at(i)
+					selected.erase(e)
 				else:
 					e.dying += dt
 					var dur := 0.6 if e.kind == UNIT else 1.6
@@ -2149,7 +2294,7 @@ func _update_visuals(delta: float) -> void:
 			u.node.visible = u.f == player or fog.visible(player, u.pos)
 	for s in structs:
 		if s.alive and s.f != player:
-			if not s.spotted and fog.visible(player, s.pos):
+			if not s.spotted and fog.visible(player, s.pos) and (not s.d.get("hidden", false) or _unit_within(player, s.pos, 3.0)):
 				s.spotted = true
 			s.node.visible = s.spotted
 	for c in cords:

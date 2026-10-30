@@ -57,6 +57,27 @@ func setup(game: Node) -> void:
 		nests.append(n)
 
 
+# A new tree in the middle of a match (a Court nursery finished growing).
+func add_tree(p: Vector2, spec: Dictionary) -> int:
+	var t: Dictionary = spec.duplicate()
+	t["pos"] = p
+	t["i"] = trees.size()
+	t["vigor"] = Data.VIGOR_REST
+	t["alive"] = true
+	t["fed"] = [0, 0, 0]
+	t["links"] = []
+	trees.append(t)
+	for o in trees:
+		if o != t and p.distance_to(o["pos"]) <= Data.TREE_LINK:
+			t["links"].append(o["i"])
+			o["links"].append(t["i"])
+	var n := _nest("weak_tree", p, {})
+	n["tree"] = t["i"]
+	nests.append(n)
+	g.board.add_tree(t)
+	return t["i"]
+
+
 func _deposit(kind: String, p: Vector2, c: float, n: float) -> Dictionary:
 	var d := {"kind": kind, "pos": p, "a": p, "b": p, "radius": 1.0, "c": c, "n": n, "c0": c, "n0": n,
 		"life": INF, "kept": false, "node": null, "drain_c": 0.0, "drain_n": 0.0, "fly_t": INF}
@@ -435,6 +456,7 @@ func _court(f: int, ms: Array, out: Array) -> void:
 	var mult := (1.0 + Data.WEB_BONUS * clampi(linked - 1, 0, 4)) * (1.0 + (Data.MOTHER_BONUS if mother else 0.0))
 	mult *= 1.35 if g.has_tech(f, "hartig_net") else 1.0
 	mult *= 0.4 if starved else 1.0
+	var mast: bool = g.fs[f].get("mast", 0.0) > 0.0
 	for t in trees:
 		if t["fed"][f] == 0 or not t["alive"]:
 			continue
@@ -443,12 +465,14 @@ func _court(f: int, ms: Array, out: Array) -> void:
 		for k in 3:
 			all_fed += t["fed"][k]
 		var tree_sugar: float = t["sugar"] * Data.SUGAR_SCALE * (0.4 + t["vigor"]) * t["partner"]
+		if mast and t["vigor"] >= 0.5:
+			tree_sugar *= Data.MAST_MULT
 		# each mantle's share travels home along the cords (game.gd routes it)
 		for m in ms:
 			if m.tree == t["i"]:
 				g.flows.append([m, 1, tree_sugar * mult / all_fed])
-		if t["vigor"] >= 0.7:
-			out[2] += Data.FRUIT_SPORES * t["fed"][f]
+		if t["vigor"] >= 0.7 or mast and t["vigor"] >= 0.5:
+			out[2] += Data.FRUIT_SPORES * t["fed"][f] * (Data.MAST_MULT if mast else 1.0)
 	g.fs[f]["web"] = {"linked": linked, "mother": mother, "mult": mult}
 
 

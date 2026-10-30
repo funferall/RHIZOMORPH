@@ -63,6 +63,15 @@ const MATS := {
 	"ascoma": {"base": Color(0.86, 0.82, 0.7), "accent": Color(0.55, 0.5, 0.4), "pattern": 7, "pscale": 40.0, "bump": 0.01, "rough": 0.95, "sss": 0.4},
 	"stalk_pink": {"base": Color(0.8, 0.52, 0.4), "rough": 0.6, "sss": 0.45},
 	"perithecia": {"base": Color(0.92, 0.82, 0.55), "accent": Color(0.66, 0.5, 0.26), "pattern": 7, "pscale": 30.0, "bump": 0.025, "rough": 0.7, "sss": 0.4},
+	"truffle": {"base": Color(0.12, 0.08, 0.06), "accent": Color(0.26, 0.19, 0.13), "pattern": 7, "pscale": 22.0, "bump": 0.06, "rough": 0.9},
+	"webcap": {"base": Color(0.24, 0.1, 0.42), "accent": Color(0.36, 0.19, 0.56), "pattern": 8, "pscale": 14.0, "rough": 0.5, "sss": 0.4},
+	"webcap_stem": {"base": Color(0.64, 0.54, 0.74), "rough": 0.7, "sss": 0.4},
+	"cortina": {"base": Color(0.84, 0.78, 0.92), "rough": 0.9, "sss": 0.8},
+	"milkcap": {"base": Color(0.88, 0.45, 0.15), "accent": Color(0.68, 0.27, 0.08), "pattern": 10, "pscale": 30.0, "rough": 0.45, "sss": 0.4},
+	"milk_stem": {"base": Color(0.95, 0.63, 0.36), "rough": 0.6, "sss": 0.3},
+	"latex": {"base": Color(0.98, 0.55, 0.18), "rough": 0.12, "sss": 0.9},
+	"sapling": {"base": Color(0.86, 0.85, 0.8), "accent": Color(0.1, 0.09, 0.09), "pattern": 6, "pscale": 18.0, "rough": 0.7},
+	"leaf": {"base": Color(0.3, 0.5, 0.13), "accent": Color(0.44, 0.62, 0.2), "pattern": 7, "pscale": 8.0, "rough": 0.7, "sss": 0.6},
 	"earth": {"base": Color(0.24, 0.17, 0.11), "accent": Color(0.33, 0.24, 0.15), "pattern": 7, "pscale": 12.0, "bump": 0.02, "rough": 0.95},
 }
 
@@ -534,6 +543,35 @@ static func _build(b: B, id: String) -> void:
 			b.lathe("earth", PackedVector2Array([Vector2(2.6, -0.1), Vector2(2.0, 0.5), Vector2(1.2, 1.15), Vector2(0.5, 1.5), Vector2(0.001, 1.6)]), 20, Transform3D(Basis(), O))
 
 		# --- the forest's insects, and the Choir's thralls grown from them --------
+		"truffle":
+			b.lathe("truffle", sphere_prof(0.42, 0.8, -0.28), 16, Transform3D(Basis(), O))
+			b.lathe("truffle", sphere_prof(0.24, 0.85, -0.16), 12, Transform3D(Basis(), Vector3(0.48, 0, 0.2)))
+			b.lathe("truffle", sphere_prof(0.17, 0.9, -0.12), 10, Transform3D(Basis(), Vector3(-0.3, 0, 0.42)))
+		"cortina_thicket":
+			webcap(b, Vector3.ZERO, 2.4, 1.1)
+			webcap(b, Vector3(1.3, 0, 0.5), 1.8, 0.85, 0.15)
+			webcap(b, Vector3(-0.6, 0, 1.3), 1.4, 0.7, 0.2)
+			milkcap(b, Vector3(-1.2, 0, -0.6), 1.3, 0.95, 0.1)
+			milkcap(b, Vector3(0.6, 0, -1.3), 1.0, 0.75, 0.15)
+		"nursery":
+			b.lathe("sapling", stem_prof(3.4, 0.14, 0.05, 0.05), 10, Transform3D(Basis(), O))
+			for i in 7:
+				var a := TAU * i / 7.0 + r.randf() * 0.5
+				var at := Vector3(cos(a) * 0.55, r.randf_range(2.4, 3.5), sin(a) * 0.55)
+				b.lathe("leaf", sphere_prof(r.randf_range(0.35, 0.55), 0.75, 0.0), 10, Transform3D(Basis(), at))
+			b.lathe("leaf", sphere_prof(0.5, 0.9, 3.1), 10, Transform3D(Basis(), O))
+			funnel(b, Vector3(0.8, 0, 0.3), 0.6, 0.45, 0.2)
+			funnel(b, Vector3(-0.6, 0, 0.6), 0.5, 0.38, 0.25)
+			funnel(b, Vector3(0.1, 0, -0.8), 0.55, 0.42, 0.15)
+		"u_webcap":
+			legs(b, O, 4, 0.6, 0.32)
+			b.lathe("webcap_stem", stem_prof(0.8, 0.16, 0.1, 0.1), 10, Transform3D(Basis(), Vector3(0, 0.25, 0)))
+			b.lathe("webcap", dome_prof(0.42, 0.34), 16, Transform3D(Basis(), Vector3(0, 1.02, 0)))
+			_cortina(b, Vector3(0, 1.0, 0), 0.38, Vector3(0, 0.62, 0), 0.12, 7)
+		"u_milkcap":
+			legs(b, O, 6, 0.85, 0.3, 0.05)
+			b.lathe("milk_stem", stem_prof(0.42, 0.3, 0.26), 12, Transform3D(Basis(), Vector3(0, 0.22, 0)))
+			_milk_cap(b, Vector3(0, 0.62, 0), 0.62)
 		"i_ant", "t_ant":
 			insect_ant(b, id == "t_ant")
 		"i_beetle", "t_beetle":
@@ -672,3 +710,41 @@ static func insect_borer(b: B) -> void:
 	for sd in [-1.0, 1.0]:
 		b.lathe("ant_black", sphere_prof(0.03, 1.0, 0.15), 6, Transform3D(Basis(), Vector3(0.28, 0, sd * 0.05)))
 		_bent(b, "ant_black", [Vector3(0.3, 0.2, sd * 0.03), Vector3(0.4, 0.26, sd * 0.08)], 0.008, 0.005)
+
+
+# --- the Court's ectomycorrhizal fungi ----------------------------------------
+
+# Cortinarius violaceus: a deep violet cap with cobweb veil threads to the stem.
+static func webcap(b: B, at: Vector3, h: float, R: float, tilt := 0.0) -> void:
+	var bas := _rot(b.rng.randf() * TAU, tilt, b.rng.randf() * TAU)
+	b.lathe("webcap_stem", stem_prof(h, R * 0.2, R * 0.13, R * 0.18), 10, Transform3D(bas, at))
+	b.lathe("webcap", dome_prof(R, R * 0.75), 18, Transform3D(bas, at + bas * Vector3(0, h, 0)))
+	b.lathe("gill", gill_prof(R, R * 0.13, R * 0.75), 18, Transform3D(bas, at + bas * Vector3(0, h, 0)))
+	_cortina(b, at + bas * Vector3(0, h - 0.02, 0), R * 0.9, at + bas * Vector3(0, h * 0.62, 0), R * 0.16, 9)
+
+
+# Cobweb threads from a cap's rim down to its stem.
+static func _cortina(b: B, rim: Vector3, R: float, stem: Vector3, sr: float, n: int) -> void:
+	var nz := Color(0, 0, 0, 1)
+	for i in n:
+		var a := TAU * i / n + b.rng.randf() * 0.3
+		var p0 := rim + Vector3(cos(a) * R, -0.02, sin(a) * R)
+		var a2 := a + b.rng.randf_range(-0.4, 0.4)
+		var p1 := stem + Vector3(cos(a2) * sr, 0, sin(a2) * sr)
+		b.tube("cortina", p0, p1, 0.008, 0.006, 3, nz, nz)
+
+
+# Lactarius deliciosus: a saffron funnel with concentric zones, beaded with orange latex.
+static func milkcap(b: B, at: Vector3, h: float, R: float, tilt := 0.0) -> void:
+	var bas := _rot(b.rng.randf() * TAU, tilt, b.rng.randf() * TAU)
+	b.lathe("milk_stem", stem_prof(h, R * 0.24, R * 0.2), 10, Transform3D(bas, at))
+	_milk_cap(b, at + bas * Vector3(0, h, 0), R)
+
+
+static func _milk_cap(b: B, at: Vector3, R: float) -> void:
+	var cap := PackedVector2Array([Vector2(R * 0.2, 0.0), Vector2(R * 0.6, R * 0.18), Vector2(R, R * 0.32), Vector2(R * 0.96, R * 0.38),
+		Vector2(R * 0.6, R * 0.28), Vector2(R * 0.25, R * 0.16), Vector2(0.001, R * 0.12)])
+	b.lathe("milkcap", cap, 20, Transform3D(Basis(), at))
+	for i in 5:
+		var a := TAU * i / 5.0 + b.rng.randf() * 0.6
+		b.lathe("latex", sphere_prof(R * 0.07, 1.1, 0.0), 6, Transform3D(Basis(), at + Vector3(cos(a) * R * 0.8, R * 0.08, sin(a) * R * 0.8)))

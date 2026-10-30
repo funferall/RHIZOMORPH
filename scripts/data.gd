@@ -33,6 +33,12 @@ const VIGOR_RATE := 0.01      # vigor/s toward its target
 const WEB_BONUS := 0.1        # +sugar per extra tree linked through the network (max 4)
 const MOTHER_BONUS := 0.25
 const FRUIT_SPORES := 0.12    # spores/s per mantle on a tree with vigor >= 0.7
+const GROVE_REGEN := 2.5      # hp/s for Court units inside the roots of a tree the Court feeds
+const CARBON_GIVE := 0.35     # vigor Carbon Transfer pours into one tree, drawn from the others
+const MAST_TIME := 20.0       # seconds a Mast Year lasts
+const MAST_MULT := 3.0        # sugar and fruiting spores during it
+const MAST_COST := 0.15       # vigor every fed tree loses when it ends
+const NURSERY_TREE := {"name": "Young Birch", "radius": 1.2, "roots": 8.0, "sugar": 2.6, "kind": "birch", "partner": 1.3, "borer": 1.0}
 
 # --- the Hollow's deposits ---
 const BRACKET_RATE := 1.65    # cellulose/s a Rot Bracket digests from its deposit
@@ -42,10 +48,10 @@ const SOIL_SHARE := 0.35      # the Hollow digests bare soil at this fraction of
 const HONEY_ROT := 0.02       # vigor/s a Honey Rot drains from its tree
 
 # --- the Choir's hosts ---
-const THRALL_DECAY := 0.0042  # fraction of max hp lost per second
+const THRALL_DECAY := 0.0055  # fraction of max hp lost per second
 const INFECT_RANGE := 8.0     # kills this close to a Choir body rise as thralls
 const HOST_RANGE := 6.0       # a Choir structure grows from a thrall this close to the spot
-const INSECT_CAP := 100
+const INSECT_CAP := 70
 
 const START_POS := [Vector2(-70, 44), Vector2(70, 44), Vector2(0, -52)]
 
@@ -111,7 +117,7 @@ const LITTER := [
 const ANTHILLS := [Vector2(-56, 52), Vector2(54, 56), Vector2(-6, -64), Vector2(30, -26), Vector2(-80, -4), Vector2(82, -20)]
 # per nest: insect, cap, seconds between births
 const NESTS := {
-	"anthill": ["ant", 6, 36.0],
+	"anthill": ["ant", 5, 36.0],
 	"log": ["stag", 1, 75.0],
 	"snag": ["beetle", 3, 30.0],
 	"weak_tree": ["beetle", 2, 40.0],   # a tree below 0.4 vigor draws bark beetles
@@ -128,10 +134,10 @@ const FACTIONS := [
 		"start_res": [260.0, 100.0, 30.0],
 		"starters": ["wartling", "wartling", "wartling"],
 		"heart": "heart_amanita",
-		"build": ["node", "mantle", "agaric_ring", "root_snare", "deathcap_grove"],
-		"abilities": ["haze", "fairy_ring", "bloom"],
-		"techs": ["hartig_net", "muscarine", "root_signalling", "phalloides", "bootlaces", "universal_veil", "old_growth"],
-		"ai_techs": ["hartig_net", "muscarine", "phalloides", "bootlaces", "root_signalling", "universal_veil", "old_growth"],
+		"build": ["node", "mantle", "agaric_ring", "cortina_thicket", "root_snare", "truffle", "nursery", "deathcap_grove"],
+		"abilities": ["haze", "carbon_transfer", "fairy_ring", "bloom", "mast_year"],
+		"techs": ["hartig_net", "muscarine", "root_signalling", "phalloides", "bootlaces", "universal_veil", "old_growth", "mast_year"],
+		"ai_techs": ["hartig_net", "muscarine", "root_signalling", "phalloides", "mast_year", "bootlaces", "universal_veil", "old_growth"],
 		"decor": ["agaric_button", "mycena_white"],
 	},
 	{
@@ -165,6 +171,7 @@ const FACTIONS := [
 ]
 
 const BUILD_KEYS := ["N", "M", "B", "T", "G", "L", "K", "H"]
+const ABILITY_KEYS := ["Z", "X", "C", "V", "R"]
 
 # radius: footprint / click radius. myc: radius of mycelium this structure feeds.
 # cost: [res0, res1] in the building court's own resources.
@@ -177,7 +184,7 @@ const STRUCTURES := {
 		"attack": {"dmg": 13, "range": 8.0, "cd": 1.1, "splash": 2.0, "shot": "puff"},
 		"desc": "Your Heart. Researches lineages and bellows spores at intruders. If it falls, the Hollow rots."},
 	"heart_veiled": {"name": "Sclerotium of the Choir", "species": "giant_veiled", "hp": 2300, "radius": 3.6, "myc": 11.0, "spores": 1.0, "income": 1.8, "trains": [], "research": true, "lure": 12.0,
-		"attack": {"dmg": 12, "range": 9.0, "cd": 0.8, "shot": "spit"},
+		"attack": {"dmg": 9, "range": 9.0, "cd": 0.8, "shot": "spit"},
 		"desc": "Your Heart. Researches lineages, spits at intruders and slowly infects insects that wander close. If it falls, the Choir rots."},
 	"node": {"name": "Armillaria Node", "species": "armillaria", "cost": [55, 0], "hp": 320, "build": 7.0, "radius": 1.6, "myc": 9.5,
 		"desc": "Rhizomorph hub. Cheap. Pushes your mycelium outward and relays supply."},
@@ -190,6 +197,13 @@ const STRUCTURES := {
 	"root_snare": {"name": "Root Snare", "species": "clathrus", "cost": [60, 30], "hp": 520, "build": 10.0, "radius": 1.8, "myc": 5.0, "on": "tree",
 		"attack": {"dmg": 9, "range": 9.5, "cd": 0.9, "slow": 0.5, "slow_t": 2.0, "shot": "spit", "vigor": true},
 		"desc": "The tree's own roots, turned. Grips and slows. Hits harder the healthier its tree."},
+	"cortina_thicket": {"name": "Cortina Thicket", "species": "cortina_thicket", "cost": [100, 30], "hp": 600, "build": 11.0, "radius": 2.2, "myc": 6.0, "on": "tree", "fed_tree": true, "trains": ["milkcap", "webcap"],
+		"desc": "Webcaps and milkcaps fruiting with their partner tree - it must stand in the roots of a tree you feed. Trains Milkcaps and Violet Webcaps."},
+	"truffle": {"name": "Truffle Mine", "species": "truffle", "cost": [35, 15], "hp": 90, "build": 6.0, "radius": 0.9, "myc": 0.0, "on": "territory", "unlinked": true, "hidden": true,
+		"mine": {"trigger": 2.5, "radius": 4.0, "dmg": 70, "slow": 0.5, "slow_t": 3.0},
+		"desc": "A buried truffle: no cord, no glow, invisible to enemies until they are almost on it. Bursts in a pungent spore cloud when they walk over it (70 dmg, slows). Plant it in your own territory."},
+	"nursery": {"name": "Mother Tree Nursery", "species": "nursery", "cost": [120, 60], "hp": 350, "build": 120.0, "radius": 1.8, "myc": 6.0, "on": "gap", "grows_tree": true,
+		"desc": "A sapling, fed by the network in a sunlit gap. When it finishes growing (2 min) it becomes a new birch you can mantle. Only the Court grows the forest."},
 	"deathcap_grove": {"name": "Death Cap Grove", "species": "death_cap", "cost": [110, 80], "hp": 700, "build": 14.0, "radius": 2.4, "myc": 7.0, "trains": ["angel"], "req": "phalloides",
 		"desc": "Amanita phalloides colony. Trains Destroying Angels."},
 
@@ -232,6 +246,11 @@ const UNITS := {
 	"angel": {"name": "Destroying Angel", "species": "u_angel", "cost": [30, 70], "hp": 170, "dmg": 30, "range": 1.5, "cd": 0.85, "speed": 8.2, "train": 8.0, "poison": 6.0, "shot": "", "elite": true, "cutter": true,
 		"desc": "Pure-white assassin. Hunts cords and lone units."},
 
+	"milkcap": {"name": "Saffron Milkcap", "species": "u_milkcap", "cost": [20, 18], "hp": 170, "dmg": 9, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 6.0, "shot": "",
+		"latex": {"dmg": 3.0, "slow": 0.4, "slow_t": 2.0},
+		"desc": "Lactarius. Bleeds sticky orange latex when struck: melee attackers are slowed and stung."},
+	"webcap": {"name": "Violet Webcap", "species": "u_webcap", "cost": [18, 22], "hp": 70, "dmg": 7, "range": 8.0, "cd": 1.4, "speed": 5.4, "train": 6.0, "shot": "web", "root": 1.2,
+		"desc": "Cortinarius violaceus. Spits cobweb veil that roots its target in place for a moment."},
 	"bruiser": {"name": "Morel Bruiser", "species": "u_bruiser", "cost": [32, 7], "hp": 140, "dmg": 12, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 5.5, "regen": 1.4, "shot": "",
 		"desc": "Honeycombed tank. Regenerates."},
 	"slinger": {"name": "Elf-Cup Slinger", "species": "u_slinger", "cost": [32, 8], "hp": 75, "dmg": 10, "range": 7.5, "cd": 1.15, "speed": 5.4, "train": 5.5, "regen": 0.8, "shot": "puff",
@@ -283,6 +302,8 @@ const TECHS := {
 		"desc": "Cords reach +6 farther, have double health and regrow twice as fast. Units move 15% faster on your mycelium."},
 	"universal_veil": {"name": "Universal Veil", "tier": 3, "cost": [130, 160], "time": 40.0, "req": ["phalloides"],
 		"desc": "All units +25% health. Unlocks Death Cap Bloom."},
+	"mast_year": {"name": "Mast Year", "tier": 3, "cost": [120, 140], "time": 36.0, "req": ["root_signalling"],
+		"desc": "Unlocks Mast Year: every healthy tree you feed fruits at once."},
 	"old_growth": {"name": "Old-Growth Pact", "tier": 3, "cost": [130, 160], "time": 40.0, "req": ["root_signalling"],
 		"desc": "Every tree takes a 4th mantle, and a Mother Tree needs only 2 links."},
 	# Morel Hollow
@@ -323,6 +344,10 @@ const TECHS := {
 const ABILITIES := {
 	"haze": {"name": "Muscimol Haze", "cost": 30, "cd": 10.0, "radius": 5.0, "tech": "",
 		"desc": "Toxic fog: 8 dmg/s for 4 s and 40% slow to enemies inside."},
+	"carbon_transfer": {"name": "Carbon Transfer", "cost": 35, "cd": 30.0, "radius": 6.0, "tech": "",
+		"desc": "Cast on a tree you feed: the network pours +0.35 vigor into it, drawn from your other fed trees. Saves a tree under Honey Rot or borers - and lets you bluff which tree is weak."},
+	"mast_year": {"name": "Mast Year", "cost": 80, "cd": 120.0, "radius": 6.0, "tech": "mast_year",
+		"desc": "Cast on any tree you feed: for 20 s every fed tree with vigor 0.5+ pays triple sugar and fruiting spores. Afterwards they are spent: -0.15 vigor each."},
 	"fairy_ring": {"name": "Fairy Ring", "cost": 50, "cd": 24.0, "radius": 7.0, "tech": "phalloides",
 		"desc": "A ring erupts: 45 dmg to enemies on it and your mycelium floods the circle for 20 s."},
 	"bloom": {"name": "Death Cap Bloom", "cost": 90, "cd": 55.0, "radius": 6.0, "tech": "universal_veil",

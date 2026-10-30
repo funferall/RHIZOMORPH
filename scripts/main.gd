@@ -72,6 +72,10 @@ func _ready() -> void:
 		game.sim = true
 		add_child(game)
 		game.start(0, true)
+		if game.ais.size() < 3:
+			print("SIM {\"failed\": true}")   # an AI script did not load
+			get_tree().quit(1)
+			return
 	else:
 		var Game = load("res://scripts/game.gd")
 		game = Game.new()

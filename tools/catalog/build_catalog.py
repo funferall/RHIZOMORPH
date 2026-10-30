@@ -66,6 +66,11 @@ LATIN = {
     "i_stag": "Lucanus cervus, male",
     "t_stag": "Ophiocordyceps in Lucanus cervus",
     "i_borer": "Agrilus planipennis",
+    "truffle": "Tuber melanosporum",
+    "cortina_thicket": "Cortinarius violaceus with Lactarius deliciosus",
+    "nursery": "Betula sapling with Cantharellus",
+    "u_webcap": "Cortinarius violaceus, walking",
+    "u_milkcap": "Lactarius deliciosus, walking",
 }
 
 COURTS = [
