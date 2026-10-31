@@ -102,10 +102,18 @@ camera_rig.gd, main.gd, fungus_lib.gd + fungus/legs shaders.
 | `shaders/ring.gdshader` | depth-test off but hidden behind solid things via the depth texture |
 | `shaders/myc_sim.glsl` | source reach is noise-wobbled, so territory edges are lobed, not circles |
 
-Controls (in game): LMB select / drag box / double-click same type, RMB move / attack / set rally,
-A attack-move, S stop, F sporulate (Choir thralls), N M B T G L K H build (Shift keeps placing), Z X C spore actions, 1-3 train,
-Tab lineages, Q/E or MMB-drag rotate, wheel zoom, arrows / screen edge pan, Space Heart, P pause,
-+/- speed, Ctrl+M mute, Esc cancel.
+Controls (in game, since 2026-10-30):
+- **Left click:** select your units and buildings; click the ground to move the selected units; click
+  an enemy (or an insect) to attack it; drag to box-select; double-click selects all of that kind.
+  **Ctrl+click:** attack-move. With only a trainer selected, click the ground to set its rally point.
+- **Right click:** cancel placing or casting, otherwise drop the selection.
+- **Camera:** WASD or arrows (and the screen edge, which can be turned off) to pan, Q/E or middle-drag
+  to rotate, wheel to zoom.
+- **Keys:** Y stop, F sporulate (Choir); build keys N M B T G L K H (Shift keeps placing); Z X C V R
+  spore actions; 1-3 train; Tab lineages; Space your Heart; P pause; +/- speed.
+- **Esc:** opens the settings page, which pauses the game. It has Master / Music / Effects volume
+  (audio buses, saved to user://settings.cfg; default 50/55/60%), camera speed, fullscreen, edge
+  scrolling, the controls, and Resume / Quit to menu / Quit game. `--settings` stages it for screenshots.
 
 ## Pick up here next
 

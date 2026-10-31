@@ -40,6 +40,10 @@ var _tech_hover := ""
 var _tech_faction := -1
 var menu := Control.new()
 var end_panel := Control.new()
+var settings_panel := Control.new()
+var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true}
+var _paused_before := false
+const SETTINGS_PATH := "user://settings.cfg"
 var help := Label.new()
 
 var mode := ""            # "", "build", "cast", "amove", "rally"
@@ -99,6 +103,11 @@ func _ready() -> void:
 	_build_tech()
 	_build_menu()
 	_build_end()
+	settings_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	settings_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	settings_panel.visible = false
+	root.add_child(settings_panel)
+	_load_settings()
 
 	get_tree().node_added.connect(func(n):
 		if n is BaseButton:
@@ -195,7 +204,7 @@ func _build_pill() -> void:
 	info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	info_lbl.add_theme_color_override("font_color", DIM)
 	root.add_child(info_lbl)
-	help.text = "LMB select / drag box   RMB move, attack   A attack-move   S stop   F sporulate   Tab lineages   Q/E rotate   Space Heart   P pause   +/- speed   Ctrl+M mute"
+	help.text = "LMB select, move, attack   drag box-select   Ctrl+LMB attack-move   RMB cancel   WASD pan   Q/E rotate   Y stop   F sporulate   Tab lineages   Space Heart   P pause   +/- speed   Esc settings"
 	help.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	help.position = Vector2(-430, -20)
 	help.size = Vector2(860, 16)
@@ -354,8 +363,10 @@ func _build_bottom() -> void:
 	hb.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	hb.position = Vector2(-470, -126)
 	hb.resized.connect(func():
-		hb.offset_left = -hb.size.x * 0.5
-		hb.offset_right = hb.size.x * 0.5
+		# centred on the space left of the minimap, so the last buttons never hide under it
+		var shift := (MM_SIZE.x + 30.0) * 0.5
+		hb.offset_left = -hb.size.x * 0.5 - shift
+		hb.offset_right = hb.size.x * 0.5 - shift
 		hb.offset_top = -hb.size.y - 26
 		hb.offset_bottom = -26)
 	root.add_child(hb)
@@ -382,6 +393,8 @@ func _populate_bars() -> void:
 		var sid: String = bl[i]
 		var d: Dictionary = Data.STRUCTURES[sid]
 		var b := _tile(icon(d["species"]), Data.BUILD_KEYS[i], _cost_str(d["cost"]))
+		if bl.size() + fd["abilities"].size() > 11:
+			b.custom_minimum_size = Vector2(68, 76)   # a court with many buttons gets slimmer tiles
 		b.pressed.connect(func(): _enter_build(sid))
 		build_bar.add_child(b)
 		_build_btns.append([b, sid])
@@ -389,6 +402,8 @@ func _populate_bars() -> void:
 	for i in abs.size():
 		var ab: String = abs[i]
 		var b := _tile(null, Data.ABILITY_KEYS[i], "%d" % Data.ABILITIES[ab]["cost"], ab)
+		if bl.size() + abs.size() > 11:
+			b.custom_minimum_size = Vector2(68, 76)
 		b.pressed.connect(func(): _enter_cast(ab))
 		ability_bar.add_child(b)
 		_ab_btns.append([b, ab])
@@ -1232,6 +1247,122 @@ func _build_menu() -> void:
 	root.add_child(menu)
 
 
+# --- settings (Esc) -------------------------------------------------------------
+
+func _load_settings() -> void:
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_PATH) == OK:
+		for k in settings:
+			settings[k] = cf.get_value("settings", k, settings[k])
+	_apply_settings()
+
+
+func _save_settings() -> void:
+	var cf := ConfigFile.new()
+	for k in settings:
+		cf.set_value("settings", k, settings[k])
+	cf.save(SETTINGS_PATH)
+
+
+func _apply_settings() -> void:
+	if audio:
+		audio.set_volumes(settings["master"], settings["music"], settings["sfx"])
+	var want := DisplayServer.WINDOW_MODE_FULLSCREEN if settings["fullscreen"] else DisplayServer.WINDOW_MODE_WINDOWED
+	if DisplayServer.window_get_mode() != want and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_mode(want)
+
+
+func _open_settings() -> void:
+	_build_settings()
+	_paused_before = game.paused
+	if game.started and not game.paused:
+		game.toggle_pause()
+	settings_panel.visible = true
+
+
+func _close_settings() -> void:
+	settings_panel.visible = false
+	_save_settings()
+	if game.started and game.paused and not _paused_before:
+		game.toggle_pause()
+
+
+func _build_settings() -> void:
+	for c in settings_panel.get_children():
+		c.queue_free()
+	var shade := ColorRect.new()
+	shade.color = Color(0.02, 0.015, 0.01, 0.62)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	settings_panel.add_child(shade)
+	var box := PanelContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER)
+	box.custom_minimum_size = Vector2(560, 0)
+	box.position = Vector2(-280, -300)
+	settings_panel.add_child(box)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 12)
+	box.add_child(vb)
+	var t := _label("Paused", 34, Color(0.97, 0.88, 0.62), true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	for row in [["master", "Master volume"], ["music", "Music"], ["sfx", "Effects"], ["cam_speed", "Camera speed"]]:
+		var key: String = row[0]
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 12)
+		var l := _label(row[1], 15, TEXT)
+		l.custom_minimum_size = Vector2(150, 0)
+		h.add_child(l)
+		var sl := HSlider.new()
+		sl.min_value = 0.0 if key != "cam_speed" else 0.4
+		sl.max_value = 1.0 if key != "cam_speed" else 2.5
+		sl.step = 0.01
+		sl.value = settings[key]
+		sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sl.custom_minimum_size = Vector2(260, 24)
+		var pct := _label("", 14, DIM)
+		pct.custom_minimum_size = Vector2(56, 0)
+		var show := func(v: float):
+			pct.text = ("%d%%" % int(v * 100)) if key != "cam_speed" else ("x%.1f" % v)
+		show.call(sl.value)
+		sl.value_changed.connect(func(v: float):
+			settings[key] = v
+			show.call(v)
+			_apply_settings())
+		h.add_child(sl)
+		h.add_child(pct)
+		vb.add_child(h)
+	for row in [["fullscreen", "Fullscreen"], ["edge_pan", "Scroll at the screen edge"]]:
+		var key: String = row[0]
+		var cb := CheckBox.new()
+		cb.text = row[1]
+		cb.button_pressed = settings[key]
+		cb.toggled.connect(func(on: bool):
+			settings[key] = on
+			_apply_settings())
+		vb.add_child(cb)
+	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir)   1-3 train   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
+	ctl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ctl.custom_minimum_size = Vector2(520, 0)
+	vb.add_child(ctl)
+	var btns := HBoxContainer.new()
+	btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	btns.add_theme_constant_override("separation", 14)
+	vb.add_child(btns)
+	for spec in [["Resume", func(): _close_settings()],
+			["Quit to menu", func():
+				_save_settings()
+				Engine.time_scale = 1.0
+				get_tree().reload_current_scene()],
+			["Quit game", func():
+				_save_settings()
+				get_tree().quit()]]:
+		var b := Button.new()
+		b.text = spec[0]
+		b.custom_minimum_size = Vector2(150, 42)
+		b.pressed.connect(spec[1])
+		btns.add_child(b)
+
+
 func _build_end() -> void:
 	end_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	end_panel.visible = false
@@ -1304,17 +1435,19 @@ func _process(delta: float) -> void:
 
 func _camera_keys(delta: float) -> void:
 	var v := Vector2.ZERO
-	if Input.is_key_pressed(KEY_LEFT):
+	if settings_panel.visible:
+		return
+	if Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A):
 		v.x -= 1
-	if Input.is_key_pressed(KEY_RIGHT):
+	if Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D):
 		v.x += 1
-	if Input.is_key_pressed(KEY_UP):
+	if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W):
 		v.y += 1
-	if Input.is_key_pressed(KEY_DOWN):
+	if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S):
 		v.y -= 1
 	var mp := root.get_viewport().get_mouse_position()
 	var vs := root.get_viewport_rect().size
-	if DisplayServer.window_is_focused() and Rect2(Vector2.ZERO, vs).has_point(mp) and not tech_panel.visible:
+	if settings["edge_pan"] and DisplayServer.window_is_focused() and Rect2(Vector2.ZERO, vs).has_point(mp) and not tech_panel.visible:
 		var m := 4.0
 		if mp.x < m:
 			v.x -= 1
@@ -1330,7 +1463,7 @@ func _camera_keys(delta: float) -> void:
 		game.rig.yaw += delta * 1.6
 	if v != Vector2.ZERO:
 		var unscaled := delta / maxf(Engine.time_scale, 0.01)
-		game.rig.pan_world(Vector2(v.x, -v.y) * game.rig.dist * 0.9 * unscaled)
+		game.rig.pan_world(Vector2(v.x, -v.y) * game.rig.dist * 0.9 * unscaled * settings["cam_speed"])
 
 
 # --- build ghost on the terrain ------------------------------------------------
@@ -1579,37 +1712,59 @@ func _mouse_button(ev: InputEventMouseButton) -> void:
 					var picked: Array = game.units_in_rect(Rect2(from, ev.position - from).abs(), f)
 					game.select(picked, ev.shift_pressed)
 				else:
-					var e = game.pick(ev.position)
-					var now := Time.get_ticks_msec() / 1000.0
-					if e and e.kind == game.UNIT and e == _last_pick and now - _last_click < 0.35:
-						game.select_same_type(e)
-					elif e and e.kind != game.CORD:
-						game.select([e], ev.shift_pressed)
-					elif not ev.shift_pressed:
-						game.select([])
-					_last_pick = e
-					_last_click = now
+					_left_click(ev)
 				_ctx_refresh = 0.0
 		MOUSE_BUTTON_RIGHT:
+			# right click backs out: cancel placing or casting, else drop the selection
 			if not ev.pressed:
 				return
 			if mode != "":
 				mode = ""
-				return
-			var g: Vector3 = game.ground_hit(ev.position)
-			var t = game.pick(ev.position)
-			var us := _own_selected(game.UNIT)
-			if not us.is_empty():
-				if t and t.f != f and t.alive:
-					game.order_attack(us, t)
-					_ping(t.pos, Color(1, 0.4, 0.3))
-				elif g != Vector3.INF:
-					game.order_move(us, Vector2(g.x, g.z), false)
-					_ping(Vector2(g.x, g.z), Color(0.7, 1.0, 0.6))
-				return
-			for s in _own_selected(game.STRUCT):
-				if g != Vector3.INF and not s.d.get("trains", []).is_empty():
-					game.set_rally(s, Vector2(g.x, g.z))
+			else:
+				game.select([])
+				_ctx_refresh = 0.0
+
+
+# A left click (not a drag). Your own things are selected; with your units
+# selected, the ground means "go there" (Ctrl: attack-move on the way) and
+# anything else means "attack it"; with only a trainer selected, the ground
+# sets its rally point.
+func _left_click(ev: InputEventMouseButton) -> void:
+	var f: int = game.player
+	var e = game.pick(ev.position)
+	var now := Time.get_ticks_msec() / 1000.0
+	var double: bool = e != null and e == _last_pick and now - _last_click < 0.35
+	_last_pick = e
+	_last_click = now
+	var us := _own_selected(game.UNIT)
+	if e and e.kind != game.CORD and e.f == f:
+		if double and e.kind == game.UNIT:
+			game.select_same_type(e)
+		else:
+			game.select([e], ev.shift_pressed)
+		return
+	if e and e.alive and not us.is_empty():
+		game.order_attack(us, e)
+		_ping(e.pos, Color(1, 0.4, 0.3))
+		return
+	if e and e.kind != game.CORD:
+		game.select([e])   # someone else's: just look at it
+		return
+	var g: Vector3 = game.ground_hit(ev.position)
+	if g == Vector3.INF:
+		return
+	var p := Vector2(g.x, g.z)
+	if not us.is_empty():
+		game.order_move(us, p, ev.ctrl_pressed)
+		_ping(p, Color(1, 0.55, 0.35) if ev.ctrl_pressed else Color(0.7, 1.0, 0.6))
+		return
+	var trainers := _own_selected(game.STRUCT).filter(func(s): return not s.d.get("trains", []).is_empty())
+	if not trainers.is_empty():
+		for s in trainers:
+			game.set_rally(s, p)
+		_ping(p, Color(1, 0.95, 0.7))
+		return
+	game.select([])
 
 
 func _ping(p: Vector2, col: Color) -> void:
@@ -1620,12 +1775,16 @@ func _key(ev: InputEventKey) -> void:
 	var f: int = game.player
 	var k := ev.keycode
 	if k == KEY_ESCAPE:
-		if tech_panel.visible:
+		if settings_panel.visible:
+			_close_settings()
+		elif tech_panel.visible:
 			tech_panel.visible = false
 		elif mode != "":
 			mode = ""
 		else:
-			game.select([])
+			_open_settings()
+		return
+	if settings_panel.visible:
 		return
 	if k == KEY_TAB:
 		_toggle_tech()
@@ -1649,10 +1808,7 @@ func _key(ev: InputEventKey) -> void:
 			game.rig.focus(game._v3(h.pos))
 			game.select([h])
 		return
-	if k == KEY_A and _own_units_selected():
-		mode = "amove"
-		return
-	if k == KEY_S and _own_units_selected():
+	if k == KEY_Y and _own_units_selected():
 		game.order_stop(_own_selected(game.UNIT))
 		return
 	if k == KEY_F and _own_units_selected():

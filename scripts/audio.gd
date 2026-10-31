@@ -42,6 +42,13 @@ var _weather := {}       # weather kind -> its looping player, faded in while it
 
 
 func _ready() -> void:
+	# Music and SFX buses under Master, so the settings page can balance them
+	for b in ["Music", "SFX"]:
+		if AudioServer.get_bus_index(b) < 0:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, b)
+			AudioServer.set_bus_send(i, "Master")
 	_scan()
 	add_child(listener)
 	listener.make_current()
@@ -58,6 +65,7 @@ func _ready() -> void:
 		_ui.append(p)
 	for p in [_music_a, _music_b]:
 		p.volume_db = -80.0
+		p.bus = "Music"
 		add_child(p)
 	_skitter.unit_size = 14.0
 	_skitter.volume_db = -80.0
@@ -82,7 +90,19 @@ func _ready() -> void:
 			add_child(p)
 			p.play()
 			_amb.append(p)
+	for c in get_children():
+		if (c is AudioStreamPlayer or c is AudioStreamPlayer3D) and c != _music_a and c != _music_b:
+			c.bus = "SFX"
 	print("AUDIO %d sfx, %d music" % [sfx.size(), music.size()])
+
+
+# Volumes from the settings page, each 0..1.
+func set_volumes(master: float, music_v: float, sfx_v: float) -> void:
+	for pair in [["Master", master], ["Music", music_v], ["SFX", sfx_v]]:
+		var i := AudioServer.get_bus_index(pair[0])
+		if i >= 0:
+			AudioServer.set_bus_volume_db(i, linear_to_db(maxf(pair[1], 0.0001)))
+			AudioServer.set_bus_mute(i, pair[1] <= 0.001 or (pair[0] == "Master" and muted))
 
 
 func _scan() -> void:

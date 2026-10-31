@@ -381,6 +381,8 @@ func _process(delta: float) -> void:
 				game.select([game.heart(game.player)])
 			if args.has("tech"):
 				hud._toggle_tech()
+			if args.has("settings"):
+				hud._open_settings()
 			if args.has("selq"):
 				for s in game.structs:
 					if s.f == game.player and s.alive and s.queue.size() >= 2:
