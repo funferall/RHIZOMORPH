@@ -94,6 +94,7 @@ var paused := false
 var speed := 1.0
 var over := false
 var match_seed := 0       # --match=N varies the AI and the forest between bot games
+var difficulty := "cruel"  # how hard the rival courts push (Data.DIFFICULTY); the menu sets it
 var sim := false          # headless balance run (main.gd --sim): records a summary
 # Which way round the table the AIs press: 1 = each court hunts the next (Court ->
 # Hollow -> Choir -> Court), 2 = the reverse. Alternates by seed so no court always
@@ -1305,6 +1306,9 @@ func _update_rates() -> void:
 		if not fs[f]["alive"]:
 			fs[f]["rate"] = [0.0, 0.0, 0.0]
 			continue
+		if (f != player or bot) and not sim:
+			for k in 3:
+				add[f][k] *= Data.DIFFICULTY[difficulty]["income"]   # a gentler rival court eats less
 		fs[f]["rate"] = add[f]
 		if econ(f) == "parasite":
 			fs[f]["rate"][1] = 0.0
@@ -2136,7 +2140,7 @@ func sim_summary() -> Dictionary:
 	for k in _stats:
 		if str(k).begins_with("cast_") or str(k).begins_with("spor") or str(k).begins_with("built_"):
 			casts[k] = _stats[k]
-	return {"match": match_seed, "rival_step": rival_step, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
+	return {"match": match_seed, "rival_step": rival_step, "difficulty": difficulty, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
 		"alive": alive, "courts": per, "casts": casts, "cpu_mycelium": myc.cpu, "profile_ms": _prof_report()}
 
 

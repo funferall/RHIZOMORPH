@@ -41,7 +41,8 @@ var _tech_faction := -1
 var menu := Control.new()
 var end_panel := Control.new()
 var settings_panel := Control.new()
-var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true}
+var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true, "difficulty": "fair"}
+var _diff_btns := {}
 var _paused_before := false
 const SETTINGS_PATH := "user://settings.cfg"
 var help := Label.new()
@@ -101,13 +102,13 @@ func _ready() -> void:
 	_build_minimap()
 	_build_msgs()
 	_build_tech()
+	_load_settings()
 	_build_menu()
 	_build_end()
 	settings_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	settings_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	settings_panel.visible = false
 	root.add_child(settings_panel)
-	_load_settings()
 
 	get_tree().node_added.connect(func(n):
 		if n is BaseButton:
@@ -1192,7 +1193,7 @@ func _build_menu() -> void:
 	var title := _label("RHIZOMORPH", 64, Color(0.97, 0.88, 0.62), true)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
-	var sub := _label("Three fungal courts. One terrarium. Spread, link your cords, and digest the rest.", 15, DIM)
+	var sub := _label("Three fungal courts. One forest floor. Each eats it a different way.", 15, DIM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(sub)
 	var row := HBoxContainer.new()
@@ -1230,6 +1231,31 @@ func _build_menu() -> void:
 				_menu_cards[i].button_pressed = i == f)
 		_menu_cards.append(b)
 		row.add_child(b)
+	# how hard the rival courts push, chosen once your court is picked
+	var dl := _label("Rival courts", 18, Color(0.97, 0.88, 0.62), true)
+	dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(dl)
+	var drow := HBoxContainer.new()
+	drow.alignment = BoxContainer.ALIGNMENT_CENTER
+	drow.add_theme_constant_override("separation", 12)
+	vb.add_child(drow)
+	var ddesc := _label("", 13, DIM)
+	ddesc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var pick_diff := func(key: String):
+		settings["difficulty"] = key
+		for k in _diff_btns:
+			_diff_btns[k].button_pressed = k == key
+		ddesc.text = Data.DIFFICULTY[key]["desc"]
+	for key in Data.DIFFICULTY_ORDER:
+		var db := Button.new()
+		db.text = Data.DIFFICULTY[key]["name"]
+		db.toggle_mode = true
+		db.custom_minimum_size = Vector2(150, 40)
+		db.pressed.connect(func(): pick_diff.call(key))
+		drow.add_child(db)
+		_diff_btns[key] = db
+	vb.add_child(ddesc)
+	pick_diff.call(settings["difficulty"] if Data.DIFFICULTY.has(settings["difficulty"]) else "fair")
 	var go := Button.new()
 	go.text = "Awaken"
 	go.custom_minimum_size = Vector2(220, 52)
@@ -1238,9 +1264,11 @@ func _build_menu() -> void:
 	go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	go.pressed.connect(func():
 		menu.visible = false
+		_save_settings()
+		game.difficulty = settings["difficulty"]
 		game.start(_menu_choice, false))
 	vb.add_child(go)
-	var tips := _label("Every fruiting body must be linked to your Heart by rhizomorph cords. Cut an enemy cord and everything past it starves.\nMantles on tree roots trade for sugar - but a tree's sugar is split between every mantle on it, friend or foe.", 13, Color(0.8, 0.75, 0.65))
+	var tips := _label("The Court feeds living trees, the Hollow eats the dead, the Choir rides the forest's insects.\nCourt and Hollow buildings live on rhizomorph cords to the Heart - cut a rival's cords and everything past them starves. Esc: settings and controls.", 13, Color(0.8, 0.75, 0.65))
 	tips.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tips.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(tips)
@@ -1383,7 +1411,7 @@ func _on_game_over(won: bool) -> void:
 	vb.custom_minimum_size = Vector2(600, 0)
 	vb.add_theme_constant_override("separation", 16)
 	end_panel.add_child(vb)
-	var t := _label("The terrarium is yours." if won else "Your Heart has rotted.", 40, Color(0.97, 0.88, 0.62) if won else Color(0.9, 0.5, 0.4), true)
+	var t := _label("The forest floor is yours." if won else "Your Heart has rotted.", 40, Color(0.97, 0.88, 0.62) if won else Color(0.9, 0.5, 0.4), true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
 	var s := _label("%d minutes of mycelial war." % int(game.time / 60.0), 15, DIM)

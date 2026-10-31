@@ -174,6 +174,19 @@ const FACTIONS := [
 	},
 ]
 
+# How hard the rival courts push. think: seconds between decisions; army: seconds per extra unit
+# in the army they aim for; attack / raid: when the first wave and the first cord raid come;
+# wave: first wave size; clump: extra enemies a spore action waits for; income: their economy.
+const DIFFICULTY := {
+	"gentle": {"name": "Gentle", "think": 1.6, "army": 26.0, "attack": 420.0, "raid": 480.0, "wave": 9, "clump": 2, "income": 0.8,
+		"desc": "The rival courts grow slowly and leave you alone for the first several minutes. For learning the game."},
+	"fair": {"name": "Fair", "think": 1.2, "army": 17.0, "attack": 270.0, "raid": 240.0, "wave": 7, "clump": 1, "income": 1.0,
+		"desc": "The rival courts build steadily and test you after a few minutes."},
+	"cruel": {"name": "Cruel", "think": 1.0, "army": 12.0, "attack": 160.0, "raid": 95.0, "wave": 6, "clump": 0, "income": 1.0,
+		"desc": "The rival courts expand fast and strike early. No mercy."},
+}
+const DIFFICULTY_ORDER := ["gentle", "fair", "cruel"]
+
 const BUILD_KEYS := ["N", "M", "B", "T", "G", "L", "K", "H", "J"]
 const ABILITY_KEYS := ["Z", "X", "C", "V", "R"]
 

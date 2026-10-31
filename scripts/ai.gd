@@ -24,6 +24,7 @@ var attack_t := 170.0
 var attacking := false
 var raid_t := 95.0
 var tech_order: Array = []
+var p: Dictionary            # this game's difficulty (Data.DIFFICULTY)
 var builder = null          # Choir: the thrall walking off to become a structure
 var scout = null
 var scout_t := 40.0
@@ -38,7 +39,10 @@ func setup(game: Node, faction: int) -> void:
 	eco = fd["economy"]
 	rng.seed = 99 + f * 7 + game.match_seed * 104729
 	think_t = 1.0 + f * 0.33
-	attack_t = 160.0 + rng.randf() * 40.0
+	p = Data.DIFFICULTY[g.difficulty]
+	attack_t = p["attack"] + rng.randf() * 40.0
+	raid_t = p["raid"] + rng.randf() * 30.0
+	wave_size = p["wave"]
 	tech_order = fd["ai_techs"]
 
 
@@ -48,7 +52,7 @@ func tick(dt: float) -> void:
 	think_t -= dt
 	if think_t > 0.0:
 		return
-	think_t = 1.0
+	think_t = p["think"]
 	_research()
 	_train()
 	match eco:
@@ -553,7 +557,7 @@ func _enemy_tree() -> Vector2:
 func _train() -> void:
 	# keep the army near a target that grows with time; past it, save for buildings
 	var army: int = g.pop(f) + g.queued(f)
-	var reserve := 0.0 if army < mini(4 + int(g.time / 12.0), g.pop_cap(f)) else 110.0
+	var reserve := 0.0 if army < mini(4 + int(g.time / p["army"]), g.pop_cap(f)) else 110.0
 	var save := _saving()
 	reserve = maxf(reserve, save[0])
 	for s in _mine():
@@ -578,7 +582,7 @@ func _army() -> void:
 		if u.f == f and u.alive and u.squad == "" and u.summit == Vector2.INF:
 			army.append(u)
 	# raids on supply cords
-	raid_t -= 1.0
+	raid_t -= p["think"]
 	if raid_t <= 0.0 and army.size() >= 7:
 		raid_t = 70.0 + rng.randf() * 40.0
 		var fast := army.duplicate()
@@ -633,7 +637,7 @@ func _army() -> void:
 		if tgt != Vector2.INF:
 			attacking = true
 			wave += 1
-			wave_size = mini(6 + wave * 2, 22)
+			wave_size = mini(p["wave"] + wave * 2, 22)
 			g.order_move(army, tgt, true)
 			return
 	if eco == "parasite" and _hunt(army):
@@ -813,6 +817,6 @@ func _abilities() -> void:
 			if n > bn and g.cast_error(f, ab, p) == "":
 				bn = n
 				best = p
-		if best != Vector2.INF and bn >= (2.0 if vs_structs else 3.0):
+		if best != Vector2.INF and bn >= (2.0 if vs_structs else 3.0) + p["clump"]:
 			g.cast(f, ab, best)
 			return

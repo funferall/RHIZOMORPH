@@ -201,6 +201,15 @@ $G --headless --path . --fixed-fps 10 -- --sim --profile --match=11 --seconds=90
 - **First reading** (12 seeds, before the speed fixes): the Veiled Choir won 10 of 12, and the
   Amanita Court fell first in 9 of 12.
 
+## Difficulty
+
+The start menu has a **Rival courts** row after the court cards: Gentle / Fair / Cruel (`Data.DIFFICULTY`,
+remembered in settings; default Fair). It changes only the rival courts: how often they decide, how fast
+their army target grows, when the first wave and first cord raid come, wave size, how big a clump a spore
+action waits for, and income (Gentle 80%). Cruel is the old behaviour, and the balance harness stays on
+it (`--difficulty=` overrides for test runs). An idle Court lasted 3.9 min on Cruel and 7.5 min on Gentle.
+The Choir's thralls come from insects, so Gentle delays its attacks but not its numbers.
+
 ## Playtests (humans)
 
 Every human game that ends (win or loss) saves the harness summary to `playtests/<date>_<court>.json`:

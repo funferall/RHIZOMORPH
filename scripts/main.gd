@@ -82,6 +82,7 @@ func _ready() -> void:
 		game.board = board
 		game.myc = myc
 		game.match_seed = int(args.get("match", "0"))
+		game.difficulty = args.get("difficulty", "cruel")
 		game.rig = rig
 		add_child(game)
 		var Audio = load("res://scripts/audio.gd")
