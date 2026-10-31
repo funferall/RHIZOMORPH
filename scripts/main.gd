@@ -6,6 +6,7 @@ extends Node3D
 #   --seconds=N        fast-forward N game seconds before showing / screenshotting
 #   --shot=path.png    save a screenshot and quit
 #   --view=yaw,dist,x,z[,bias]  camera for the shot
+#   --nohud            hide the HUD for the shot (with --nofog for the whole board)
 #   --speed=N          game speed multiplier while fast-forwarding
 #   --viewtest         board + mycelium only, with test sources
 #   --showcase         every species lined up
@@ -464,6 +465,8 @@ func _process(delta: float) -> void:
 				var hp: Vector2 = game.hotspot()
 				rig.set_view(rig.yaw, float(args["hot"]) if args["hot"] != "1" else 26.0, Vector3(hp.x, 0, hp.y))
 				rig.snap()
+			if args.has("nohud"):
+				hud.visible = false
 			if args.has("selheart"):
 				game.select([game.heart(game.player)])
 			if args.has("tech"):
