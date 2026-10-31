@@ -72,6 +72,16 @@ const MATS := {
 	"latex": {"base": Color(0.98, 0.55, 0.18), "rough": 0.12, "sss": 0.9},
 	"sapling": {"base": Color(0.86, 0.85, 0.8), "accent": Color(0.1, 0.09, 0.09), "pattern": 6, "pscale": 18.0, "rough": 0.7},
 	"leaf": {"base": Color(0.3, 0.5, 0.13), "accent": Color(0.44, 0.62, 0.2), "pattern": 7, "pscale": 8.0, "rough": 0.7, "sss": 0.6},
+	"oyster": {"base": Color(0.8, 0.78, 0.74), "accent": Color(0.62, 0.6, 0.57), "pattern": 10, "pscale": 22.0, "rough": 0.5, "sss": 0.5},
+	"panther_cap": {"base": Color(0.44, 0.31, 0.19), "accent": Color(0.95, 0.93, 0.86), "pattern": 1, "pscale": 6.5, "bump": 0.03, "rough": 0.4, "sss": 0.25},
+	"yellow_morel": {"base": Color(0.36, 0.27, 0.13), "accent": Color(0.86, 0.76, 0.52), "pattern": 2, "pscale": 6.5, "bump": 0.07, "rough": 0.6, "sss": 0.25},
+	"stinkhorn_cap": {"base": Color(0.11, 0.12, 0.06), "accent": Color(0.27, 0.26, 0.11), "pattern": 5, "pscale": 8.0, "rough": 0.12, "sss": 0.1},
+	"stinkhorn_stem": {"base": Color(0.95, 0.93, 0.88), "accent": Color(0.86, 0.83, 0.77), "pattern": 7, "pscale": 26.0, "bump": 0.012, "rough": 0.8, "sss": 0.5},
+	"honey_dark": {"base": Color(0.3, 0.17, 0.07), "accent": Color(0.14, 0.08, 0.04), "pattern": 6, "pscale": 9.0, "rough": 0.5, "sss": 0.3},
+	"rhizo": {"base": Color(0.03, 0.022, 0.018), "accent": Color(0.1, 0.07, 0.05), "pattern": 8, "pscale": 40.0, "rough": 0.45},
+	"root": {"base": Color(0.22, 0.15, 0.09), "accent": Color(0.12, 0.08, 0.05), "pattern": 8, "pscale": 22.0, "bump": 0.03, "rough": 0.9},
+	"cocoon": {"base": Color(0.86, 0.82, 0.7), "accent": Color(0.7, 0.65, 0.52), "pattern": 8, "pscale": 30.0, "rough": 0.8, "sss": 0.5},
+	"isaria": {"base": Color(0.97, 0.96, 0.92), "accent": Color(0.88, 0.86, 0.8), "pattern": 7, "pscale": 40.0, "bump": 0.02, "rough": 0.95, "sss": 0.6},
 	"earth": {"base": Color(0.24, 0.17, 0.11), "accent": Color(0.33, 0.24, 0.15), "pattern": 7, "pscale": 12.0, "bump": 0.02, "rough": 0.95},
 }
 
@@ -543,6 +553,89 @@ static func _build(b: B, id: String) -> void:
 			b.lathe("earth", PackedVector2Array([Vector2(2.6, -0.1), Vector2(2.0, 0.5), Vector2(1.2, 1.15), Vector2(0.5, 1.5), Vector2(0.001, 1.6)]), 20, Transform3D(Basis(), O))
 
 		# --- the forest's insects, and the Choir's thralls grown from them --------
+		"oyster_shelf":
+			# a log stub with overlapping oyster fans fanning out of its side
+			b.lathe("wood", stem_prof(1.3, 0.85, 0.7), 12, Transform3D(Basis(), O))
+			for i in 7:
+				var y := 0.25 + i * 0.16 + r.randf() * 0.05
+				var R := r.randf_range(0.75, 1.15)
+				var a := r.randf_range(-0.9, 0.9) + (PI if i % 2 else 0.0)
+				var top := PackedVector2Array([Vector2(R + 0.6, y), Vector2(R * 0.8 + 0.6, y + 0.07), Vector2(0.65, y + 0.12)])
+				var under := PackedVector2Array([Vector2(0.65, y - 0.06), Vector2(R * 0.7 + 0.6, y - 0.03), Vector2(R + 0.6, y)])
+				b.lathe("oyster", top, 14, Transform3D(Basis(), O), a, a + 1.1)
+				b.lathe("gill", under, 14, Transform3D(Basis(), O), a, a + 1.1)
+		# --- unit buildings: the Hearts' genera, other species ---------------------
+		"panther_ring":
+			# Amanita pantherina: brown caps flecked with white warts
+			agaric(b, Vector3.ZERO, 2.7, 1.5, "panther_cap")
+			agaric(b, Vector3(1.4, 0, 0.6), 1.9, 1.1, "panther_cap", "stem_white", 0.15)
+			agaric(b, Vector3(-1.1, 0, 0.9), 1.4, 0.85, "panther_cap", "stem_white", 0.2)
+			agaric(b, Vector3(0.3, 0, -1.4), 1.0, 0.6, "panther_cap", "stem_white", 0.1)
+		"morel_blond":
+			# Morchella esculenta: blond, rounder honeycombs than the Heart's dark spires
+			morel(b, O, 2.6, 1.15, 0.0, "yellow_morel")
+			morel(b, Vector3(1.3, 0, 0.5), 2.0, 0.9, 0.12, "yellow_morel")
+			morel(b, Vector3(-1.1, 0, 0.8), 1.7, 0.78, 0.18, "yellow_morel")
+			morel(b, Vector3(0.2, 0, -1.3), 1.4, 0.65, 0.1, "yellow_morel")
+		"common_stinkhorn":
+			# Phallus impudicus: no veil, a slimy olive-black head, unopened "eggs" at the foot
+			for c in [[Vector3.ZERO, 3.2, 0.6], [Vector3(1.2, 0, 0.6), 2.4, 0.5], [Vector3(-1.0, 0, 0.8), 1.9, 0.42]]:
+				var at: Vector3 = c[0]
+				var h: float = c[1]
+				var R: float = c[2]
+				var bas := _rot(r.randf() * TAU, r.randf_range(0.0, 0.12), r.randf() * TAU)
+				b.lathe("volva", PackedVector2Array([Vector2(R * 0.9, 0.0), Vector2(R * 1.05, R * 0.5), Vector2(R * 0.8, R * 0.8), Vector2(R * 0.55, R * 0.6)]), 14, Transform3D(bas, at))
+				b.lathe("stinkhorn_stem", stem_prof(h * 0.82, R * 0.5, R * 0.42), 12, Transform3D(bas, at))
+				b.lathe("stinkhorn_cap", bell_prof(R * 0.62, h * 0.24, 0.05), 14, Transform3D(bas, at + bas * Vector3(0, h * 0.78, 0)))
+			for e in [Vector3(0.9, 0, -0.8), Vector3(-0.6, 0, -0.9)]:
+				b.lathe("egg", egg_prof(0.32, 0.55), 12, Transform3D(Basis(), e))
+		"honey_rot":
+			# Armillaria ostoyae: a dark clump, black bootlace rhizomorphs fanning over the ground
+			for i in 8:
+				var a := TAU * i / 8.0 + r.randf() * 0.5
+				var tilt := r.randf_range(0.12, 0.42)
+				var h := r.randf_range(1.3, 2.3)
+				var bas := _rot(0.0, tilt, a)
+				var R := r.randf_range(0.65, 1.0)
+				b.lathe("honey_stem", stem_prof(h, 0.12, 0.08), 8, Transform3D(bas, O))
+				var top := Transform3D(bas, bas * Vector3(0, h, 0))
+				b.lathe("honey_dark", dome_prof(R, R * 0.32), 14, top)
+				b.lathe("gill", gill_prof(R, 0.08, R * 0.32), 14, top)
+			for i in 7:
+				var a := TAU * i / 7.0 + r.randf() * 0.4
+				var pts := [Vector3(cos(a) * 0.3, 0.05, sin(a) * 0.3)]
+				for k in 3:
+					var d := 1.0 + k * 0.6
+					var w := a + r.randf_range(-0.35, 0.35)
+					pts.append(Vector3(cos(w) * d, 0.04, sin(w) * d))
+				_bent(b, "rhizo", pts, 0.1, 0.04)
+		"root_snare":
+			# the tree's own roots arching up out of the soil, studded with amanita buttons
+			for i in 7:
+				var a := TAU * i / 7.0 + r.randf() * 0.4
+				var d0 := r.randf_range(0.1, 0.4)
+				var d1 := r.randf_range(1.4, 2.1)
+				var h := r.randf_range(0.6, 1.2)
+				var w := r.randf_range(-0.25, 0.25)
+				var mid := (d0 + d1) * 0.5
+				_bent(b, "root", [Vector3(cos(a) * d0, -0.15, sin(a) * d0), Vector3(cos(a) * (d0 + 0.25), h * 0.85, sin(a) * (d0 + 0.25)),
+					Vector3(cos(a + w) * mid, h, sin(a + w) * mid), Vector3(cos(a) * (d1 - 0.3), h * 0.6, sin(a) * (d1 - 0.3)),
+					Vector3(cos(a) * d1, -0.15, sin(a) * d1)], 0.3, 0.12)
+				b.lathe("root", sphere_prof(0.24, 0.8, h * 0.8), 8, Transform3D(Basis(), Vector3(cos(a + w) * mid, 0, sin(a + w) * mid)))
+				agaric(b, Vector3(cos(a + 0.6) * 1.0, 0, sin(a + 0.6) * 1.0), 0.4, 0.26, "agaric_cap", "stem_white", 0.15)
+		"brood_chamber":
+			# a mound of insect cocoons, overgrown with white Isaria clubs
+			b.lathe("earth", PackedVector2Array([Vector2(2.4, -0.1), Vector2(1.8, 0.5), Vector2(0.9, 0.95), Vector2(0.001, 1.05)]), 18, Transform3D(Basis(), O))
+			for i in 9:
+				var a := TAU * i / 9.0 + r.randf() * 0.4
+				var d := r.randf_range(0.5, 1.7)
+				var at := Vector3(cos(a) * d, 1.0 - d * 0.42, sin(a) * d)
+				var bas := Basis(Vector3.UP, r.randf() * TAU) * Basis(Vector3(0, 0, 1), PI * 0.5 - 0.3)
+				b.lathe("cocoon", egg_prof(0.22, 0.75), 10, Transform3D(bas, at))
+			for i in 12:
+				var a := r.randf() * TAU
+				var d := r.randf_range(0.2, 1.8)
+				club(b, Vector3(cos(a) * d, 1.05 - d * 0.42, sin(a) * d), r.randf_range(0.5, 1.1), 0.06, "isaria", r.randf_range(0.0, 0.4), a)
 		"truffle":
 			b.lathe("truffle", sphere_prof(0.42, 0.8, -0.28), 16, Transform3D(Basis(), O))
 			b.lathe("truffle", sphere_prof(0.24, 0.85, -0.16), 12, Transform3D(Basis(), Vector3(0.48, 0, 0.2)))

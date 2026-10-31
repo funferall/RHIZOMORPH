@@ -171,7 +171,8 @@ it is digesting.
 |---|---|---|
 | Heart | research, +2 cellulose/s, +0.5 spores/s | hp 2700 |
 | Rhizomorph Node | network hub | shared |
-| Rot Bracket | +1.8 cellulose/s from a log, snag, or branch deposit | placed on the deposit |
+| Rot Bracket | +1.65 cellulose/s (and 0.165 nitrogen/s) from a log, snag, or branch deposit | placed on the deposit |
+| Oyster Shelf | +0.4 nitrogen/s from nematodes in the wood | placed on a log, snag or branch |
 | Inkcap Bed | gathers and preserves corpses within 10 m, digests litter | |
 | Honey Rot | kills a living tree | root zone, needs Armillaria Bootlaces |
 | Morel Patch | trains Bruiser, Slinger, and Puffball Bomber | |
@@ -186,6 +187,19 @@ moved from the Choir), and Pilobolus Sniper (elite; costs nitrogen).
 
 - **Wildfire** kills everything in the area and leaves Ash, where morels fruit.
 - In Ash, the Hollow's mycelium grows ×2 and digests ×1.5 for 60 s.
+
+**Nitrogen bootstrap (added 2026-10-30, after playtesting showed the Hollow could not raise an army).**
+Wood is very poor in nitrogen, and real wood-rot fungi have ways round that. The Hollow now has all of these:
+- **Oyster Shelf** (*Pleurotus*): built on a log or snag. It traps and digests the nematodes living in the
+  wood, for +0.4 nitrogen/s while the wood lasts. The income rides the cords like a bracket's.
+- **Rot carries nitrogen.** Rot Brackets yield 1 nitrogen for every 10 cellulose (in real logs,
+  nitrogen-fixing bacteria build it up).
+- **The Bruiser costs no nitrogen,** so the Hollow can always field a basic army. Nitrogen buys
+  quality: Slingers, Bombers, Snipers and the lineages.
+- **Reclaiming its own dead:** a Hollow unit dying on Hollow mycelium returns half its nitrogen cost at once.
+- **Hunting insects:** an insect the Hollow kills is eaten where it falls, for +4 nitrogen at once. It
+  leaves no corpse, so the Choir can't raise it. The Hollow now competes with the Choir for insects.
+- **Starting nitrogen** is 120 (was 60).
 
 **What it fears:** running out of food. A Hollow that turtles starves. It also fears a Court
 that keeps every tree healthy.

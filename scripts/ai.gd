@@ -230,12 +230,16 @@ func _build_hollow() -> void:
 		wants.append("morel_patch")
 	if _n("rot_bracket") < 1:
 		wants.append("rot_bracket")
+	if t > 30.0 and _n("oyster_shelf") < 1:
+		wants.append("oyster_shelf")
 	if _n("node") < 2:
 		wants.append("node")
 	if t > 50.0 and _n("inkcap_bed") < 1:
 		wants.append("inkcap_bed")
 	if _n("rot_bracket") < mini(1 + int(t / 80.0), 6):
 		wants.append("rot_bracket")
+	if _n("oyster_shelf") < mini(1 + int(t / 150.0), 3):
+		wants.append("oyster_shelf")
 	if g.has_tech(f, "pilobolus") and _n("pilobolus_bed") == 0:
 		wants.append("pilobolus_bed")
 	if g.has_tech(f, "armillaria") and _n("honey_rot") < 2:
@@ -401,7 +405,7 @@ func _reach_for(sid: String) -> Vector2:
 				if d < bd:
 					bd = d
 					best = tr["pos"]
-		"rot_bracket":
+		"rot_bracket", "oyster_shelf":
 			for dep in g.forest.deposits:
 				if dep["kind"] in ["log", "snag", "branch"] and dep["c"] > 80.0:
 					var q: Vector2 = dep["a"] + (dep["b"] - dep["a"]) * clampf((h.pos - dep["a"]).dot(dep["b"] - dep["a"]) / maxf((dep["b"] - dep["a"]).length_squared(), 0.01), 0.0, 1.0)

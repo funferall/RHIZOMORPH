@@ -1,0 +1,179 @@
+{
+ "alive": [
+  2
+ ],
+ "casts": {
+  "built_agaric_ring": 2,
+  "built_birds_nest": 1,
+  "built_brood_chamber": 1,
+  "built_clathrus_cage": 4,
+  "built_cordyceps_spire": 1,
+  "built_cortina_thicket": 1,
+  "built_earthstar": 5,
+  "built_mantle": 8,
+  "built_morel_patch": 3,
+  "built_node": 15,
+  "built_nursery": 1,
+  "built_root_snare": 1,
+  "built_rot_bracket": 7,
+  "built_stinkhorn_lure": 6,
+  "built_truffle": 3,
+  "cast_haze": 6,
+  "cast_lure": 3,
+  "spor2": 57
+ },
+ "courts": [
+  {
+   "alive": false,
+   "court": "amanita",
+   "died": 270.789895848488,
+   "hist": [
+    [
+     8.6,
+     2.2,
+     0.7,
+     8
+    ],
+    [
+     8.7,
+     2.5,
+     0.9,
+     15
+    ],
+    [
+     9.0,
+     2.5,
+     0.9,
+     14
+    ],
+    [
+     6.5,
+     6.2,
+     1.0,
+     1
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0
+    ]
+   ],
+   "pop": 0,
+   "structs": 0,
+   "techs": 3,
+   "trained": 30
+  },
+  {
+   "alive": false,
+   "court": "morel",
+   "died": 378.387516737377,
+   "hist": [
+    [
+     10.0,
+     0.0,
+     0.7,
+     3
+    ],
+    [
+     10.4,
+     0.0,
+     0.8,
+     9
+    ],
+    [
+     6.2,
+     0.0,
+     1.2,
+     10
+    ],
+    [
+     5.9,
+     0.0,
+     1.2,
+     5
+    ],
+    [
+     7.9,
+     3.0,
+     1.8,
+     5
+    ],
+    [
+     6.0,
+     4.5,
+     0.7,
+     2
+    ]
+   ],
+   "pop": 0,
+   "structs": 0,
+   "techs": 0,
+   "trained": 7
+  },
+  {
+   "alive": true,
+   "court": "veiled",
+   "died": -1.0,
+   "hist": [
+    [
+     2.2,
+     0.0,
+     1.4,
+     11
+    ],
+    [
+     2.6,
+     0.0,
+     1.8,
+     11
+    ],
+    [
+     3.0,
+     0.0,
+     2.2,
+     16
+    ],
+    [
+     3.4,
+     0.0,
+     2.6,
+     30
+    ],
+    [
+     3.8,
+     0.0,
+     3.0,
+     33
+    ],
+    [
+     4.0,
+     0.0,
+     3.4,
+     32
+    ]
+   ],
+   "pop": 30,
+   "structs": 13,
+   "techs": 8,
+   "trained": 16
+  }
+ ],
+ "cpu_mycelium": false,
+ "date": "2026-10-30T20:48:46",
+ "human": "morel",
+ "match": 0,
+ "profile_ms": {
+  "mycelium_cpu": 0
+ },
+ "rival_step": 1,
+ "time": 378.4,
+ "winner": 2,
+ "won": false
+}

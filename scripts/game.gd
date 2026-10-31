@@ -277,7 +277,7 @@ func _spawn_struct(f: int, sid: String, p: Vector2, instant := false) -> Ent:
 	e.mi = MeshInstance3D.new()
 	e.mi.mesh = FungusLib.mesh(d["species"])
 	var c: Color = Data.faction_color(f)
-	e.mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, 0.3))
+	e.mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, d.get("tint", 0.3)))   # some keep their own colours
 	e.node.add_child(e.mi)
 	_make_ring(e, e.radius * 2.6)
 	e.rally = p + (Vector2.ZERO - p).normalized() * (e.radius + 3.0)
@@ -1895,8 +1895,14 @@ func _kill(e: Ent, killer: Ent) -> void:
 		_burst(_v3(e.pos, 0.5), col.lerp(Color(0.9, 0.85, 0.7), 0.5), 30 if e.f != Data.NEUTRAL else 10, 3.5, 0.8)
 		if e.f != Data.NEUTRAL:
 			emit_signal("sound", "unit_death", _v3(e.pos))
-		var ch := _infector(e, killer)
-		if ch >= 0 and e.d.get("host", "x") == "":
+		var hollow_meal: bool = e.f == Data.NEUTRAL and killer != null and econ(killer.f) == "saprotroph"
+		if e.f != Data.NEUTRAL and econ(e.f) == "saprotroph" and forest.owns(e.f, e.pos):
+			# the colony reabsorbs its own dead
+			res(e.f)[1] += e.d["cost"][1] * Data.RECLAIM
+		var ch := -1 if hollow_meal else _infector(e, killer)
+		if hollow_meal:
+			res(killer.f)[1] += Data.INSECT_MEAL   # eaten where it fell: no corpse, nothing for the Choir
+		elif ch >= 0 and e.d.get("host", "x") == "":
 			res(ch)[2] = minf(res(ch)[2] + 4.0, spore_cap(ch))   # too small to ride: just spores
 		elif ch >= 0 and thralls(ch) < pop_cap(ch):
 			_raise_thrall(e, ch)

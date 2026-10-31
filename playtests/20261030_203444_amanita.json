@@ -1,0 +1,142 @@
+{
+ "alive": [
+  1,
+  2
+ ],
+ "casts": {
+  "built_agaric_ring": 1,
+  "built_clathrus_cage": 4,
+  "built_cordyceps_spire": 1,
+  "built_cortina_thicket": 1,
+  "built_earthstar": 2,
+  "built_inkcap_bed": 2,
+  "built_mantle": 4,
+  "built_morel_patch": 4,
+  "built_node": 15,
+  "built_root_snare": 1,
+  "built_rot_bracket": 4,
+  "built_stinkhorn_lure": 6,
+  "built_truffle": 7,
+  "cast_lure": 2,
+  "cast_volley": 3,
+  "spor2": 39
+ },
+ "courts": [
+  {
+   "alive": false,
+   "court": "amanita",
+   "died": 294.691919000003,
+   "hist": [
+    [
+     9.1,
+     1.8,
+     0.5,
+     3
+    ],
+    [
+     9.4,
+     6.1,
+     0.9,
+     3
+    ],
+    [
+     9.4,
+     6.3,
+     0.9,
+     3
+    ],
+    [
+     6.5,
+     0.0,
+     0.5,
+     3
+    ]
+   ],
+   "pop": 0,
+   "structs": 3,
+   "techs": 2,
+   "trained": 3
+  },
+  {
+   "alive": true,
+   "court": "morel",
+   "died": -1.0,
+   "hist": [
+    [
+     7.4,
+     0.0,
+     0.6,
+     8
+    ],
+    [
+     11.2,
+     0.0,
+     0.9,
+     9
+    ],
+    [
+     13.4,
+     0.0,
+     1.2,
+     8
+    ],
+    [
+     13.0,
+     0.0,
+     1.4,
+     0
+    ]
+   ],
+   "pop": 6,
+   "structs": 19,
+   "techs": 1,
+   "trained": 13
+  },
+  {
+   "alive": true,
+   "court": "veiled",
+   "died": -1.0,
+   "hist": [
+    [
+     2.2,
+     0.0,
+     1.4,
+     10
+    ],
+    [
+     2.6,
+     0.0,
+     1.8,
+     13
+    ],
+    [
+     3.0,
+     0.0,
+     2.2,
+     25
+    ],
+    [
+     3.4,
+     0.0,
+     2.6,
+     27
+    ]
+   ],
+   "pop": 17,
+   "structs": 10,
+   "techs": 6,
+   "trained": 9
+  }
+ ],
+ "cpu_mycelium": false,
+ "date": "2026-10-30T20:34:44",
+ "human": "amanita",
+ "match": 0,
+ "profile_ms": {
+  "mycelium_cpu": 0
+ },
+ "rival_step": 1,
+ "time": 294.7,
+ "winner": -1,
+ "won": false
+}

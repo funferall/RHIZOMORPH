@@ -315,7 +315,11 @@ func _catalog() -> void:
 		if f < 3 and e["kind"] != "decor" and e["kind"] != "prop":
 			var c: Color = Data.faction_color(f)
 			var thrall: bool = e["id"].begins_with("t_") or e["id"] == "u_zombie"
-			mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, 0.18 if thrall else (0.45 if e["kind"] == "unit" else 0.3)))
+			var stint := 0.3
+			for sid in Data.STRUCTURES:
+				if Data.STRUCTURES[sid]["species"] == e["id"]:
+					stint = Data.STRUCTURES[sid].get("tint", 0.3)
+			mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, 0.18 if thrall else (0.45 if e["kind"] == "unit" else stint)))
 		if e["kind"] in ["unit", "insect"]:
 			mi.set_instance_shader_parameter("walk", 0.6)
 		add_child(mi)

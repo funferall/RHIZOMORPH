@@ -46,6 +46,10 @@ const CORPSE_RATE := 1.5      # nitrogen/s drawn from a corpse under Hollow myce
 const CORPSE_LIFE := 60.0
 const SOIL_SHARE := 0.35      # the Hollow digests bare soil at this fraction of the Court's rate
 const HONEY_ROT := 0.02       # vigor/s a Honey Rot drains from its tree
+const OYSTER_RATE := 0.4      # nitrogen/s an Oyster Shelf gets from the nematodes it traps
+const ROT_NITROGEN := 0.1     # nitrogen per cellulose a Rot Bracket digests (bacteria fix it in the wood)
+const RECLAIM := 0.5          # share of its nitrogen cost a Hollow unit returns dying on Hollow ground
+const INSECT_MEAL := 4.0      # nitrogen the Hollow gets at once for an insect it kills
 
 # --- the Choir's hosts ---
 const THRALL_DECAY := 0.0055  # fraction of max hp lost per second
@@ -145,10 +149,10 @@ const FACTIONS := [
 		"motto": "Every fight is a feast.",
 		"economy": "saprotroph",
 		"res_names": ["Cellulose", "Nitrogen", "Spores"],
-		"start_res": [280.0, 60.0, 30.0],
+		"start_res": [280.0, 120.0, 30.0],
 		"starters": ["bruiser", "bruiser", "slinger"],
 		"heart": "heart_morel",
-		"build": ["node", "rot_bracket", "inkcap_bed", "morel_patch", "earthstar", "birds_nest", "honey_rot", "pilobolus_bed"],
+		"build": ["node", "rot_bracket", "oyster_shelf", "inkcap_bed", "morel_patch", "earthstar", "birds_nest", "honey_rot", "pilobolus_bed"],
 		"abilities": ["volley", "wildfire", "giant_puffball"],
 		"techs": ["exoenzymes", "necrophagy", "armillaria", "pilobolus", "pyrophilous", "calvatia", "humus_engine"],
 		"ai_techs": ["exoenzymes", "necrophagy", "armillaria", "pilobolus", "pyrophilous", "calvatia", "humus_engine"],
@@ -170,7 +174,7 @@ const FACTIONS := [
 	},
 ]
 
-const BUILD_KEYS := ["N", "M", "B", "T", "G", "L", "K", "H"]
+const BUILD_KEYS := ["N", "M", "B", "T", "G", "L", "K", "H", "J"]
 const ABILITY_KEYS := ["Z", "X", "C", "V", "R"]
 
 # radius: footprint / click radius. myc: radius of mycelium this structure feeds.
@@ -192,9 +196,9 @@ const STRUCTURES := {
 	# --- Amanita Court ---
 	"mantle": {"name": "Hartig Mantle", "species": "chanterelle", "cost": [70, 0], "hp": 360, "build": 9.0, "radius": 1.6, "myc": 6.0, "on": "tree",
 		"desc": "Sheathes a tree's roots. Pays it 0.6 minerals/s and the tree pays back SUGAR - more the healthier it grows. Linked trees pool their sugar."},
-	"agaric_ring": {"name": "Fly Agaric Ring", "species": "fly_agaric", "cost": [100, 15], "hp": 650, "build": 11.0, "radius": 2.4, "myc": 7.0, "trains": ["wartling", "spitter"],
-		"desc": "Fruiting body. Trains Wartlings and Muscarine Spitters."},
-	"root_snare": {"name": "Root Snare", "species": "clathrus", "cost": [60, 30], "hp": 520, "build": 10.0, "radius": 1.8, "myc": 5.0, "on": "tree",
+	"agaric_ring": {"name": "Panther Cap Ring", "species": "panther_ring", "cost": [100, 15], "hp": 650, "build": 11.0, "radius": 2.4, "myc": 7.0, "trains": ["wartling", "spitter"],
+		"desc": "Amanita pantherina, the Heart's darker cousin. Trains Wartlings and Muscarine Spitters."},
+	"root_snare": {"name": "Root Snare", "species": "root_snare", "tint": 0.08, "cost": [60, 30], "hp": 520, "build": 10.0, "radius": 1.8, "myc": 5.0, "on": "tree",
 		"attack": {"dmg": 9, "range": 9.5, "cd": 0.9, "slow": 0.5, "slow_t": 2.0, "shot": "spit", "vigor": true},
 		"desc": "The tree's own roots, turned. Grips and slows. Hits harder the healthier its tree."},
 	"cortina_thicket": {"name": "Cortina Thicket", "species": "cortina_thicket", "cost": [100, 30], "hp": 600, "build": 11.0, "radius": 2.2, "myc": 6.0, "on": "tree", "fed_tree": true, "trains": ["milkcap", "webcap"],
@@ -209,31 +213,33 @@ const STRUCTURES := {
 
 	# --- Morel Hollow ---
 	"rot_bracket": {"name": "Rot Bracket", "species": "bracket", "cost": [80, 0], "hp": 500, "build": 10.0, "radius": 1.8, "myc": 6.0, "on": "deposit",
-		"desc": "Ganoderma shelf on a log, snag or fallen branch. Digests it for 1.65 cellulose/s until nothing is left."},
+		"desc": "Ganoderma shelf on a log, snag or fallen branch. Digests it for 1.65 cellulose/s (and a little nitrogen) until nothing is left."},
+	"oyster_shelf": {"name": "Oyster Shelf", "species": "oyster_shelf", "cost": [70, 0], "hp": 420, "build": 9.0, "radius": 1.6, "myc": 5.0, "on": "deposit",
+		"desc": "Pleurotus on a log, snag or fallen branch. Its hyphae trap and digest the nematodes living in the wood: +0.4 nitrogen/s for as long as the wood lasts."},
 	"inkcap_bed": {"name": "Inkcap Bed", "species": "inkcap_bed", "cost": [90, 0], "hp": 420, "build": 9.0, "radius": 1.8, "myc": 7.0, "gather": 10.0,
 		"desc": "Shaggy inkcaps deliquesce over the dead. Pulls corpses within 10 m in and keeps them from rotting away, and digests leaf litter nearby."},
-	"morel_patch": {"name": "Morel Patch", "species": "morel", "cost": [120, 0], "hp": 760, "build": 11.0, "radius": 2.4, "myc": 7.0, "spores": 0.1, "trains": ["bruiser", "slinger", "bomber"],
-		"desc": "Fruiting body. Trains Morel Bruisers, Elf-Cup Slingers and Puffball Bombers."},
+	"morel_patch": {"name": "Morel Patch", "species": "morel_blond", "cost": [120, 0], "hp": 760, "build": 11.0, "radius": 2.4, "myc": 7.0, "spores": 0.1, "trains": ["bruiser", "slinger", "bomber"],
+		"desc": "Yellow morels (Morchella esculenta). Trains Morel Bruisers, Elf-Cup Slingers and Puffball Bombers."},
 	"earthstar": {"name": "Earthstar", "species": "earthstar", "cost": [100, 0], "hp": 600, "build": 10.0, "radius": 1.8, "myc": 5.0, "spores": 0.2,
 		"attack": {"dmg": 15, "range": 7.5, "cd": 1.3, "splash": 2.6, "shot": "puff"},
 		"desc": "Geastrum tower. Bellows clouds of spores that hit everything nearby. +0.2 spores/s."},
 	"birds_nest": {"name": "Bird's Nest", "species": "birds_nest", "cost": [110, 15], "hp": 480, "build": 10.0, "radius": 1.8, "myc": 5.0,
 		"attack": {"dmg": 22, "range": 13.0, "cd": 2.4, "splash": 2.2, "shot": "egg", "arc": true},
 		"desc": "Cyathus splash-cup artillery. Long range, lobs peridioles."},
-	"honey_rot": {"name": "Honey Rot", "species": "armillaria", "cost": [60, 20], "hp": 380, "build": 9.0, "radius": 1.6, "myc": 5.0, "on": "tree", "req": "armillaria",
+	"honey_rot": {"name": "Honey Rot", "species": "honey_rot", "tint": 0.08, "cost": [60, 20], "hp": 380, "build": 9.0, "radius": 1.6, "myc": 5.0, "on": "tree", "req": "armillaria",
 		"desc": "Armillaria in a living tree's roots. Drains its vigor until it dies as a snag - a feast for brackets, and a tree the Court can no longer use."},
 	"pilobolus_bed": {"name": "Pilobolus Bed", "species": "pilobolus", "cost": [130, 40], "hp": 560, "build": 14.0, "radius": 2.2, "myc": 7.0, "trains": ["sniper"], "req": "pilobolus",
 		"desc": "Dung-fungus hat-throwers. Trains Pilobolus Snipers."},
 
 	# --- Veiled Choir: no cords; each grows out of a sacrificed thrall ---
-	"stinkhorn_lure": {"name": "Stinkhorn Lure", "species": "veiled_lady", "cost": [60, 0], "hp": 480, "build": 8.0, "radius": 2.0, "myc": 6.0, "spores": 0.4, "income": 0.4, "lure": 18.0,
-		"desc": "Veiled Lady stinkhorn. Its carrion stench pulls insects within 18 m in and infects them. Breeds flies. +0.4 biomass/s, +0.4 spores/s."},
+	"stinkhorn_lure": {"name": "Stinkhorn Lure", "species": "common_stinkhorn", "cost": [60, 0], "hp": 480, "build": 8.0, "radius": 2.0, "myc": 6.0, "spores": 0.4, "income": 0.4, "lure": 18.0,
+		"desc": "Common stinkhorn (Phallus impudicus). Its carrion stench pulls insects within 18 m in and infects them. Breeds flies. +0.4 biomass/s, +0.4 spores/s."},
 	"clathrus_cage": {"name": "Clathrus Cage", "species": "clathrus", "cost": [80, 0], "hp": 520, "build": 10.0, "radius": 1.8, "myc": 5.0,
 		"attack": {"dmg": 11, "range": 9.5, "cd": 0.9, "slow": 0.45, "slow_t": 2.0, "shot": "spit"},
 		"desc": "Red latticed stinkhorn tower. Its slime slows what it hits."},
 	"cordyceps_spire": {"name": "Cordyceps Spire", "species": "cordyceps", "cost": [90, 0], "hp": 700, "build": 12.0, "radius": 2.2, "myc": 7.0, "trains": ["stalker"], "req": "hypocreales",
 		"desc": "Parasitic Hypocreales. Grows Cordyceps Stalkers from spores."},
-	"brood_chamber": {"name": "Brood Chamber", "species": "giant_puffball", "cost": [140, 0], "hp": 900, "build": 14.0, "radius": 2.6, "myc": 8.0, "req": "brood", "brood": 9.0,
+	"brood_chamber": {"name": "Brood Chamber", "species": "brood_chamber", "cost": [140, 0], "hp": 900, "build": 14.0, "radius": 2.6, "myc": 8.0, "req": "brood", "brood": 9.0,
 		"desc": "Thralls within 9 m stop decaying and heal 3 hp/s."},
 }
 
@@ -251,7 +257,7 @@ const UNITS := {
 		"desc": "Lactarius. Bleeds sticky orange latex when struck: melee attackers are slowed and stung."},
 	"webcap": {"name": "Violet Webcap", "species": "u_webcap", "cost": [18, 22], "hp": 70, "dmg": 7, "range": 8.0, "cd": 1.4, "speed": 5.4, "train": 6.0, "shot": "web", "root": 1.2,
 		"desc": "Cortinarius violaceus. Spits cobweb veil that roots its target in place for a moment."},
-	"bruiser": {"name": "Morel Bruiser", "species": "u_bruiser", "cost": [32, 7], "hp": 140, "dmg": 12, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 5.5, "regen": 1.4, "shot": "",
+	"bruiser": {"name": "Morel Bruiser", "species": "u_bruiser", "cost": [32, 0], "hp": 140, "dmg": 12, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 5.5, "regen": 1.4, "shot": "",
 		"desc": "Honeycombed tank. Regenerates."},
 	"slinger": {"name": "Elf-Cup Slinger", "species": "u_slinger", "cost": [32, 8], "hp": 75, "dmg": 10, "range": 7.5, "cd": 1.15, "speed": 5.4, "train": 5.5, "regen": 0.8, "shot": "puff",
 		"desc": "Scarlet cup that fires its asci like a cannon."},

@@ -487,7 +487,12 @@ func _hollow(f: int, out: Array) -> void:
 			var r: float = Data.BRACKET_RATE * exo
 			s.dep["drain_c"] += r
 			g.flows.append([s, 0, r])   # carried home along the cords
+			g.flows.append([s, 1, r * Data.ROT_NITROGEN])
 			out[2] += r * 0.02
+		elif s.id == "oyster_shelf" and not s.dep.is_empty() and not s.dep.get("gone", false) and s.dep["c"] > 0.0:
+			# nematode traps: nitrogen from the wood's own fauna, a slow nibble at the wood itself
+			s.dep["drain_c"] += 0.2
+			g.flows.append([s, 1, Data.OYSTER_RATE * necro])
 		elif s.id == "inkcap_bed":
 			beds.append(s)
 	for d in deposits:
