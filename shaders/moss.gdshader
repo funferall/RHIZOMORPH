@@ -14,11 +14,14 @@ uniform sampler2D myc_tex : filter_linear, repeat_disable;
 uniform sampler2D sub_tex : filter_linear, repeat_disable;
 uniform vec2 half_size = vec2(48.0, 36.0);
 uniform float shells = 20.0;
+instance uniform float shells_drawn = 20.0;   // this tile's level of detail: its shells span the full height
 uniform float moss_h = 0.5;
 uniform float strand_freq = 34.0;
 
 varying vec3 wpos;
 varying float shell;
+varying float vmask;     // moss coverage: slow-varying, so per vertex
+varying vec2 vlean;      // strand lean, likewise
 
 float moss_mask(vec2 p) {
 	vec2 uv = (p + half_size) / (half_size * 2.0);
@@ -34,9 +37,11 @@ float moss_mask(vec2 p) {
 }
 
 void vertex() {
-	shell = (float(INSTANCE_ID) + 1.0) / shells;
+	shell = (float(INSTANCE_ID) + 1.0) / max(shells_drawn, 1.0);
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	float mask = moss_mask(w.xz);
+	vmask = mask;
+	vlean = (vec2(vnoise(w.xz * 0.6), vnoise(w.xz * 0.6 + 5.0)) - 0.5) * 0.9;
 	float clump = 0.5 + 0.9 * fbm(w.xz * 0.45);
 	VERTEX += NORMAL * shell * moss_h * clump * max(mask, 0.05);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -44,7 +49,7 @@ void vertex() {
 
 void fragment() {
 	vec2 p = wpos.xz;
-	float m = moss_mask(p);
+	float m = vmask;
 	if (m < 0.05) {
 		discard;
 	}
@@ -53,7 +58,7 @@ void fragment() {
 	float dome = 1.0 - smoothstep(0.1, 0.8, cv.x);
 	float gap = smoothstep(0.0, 0.14, cv.y);
 	// strands lean with height so the shells do not stack into visible discs
-	vec2 lean = (vec2(vnoise(p * 0.6), vnoise(p * 0.6 + 5.0)) - 0.5) * 0.9;
+	vec2 lean = vlean;
 	vec2 q = p * strand_freq + lean * shell * 1.5;
 	vec2 cell = floor(q);
 	vec2 local = fract(q) - 0.5;

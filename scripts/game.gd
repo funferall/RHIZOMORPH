@@ -1069,6 +1069,7 @@ func select_same_type(e: Ent) -> void:
 func _process(delta: float) -> void:
 	if not started:
 		return
+	var tproc := _prof_t()
 	if _ff_left > 0.0:
 		_ff_left -= delta
 		if _ff_left <= 0.0:
@@ -1081,8 +1082,11 @@ func _process(delta: float) -> void:
 	var tp := _prof_t()
 	_push_sources()
 	_prof("push_sources", tp)
+	tp = _prof_t()
 	if not sim:
 		_update_visuals(delta)
+	_prof("visuals", tp)
+	_prof("game_process_total", tproc)
 
 
 # --profile: wall time per phase of the simulation, reported in the sim summary.

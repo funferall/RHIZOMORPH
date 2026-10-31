@@ -162,6 +162,8 @@ func _process(delta: float) -> void:
 	var readback := _readback_t <= 0.0
 	if readback:
 		_readback_t = READBACK_EVERY
+	if OS.get_cmdline_user_args().has("--perf-nomyc"):
+		return   # perf test: GPU mycelium off
 	RenderingServer.call_on_render_thread(_gpu_step.bind(dt, _count, _src.to_byte_array(), readback))
 
 

@@ -201,6 +201,21 @@ $G --headless --path . --fixed-fps 10 -- --sim --profile --match=11 --seconds=90
 - **First reading** (12 seeds, before the speed fixes): the Veiled Choir won 10 of 12, and the
   Amanita Court fell first in 9 of 12.
 
+## Performance (2026-10-30)
+
+`--fpstest[=camera distance]` fast-forwards (with `--seconds`), turns vsync off, frames the biggest fight
+and times 20 s at 1x. It prints average and 1%-low FPS plus a CPU/GPU split. `--perf-nomoss`,
+`--perf-nofx`, `--perf-noshadow` and `--perf-nomyc` switch suspects off, and `--fsr --scale=0.77` tests
+upscaling. RTX 4060 laptop, 1600x900, mid-game, about 100 units:
+- **Baseline:** 23 fps, GPU 37.7 ms. The 20-shell moss alone cost about 22 ms; post-processing, shadows
+  and the mycelium compute were each under 2 ms.
+- **Moss fix:** the moss now draws in 24 m tiles (frustum-culled), each with distance LOD (20 shells near,
+  down to 5 far, spread over the same height via the `shells_drawn` instance uniform), and the mask and
+  lean are computed per vertex. That gives 37 fps (GPU 22 ms) with no visible change.
+- **FSR2:** Quality (77%) gives 39.5 fps; Performance (59%) gives 54 fps. Settings > Render quality, default
+  FSR Quality. Settings > Show frames per second.
+- **Next limit:** the CPU, at roughly 18-25 ms per frame.
+
 ## Difficulty
 
 The start menu has a **Rival courts** row after the court cards: Gentle / Fair / Cruel (`Data.DIFFICULTY`,

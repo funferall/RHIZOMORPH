@@ -41,7 +41,8 @@ var _tech_faction := -1
 var menu := Control.new()
 var end_panel := Control.new()
 var settings_panel := Control.new()
-var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true, "difficulty": "fair"}
+var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true, "difficulty": "fair", "render": "quality", "show_fps": false}
+const RENDER_MODES := {"native": ["Native", 1.0], "quality": ["FSR Quality", 0.77], "balanced": ["FSR Balanced", 0.67], "performance": ["FSR Performance", 0.59]}
 var _diff_btns := {}
 var _paused_before := false
 const SETTINGS_PATH := "user://settings.cfg"
@@ -1295,6 +1296,13 @@ func _save_settings() -> void:
 func _apply_settings() -> void:
 	if audio:
 		audio.set_volumes(settings["master"], settings["music"], settings["sfx"])
+	# render scale: FSR2 upscales a smaller 3D render (and does its own anti-aliasing)
+	var vp := root.get_viewport()
+	var rm: Array = RENDER_MODES.get(settings["render"], RENDER_MODES["quality"])
+	if not OS.get_cmdline_user_args().has("--fsr") and not OS.get_cmdline_user_args().has("--fpstest"):
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR if rm[1] >= 1.0 else Viewport.SCALING_3D_MODE_FSR2
+		vp.scaling_3d_scale = rm[1]
+		vp.use_taa = rm[1] >= 1.0
 	var want := DisplayServer.WINDOW_MODE_FULLSCREEN if settings["fullscreen"] else DisplayServer.WINDOW_MODE_WINDOWED
 	if DisplayServer.window_get_mode() != want and DisplayServer.get_name() != "headless":
 		DisplayServer.window_set_mode(want)
@@ -1359,7 +1367,23 @@ func _build_settings() -> void:
 		h.add_child(sl)
 		h.add_child(pct)
 		vb.add_child(h)
-	for row in [["fullscreen", "Fullscreen"], ["edge_pan", "Scroll at the screen edge"]]:
+	var rh := HBoxContainer.new()
+	rh.add_theme_constant_override("separation", 12)
+	var rl := _label("Render quality", 15, TEXT)
+	rl.custom_minimum_size = Vector2(150, 0)
+	rh.add_child(rl)
+	var ob := OptionButton.new()
+	var keys := ["native", "quality", "balanced", "performance"]
+	for k in keys:
+		ob.add_item("%s (%d%%)" % [RENDER_MODES[k][0], int(RENDER_MODES[k][1] * 100)])
+	ob.selected = maxi(keys.find(settings["render"]), 0)
+	ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ob.item_selected.connect(func(i: int):
+		settings["render"] = keys[i]
+		_apply_settings())
+	rh.add_child(ob)
+	vb.add_child(rh)
+	for row in [["fullscreen", "Fullscreen"], ["edge_pan", "Scroll at the screen edge"], ["show_fps", "Show frames per second"]]:
 		var key: String = row[0]
 		var cb := CheckBox.new()
 		cb.text = row[1]
@@ -1454,7 +1478,8 @@ func _process(delta: float) -> void:
 	var w: String = {"rain": "Rain", "dry": "Dry spell", "wind": "Windstorm"}.get(game.weather.now, "")
 	if w == "" and game.weather.next_t <= game.weather.ANNOUNCE:
 		w = "%s in %ds" % [{"rain": "Rain", "dry": "Dry spell", "wind": "Windstorm"}[game.weather.next], int(game.weather.next_t)]
-	info_lbl.text = "%s%s  x%s   %d:%02d%s" % ["PAUSED  " if game.paused else "", Data.FACTIONS[game.player]["name"], str(game.speed), int(game.time) / 60, int(game.time) % 60, ("
+	var fps := ("   %d fps" % Engine.get_frames_per_second()) if settings["show_fps"] else ""
+	info_lbl.text = "%s%s  x%s   %d:%02d%s%s" % ["PAUSED  " if game.paused else "", Data.FACTIONS[game.player]["name"], str(game.speed), int(game.time) / 60, int(game.time) % 60, fps, ("
 " + w) if w != "" else ""]
 	pill.queue_redraw()
 	overlay.queue_redraw()

@@ -20,6 +20,8 @@ var sub_img: Image
 
 var terrain_mat: ShaderMaterial
 var moss_mat: ShaderMaterial
+var moss_tiles: Array = []     # [MultiMeshInstance3D, centre] per 24 m tile, for distance level of detail
+const MOSS_TILE := 24.0
 var sides_mat: ShaderMaterial
 var water_mat: ShaderMaterial
 var bark_mats: Array[ShaderMaterial] = []
@@ -271,19 +273,89 @@ func _build_moss(myc_texture: Texture2D) -> void:
 	moss_mat.set_shader_parameter("half_size", Vector2(Data.HALF_W, Data.HALF_D))
 	moss_mat.set_shader_parameter("sub_tex", _sub_texture())
 	moss_mat.set_shader_parameter("shells", float(MOSS_SHELLS))
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = _grid_mesh(2)
-	mm.instance_count = MOSS_SHELLS
-	for i in MOSS_SHELLS:
-		mm.set_instance_transform(i, Transform3D.IDENTITY)
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = moss_mat
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mmi.custom_aabb = AABB(Vector3(-Data.HALF_W, -3, -Data.HALF_D), Vector3(Data.HALF_W * 2, 10, Data.HALF_D * 2))
-	add_child(mmi)
+	# tiles, so the camera culls what it can't see and far tiles draw fewer shells
+	var step := 2
+	var per := int(MOSS_TILE * VRES / step) * step
+	var j0 := 0
+	while j0 < nz - 1:
+		var i0 := 0
+		var j1 := mini(j0 + per, nz - 1)
+		while i0 < nx - 1:
+			var i1 := mini(i0 + per, nx - 1)
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = _grid_part(step, i0, j0, i1, j1)
+			mm.instance_count = MOSS_SHELLS
+			for k in MOSS_SHELLS:
+				mm.set_instance_transform(k, Transform3D.IDENTITY)
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.material_override = moss_mat
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var x0 := -Data.HALF_W + float(i0) / VRES
+			var z0 := -Data.HALF_D + float(j0) / VRES
+			var w := float(i1 - i0) / VRES
+			var d := float(j1 - j0) / VRES
+			mmi.custom_aabb = AABB(Vector3(x0, -3, z0), Vector3(w, 10, d))
+			add_child(mmi)
+			moss_tiles.append([mmi, Vector3(x0 + w * 0.5, 0.0, z0 + d * 0.5)])
+			i0 = i1
+		j0 = j1
 
+
+# Near tiles draw every shell; far ones fewer, spread over the same height
+# (strands far away are smaller than a pixel anyway).
+func update_moss_lod(cam: Vector3) -> void:
+	for t in moss_tiles:
+		var d: float = cam.distance_to(t[1])
+		var n := clampi(roundi(lerpf(float(MOSS_SHELLS), 5.0, smoothstep(28.0, 120.0, d))), 5, MOSS_SHELLS)
+		var mmi: MultiMeshInstance3D = t[0]
+		if mmi.multimesh.visible_instance_count != n:
+			mmi.multimesh.visible_instance_count = n
+			mmi.set_instance_shader_parameter("shells_drawn", float(n))
+
+
+# The ground mesh for vertices [i0..i1] x [j0..j1] at the given step.
+func _grid_part(step: int, i0: int, j0: int, i1: int, j1: int) -> ArrayMesh:
+	var cx := (i1 - i0) / step + 1
+	var cz := (j1 - j0) / step + 1
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	verts.resize(cx * cz)
+	norms.resize(cx * cz)
+	uvs.resize(cx * cz)
+	for j in cz:
+		for i in cx:
+			var gi := mini(i0 + i * step, nx - 1)
+			var gj := mini(j0 + j * step, nz - 1)
+			var x := -Data.HALF_W + float(gi) / VRES
+			var z := -Data.HALF_D + float(gj) / VRES
+			var k := j * cx + i
+			verts[k] = Vector3(x, heights[gj * nx + gi], z)
+			norms[k] = normal_at(x, z)
+			uvs[k] = Vector2(float(gi) / (nx - 1), float(gj) / (nz - 1))
+	var idx := PackedInt32Array()
+	idx.resize((cx - 1) * (cz - 1) * 6)
+	var o := 0
+	for j in cz - 1:
+		for i in cx - 1:
+			var a := j * cx + i
+			var b := a + 1
+			var c := a + cx
+			var d := c + 1
+			idx[o] = a; idx[o + 1] = b; idx[o + 2] = d
+			idx[o + 3] = a; idx[o + 4] = d; idx[o + 5] = c
+			o += 6
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return m
 
 func _build_sides(myc_texture: Texture2D) -> void:
 	sides_mat = ShaderMaterial.new()
