@@ -1,5 +1,8 @@
 # RHIZOMORPH — roadmap & handoff
 
+> **Resume here (2026-10-31):** graphics plan step 2 (shadow-only tree crowns). See "Graphics plan"
+> and "Performance" below. Show the user each step before starting the next.
+
 Fungal-faction RTS on a terrarium diorama. Godot 4.7.2 (Forward+, RTX 4060), GDScript only.
 Launch: `play.bat`. Art targets: the two screen recordings (fungal terrarium diorama, moss
 digested to grey by spreading fungi, tilt-shift DOF, ground-level close-ups) and
@@ -200,6 +203,31 @@ $G --headless --path . --fixed-fps 10 -- --sim --profile --match=11 --seconds=90
   two versions like for like.
 - **First reading** (12 seeds, before the speed fixes): the Veiled Choir won 10 of 12, and the
   Amanita Court fell first in 9 of 12.
+
+## Graphics plan (agreed 2026-10-30, continue here)
+
+The user wants to **see each step (screenshots and FPS) before the next one starts.** Measure every
+step with `--fpstest=60` and `--fpstest=150` (`--bot --faction=0 --match=2 --seconds=300 --speed=8`)
+and compare against the table under Performance. The aim is better graphics without dropping below
+about 35 fps at FSR Quality.
+
+1. **Done: FPS budget plus FSR2.** Tiled, LOD'd moss and a render-quality setting (numbers below).
+2. **Next: shadow-only tree crowns.** Each tree gets a leafy crown mesh (alpha-scissor leaf clumps)
+   with `cast_shadow = SHADOW_CASTING_SETTING_SHADOWS_ONLY`, so it is invisible but casts dappled
+   shade on the floor and light shafts through the existing volumetric fog. Crowns go high above the
+   trunks' cut height. Check that the shadow cost stays small (shadows were under 2 ms before) and
+   that units stay readable in shade.
+3. **Lower limbs on the trunks.** A few branches below the cut height so trees read as trees, not
+   stalks: birch thin and upswept, oak thick and crooked, hemlock drooping. Add them in
+   `board._trunk_meshes` / `add_tree`. They must survive the `cut_h` dither and new trees (nurseries).
+4. **Canopy frame when zoomed out.** Visible crowns that are opaque at the screen edges and dissolve
+   (dither) toward the centre and near the camera focus, fading out entirely when zoomed in. A gap in
+   the trees looking down, never covering the play area.
+5. **Ground clutter and life.** MultiMesh twigs, pine needles, pebbles and fern fronds (low, kept clear
+   of units' readability), wind sway on moss and small fungi tied to the weather, drifting leaves
+   (more in leaf fall and windstorms), and moss and brackets on felled logs.
+
+Also noted: rain particles look thin; the minimap is still the original size for a 4x board.
 
 ## Performance (2026-10-30)
 
