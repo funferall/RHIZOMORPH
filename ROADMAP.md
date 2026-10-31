@@ -1,7 +1,8 @@
 # RHIZOMORPH — roadmap & handoff
 
-> **Resume here (2026-10-31):** graphics plan step 2 (shadow-only tree crowns). See "Graphics plan"
-> and "Performance" below. Show the user each step before starting the next.
+> **Resume here (2026-10-31):** graphics plan step 2 (shadow-only tree crowns) is built and waiting for
+> the user's sign-off; step 3 is next. See "Graphics plan" and "Performance" below. Show the user each
+> step before starting the next. The user's wider wishlist is under "Wishlist".
 
 Fungal-faction RTS on a terrarium diorama. Godot 4.7.2 (Forward+, RTX 4060), GDScript only.
 Launch: `play.bat`. Art targets: the two screen recordings (fungal terrarium diorama, moss
@@ -212,12 +213,16 @@ and compare against the table under Performance. The aim is better graphics with
 about 35 fps at FSR Quality.
 
 1. **Done: FPS budget plus FSR2.** Tiled, LOD'd moss and a render-quality setting (numbers below).
-2. **Next: shadow-only tree crowns.** Each tree gets a leafy crown mesh (alpha-scissor leaf clumps)
-   with `cast_shadow = SHADOW_CASTING_SETTING_SHADOWS_ONLY`, so it is invisible but casts dappled
-   shade on the floor and light shafts through the existing volumetric fog. Crowns go high above the
-   trunks' cut height. Check that the shadow cost stays small (shadows were under 2 ms before) and
-   that units stay readable in shade.
-3. **Lower limbs on the trunks.** A few branches below the cut height so trees read as trees, not
+2. **Built (awaiting sign-off): shadow-only tree crowns.** `board._crown_cards` makes leaf-card crowns
+   (oak lobed, birch columnar, hemlock tiered) drawn only into the shadow map (`shaders/crown.gdshader`,
+   holes from one leaf-texture read). `build_forest_canopy` adds a band of forest beyond the board on the
+   sun's side, kept only where its shade lands on the board (21 m spacing). A dead or felled tree drops
+   its crown; windstorms shake the dapples; the leaves open up as the camera zooms out
+   (`set_canopy_zoom`); `sun.shadow_opacity = 0.8` keeps units readable in shade. `--perf-nocanopy`
+   hides it for A/B. Cost at `--fpstest=60`, FSR Quality: +0.8 to +2.9 ms GPU (40.8 -> 39.4 and
+   40.9 -> 37.8 fps). The first version (noise per texel, 15 m band) cost 13 ms. Spore motes halved
+   to 1250 (no measurable FPS change).
+3. **Next: lower limbs on the trunks.** A few branches below the cut height so trees read as trees, not
    stalks: birch thin and upswept, oak thick and crooked, hemlock drooping. Add them in
    `board._trunk_meshes` / `add_tree`. They must survive the `cut_h` dither and new trees (nurseries).
 4. **Canopy frame when zoomed out.** Visible crowns that are opaque at the screen edges and dissolve
@@ -228,6 +233,34 @@ about 35 fps at FSR Quality.
    (more in leaf fall and windstorms), and moss and brackets on felled logs.
 
 Also noted: rain particles look thin; the minimap is still the original size for a 4x board.
+
+## Wishlist (from the user, 2026-10-30; not yet scheduled)
+
+Art and engine
+- Improve all assets, using Blender for them (driven headless from Python, exporting glTF).
+- Rethink the legs on the mushroom units.
+- Make buildings more distinct from one another.
+- More performance.
+
+Factions and gameplay
+- Really focus on the gameplay differences between the courts so each has its own character.
+- Amanita Court and Morel Hollow each get an expensive, charismatic hero unit: strong and hard to kill.
+- A different win condition for each faction.
+- Grow a second Heart elsewhere, so a court is not pinned to defending one spot.
+- Remove the unit limit (and its bar in the resource pill).
+- Rebalance. The 2026-10-30 Amanita playtest: on Gentle the Choir still reached 47 units, because
+  difficulty scales only income and its army comes from infected insects; Zombify and Pandemic turned
+  the Court's army.
+
+Interface
+- Improve the UI generally.
+- A tech-tree button that shows a notification when a research completes.
+- Make the tech-tree menu 50% faster to draw.
+- A simple tutorial for each faction.
+
+Release
+- A browser build hosted on Cloudflare, staying inside the user's $5/month plan (optimise for the web).
+- The full Godot (desktop) version on itch.io.
 
 ## Performance (2026-10-30)
 

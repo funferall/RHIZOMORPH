@@ -27,6 +27,10 @@ var water_mat: ShaderMaterial
 var bark_mats: Array[ShaderMaterial] = []
 var tree_parts: Array = []       # per tree: [butt MeshInstance3D, upper MeshInstance3D]
 var felled := {}                 # tree index -> true: keeps its stump height
+var crown_mat: ShaderMaterial
+var crowns: Array[MeshInstance3D] = []   # per tree: its shadow-only crown
+var forest_canopy: MeshInstance3D
+var _wind := 0.25
 
 var _n_base := FastNoiseLite.new()
 var _n_mound := FastNoiseLite.new()
@@ -450,6 +454,174 @@ func add_tree(tr: Dictionary) -> void:
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
 		tree_parts[-1].append(mi)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(p)
+	var arr := _new_cards()
+	_crown_cards(arr, Vector3.ZERO, kind, tr["radius"], rng)
+	var cr := _shadow_only(_cards_mesh(arr))
+	cr.position = tree_parts[-1][0].position
+	crowns.append(cr)
+
+
+# --- crowns ------------------------------------------------------------------
+# The canopy is never drawn, only cast: each tree's crown, and a band of forest
+# beyond the board, shade the floor with dapples that shift in the wind.
+
+func _shadow_only(mesh: ArrayMesh) -> MeshInstance3D:
+	if crown_mat == null:
+		crown_mat = ShaderMaterial.new()
+		crown_mat.shader = load("res://shaders/crown.gdshader")
+		crown_mat.set_shader_parameter("wind", _wind)
+		crown_mat.set_shader_parameter("leaf_tex", _leaf_texture())
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = crown_mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	add_child(mi)
+	return mi
+
+
+# Tiling noise for the leaf holes (r) and the ragged card edges (g).
+func _leaf_texture() -> ImageTexture:
+	var leaves := FastNoiseLite.new()
+	leaves.noise_type = FastNoiseLite.TYPE_VALUE_CUBIC
+	leaves.frequency = 0.06
+	leaves.fractal_octaves = 2
+	var edge := FastNoiseLite.new()
+	edge.seed = 5
+	edge.frequency = 0.012
+	var a := leaves.get_seamless_image(256, 256)
+	var b := edge.get_seamless_image(256, 256)
+	var img := Image.create(256, 256, false, Image.FORMAT_RG8)
+	for y in 256:
+		for x in 256:
+			img.set_pixel(x, y, Color(a.get_pixel(x, y).r, b.get_pixel(x, y).r, 0.0))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+# The forest around the terrarium, kept only where its shade can reach the board
+# under a sun shining along light_dir.
+func build_forest_canopy(light_dir: Vector3) -> void:
+	var slope := Vector2(light_dir.x, light_dir.z) / maxf(-light_dir.y, 0.05)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var gap := FastNoiseLite.new()
+	gap.seed = 99
+	gap.frequency = 0.025
+	var board := Rect2(-Data.HALF_W, -Data.HALF_D, Data.HALF_W * 2.0, Data.HALF_D * 2.0)
+	var reach := board.grow(14.0)
+	var arr := _new_cards()
+	var step := 21.0   # about half the crowns of a 15 m spacing: the band was most of the shadow cost
+	var x := -Data.HALF_W - 150.0
+	while x < Data.HALF_W + 150.0:
+		var z := -Data.HALF_D - 150.0
+		while z < Data.HALF_D + 150.0:
+			var p := Vector2(x, z) + Vector2(rng.randf_range(-6, 6), rng.randf_range(-6, 6))
+			var shade := p + slope * 36.0
+			if not board.grow(-2.0).has_point(p) and reach.has_point(shade) and gap.get_noise_2dv(p) > 0.0:
+				var k := rng.randi_range(0, 2)
+				_crown_cards(arr, Vector3(p.x, 0.0, p.y), k, rng.randf_range(1.6, 2.8), rng)
+			z += step
+		x += step
+	forest_canopy = _shadow_only(_cards_mesh(arr))
+
+
+func set_wind(w: float, dt: float) -> void:
+	_wind = move_toward(_wind, w, dt * 0.15)
+	if crown_mat:
+		crown_mat.set_shader_parameter("wind", _wind)
+
+
+# zoom: 0 fully in, 1 fully out
+func set_canopy_zoom(zoom: float) -> void:
+	if crown_mat:
+		crown_mat.set_shader_parameter("thin", smoothstep(0.3, 0.85, zoom) * 0.3)
+
+
+func drop_crown(i: int) -> void:
+	crowns[i].visible = false
+
+
+func _new_cards() -> Dictionary:
+	return {"v": PackedVector3Array(), "uv": PackedVector2Array(), "c": PackedColorArray(), "i": PackedInt32Array()}
+
+
+func _cards_mesh(arr: Dictionary) -> ArrayMesh:
+	var a := []
+	a.resize(Mesh.ARRAY_MAX)
+	a[Mesh.ARRAY_VERTEX] = arr["v"]
+	a[Mesh.ARRAY_TEX_UV] = arr["uv"]
+	a[Mesh.ARRAY_COLOR] = arr["c"]
+	a[Mesh.ARRAY_INDEX] = arr["i"]
+	var m := ArrayMesh.new()
+	if not arr["v"].is_empty():
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+	return m
+
+
+# Leaf clumps for one crown at `at` (the tree's foot): oak broad and lobed, birch a
+# narrow airy column, hemlock a cone of drooping tiers.
+func _crown_cards(arr: Dictionary, at: Vector3, kind: int, r: float, rng: RandomNumberGenerator) -> void:
+	var clumps := []   # [centre, radii]
+	match kind:
+		0:
+			var big := clampf(r * 5.0, 7.0, 16.0)
+			var n := 8
+			for i in n:
+				var a := TAU * i / n + rng.randf_range(-0.3, 0.3)
+				var d := big * rng.randf_range(0.35, 0.7)
+				clumps.append([Vector3(cos(a) * d, rng.randf_range(31.0, 39.0), sin(a) * d), Vector3(big * 0.42, big * 0.28, big * 0.42)])
+			clumps.append([Vector3(0, 41.0, 0), Vector3(big * 0.5, big * 0.3, big * 0.5)])
+		1:
+			var big := r * 4.2
+			for i in 6:
+				var y := 24.0 + i * 4.0
+				var w := big * (0.55 - i * 0.05)
+				clumps.append([Vector3(rng.randf_range(-1, 1) * big * 0.3, y, rng.randf_range(-1, 1) * big * 0.3), Vector3(w, 3.5, w)])
+		2:
+			var big := r * 4.2
+			var y := 14.0
+			while y < 46.0:
+				var w := big * pow(1.0 - (y - 14.0) / 34.0, 0.9) + 1.0
+				clumps.append([Vector3(0, y, 0), Vector3(w, 1.6, w)])
+				y += 3.5
+	# per kind: hole threshold, leaf pattern scale, card size
+	var hole: float = [0.46, 0.53, 0.4][kind]
+	var freq: float = [7.0, 10.0, 14.0][kind]
+	var size: Vector2 = [Vector2(3.0, 4.6), Vector2(2.2, 3.4), Vector2(2.6, 4.0)][kind]
+	var flat: float = [0.8, 0.6, 2.5][kind]   # how much the cards face up
+	var v: PackedVector3Array = arr["v"]
+	var uv: PackedVector2Array = arr["uv"]
+	var col: PackedColorArray = arr["c"]
+	var idx: PackedInt32Array = arr["i"]
+	for cl in clumps:
+		var cen: Vector3 = cl[0]
+		var rad: Vector3 = cl[1]
+		var cards := int(PI * rad.x * rad.z / pow((size.x + size.y) * 0.5, 2.0) * 1.6) + 2
+		for _c in cards:
+			var u := Vector3(rng.randfn(), rng.randfn(), rng.randfn()).normalized()
+			var k := pow(rng.randf(), 0.35)
+			var pos := cen + u * rad * k
+			if kind == 2:
+				pos.y -= pow(Vector2(pos.x, pos.z).length() / maxf(rad.x, 1.0), 2.0) * 1.5   # drooping boughs
+			var nrm := (Vector3(rng.randfn(), rng.randfn(), rng.randfn()) + Vector3.UP * flat).normalized()
+			var t1 := nrm.cross(Vector3.RIGHT if absf(nrm.x) < 0.9 else Vector3.FORWARD).normalized()
+			var t2 := nrm.cross(t1)
+			var s := rng.randf_range(size.x, size.y) * 0.5
+			var sway := clampf(Vector2(pos.x, pos.z).length() / 10.0 + 0.25, 0.25, 1.0)
+			var cc := Color(hole, rng.randf(), sway, freq / 32.0)
+			var base := v.size()
+			for q in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+				v.append(at + pos + (t1 * q.x + t2 * q.y) * s)
+				uv.append(q * 0.5 + Vector2(0.5, 0.5))
+				col.append(cc)
+			for o in [0, 1, 2, 0, 2, 3]:
+				idx.append(base + o)
+	arr["v"] = v
+	arr["uv"] = uv
+	arr["c"] = col
+	arr["i"] = idx
 
 
 func _trunk_meshes(r: float, h: float, kind: int, split_y: float) -> Array[ArrayMesh]:
@@ -498,6 +670,7 @@ func fell_tree(i: int, tr: Dictionary, dir: Vector2, length: float) -> void:
 	var p: Vector2 = tr["pos"]
 	bark_mats[i].set_shader_parameter("cut_h", height_at(p.x, p.y) + 1.6)
 	tree_parts[i][1].visible = false
+	crowns[i].visible = false
 	var r: float = tr["radius"]
 	var cm := CylinderMesh.new()
 	cm.top_radius = r * 0.75

@@ -10,6 +10,7 @@ extends Node3D
 #   --viewtest         board + mycelium only, with test sources
 #   --showcase         every species lined up
 #   --catalog=DIR      one close-up plate per species + catalog.json, then quit
+#   --perf-nocanopy    hide the shadow-only tree crowns, for before/after shots and FPS
 #   --fpstest[=dist]   after --seconds, 20 s at 1x with vsync off framed on the biggest fight; prints FPS (--scale=0.75 --fsr)
 #   --sim              headless balance run (with --headless --fixed-fps): all bots, no HUD or
 #                      audio, ends when one court is left or at --seconds, prints one SIM {json} line
@@ -52,6 +53,7 @@ func _ready() -> void:
 	myc.setup(board.sub_img)
 	board.attach_visuals(myc.texture)
 	_build_light()
+	board.build_forest_canopy(-sun.global_transform.basis.z)
 
 	rig = CameraRig.new()
 	rig.board = board
@@ -131,6 +133,9 @@ func _ready() -> void:
 		env.glow_enabled = false
 	if args.has("perf-noshadow"):
 		sun.shadow_enabled = false
+	if args.has("perf-nocanopy"):
+		for c in board.crowns + [board.forest_canopy]:
+			c.visible = false
 	if args.has("view"):
 		var v: PackedStringArray = args["view"].split(",")
 		var at := Vector3(float(v[2]), 0, float(v[3])) if v.size() >= 4 else Vector3.ZERO
@@ -188,6 +193,7 @@ func _build_light() -> void:
 	sun.light_energy = 2.2
 	sun.shadow_enabled = true
 	sun.shadow_blur = 1.5
+	sun.shadow_opacity = 0.8   # a little sun gets through every shadow, so units stay readable under the canopy
 	sun.directional_shadow_max_distance = 220.0
 	sun.light_volumetric_fog_energy = 1.6
 	add_child(sun)
@@ -201,7 +207,7 @@ func _build_light() -> void:
 func _build_particles() -> void:
 	# drifting spores catching the low sun - pure GPU particles
 	var p := GPUParticles3D.new()
-	p.amount = 2500
+	p.amount = 1250
 	p.lifetime = 14.0
 	p.preprocess = 14.0
 	p.visibility_aabb = AABB(Vector3(-60, -5, -45), Vector3(120, 30, 90))
@@ -442,8 +448,12 @@ func _process(delta: float) -> void:
 			myc.add_disc(sp, 15.0, 1.0, f)
 			myc.add_capsule(sp, sp.lerp(Vector2.ZERO, 0.7), 3.0, 1.0, f)
 	if rig:
-		board.set_cut_height(lerpf(4.0, 30.0, 1.0 - inverse_lerp(rig.min_dist, rig.max_dist, rig.dist)))
+		var zoom := inverse_lerp(rig.min_dist, rig.max_dist, rig.dist)
+		board.set_cut_height(lerpf(4.0, 30.0, 1.0 - zoom))
+		board.set_canopy_zoom(zoom)
 		board.update_moss_lod(rig.cam.global_position)
+	if game:
+		board.set_wind(1.0 if game.weather.now == "wind" else 0.25, delta)
 	if args.has("shot") and not _shot_done:
 		var wait := float(args.get("wait", "3"))
 		var ready: bool = game == null or not game.busy()

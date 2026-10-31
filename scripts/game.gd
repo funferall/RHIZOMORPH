@@ -380,6 +380,7 @@ func spawn_insect(uid: String, p: Vector2, nest_id: int) -> Ent:
 
 func on_tree_died(i: int) -> void:
 	board.bark_mats[i].set_shader_parameter("dead", 1.0)
+	board.drop_crown(i)   # a snag stands bare: the sun comes through where it shaded
 	var t: Dictionary = forest.trees[i]
 	emit_signal("message", "The %s has died and stands as a snag." % t["name"], Color(0.75, 0.62, 0.45))
 	emit_signal("sound", "tree_dies", _v3(t["pos"]))
