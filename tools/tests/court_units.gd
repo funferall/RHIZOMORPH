@@ -1,7 +1,7 @@
 extends SceneTree
 # Run with Godot --path . --script tools/tests/court_units.gd [-- --shots=DIR]
 # Real game, real HUD, real rendering. Checks the three integrated Court units:
-# Wartling and Webcap art, Cep Bulwark brace / shot capture, Destroying Angel rig and cloak.
+# Wartling, Webcap and Morel Bruiser art, Cep Bulwark brace / shot capture, Destroying Angel rig and cloak.
 
 const CepActions = preload("res://scripts/cep_actions.gd")
 const Data = preload("res://scripts/data.gd")
@@ -135,6 +135,18 @@ func run() -> void:
 		"Webcap uses the Blender-built mesh: body and silk surfaces")
 	check(FungusLib.mesh("u_webcap").resource_name == "Webcap_close",
 		"HUD icons use the new Webcap")
+	var br = g._spawn_unit(1, "bruiser", at + Vector2(-8, 3))
+	check(br.mi.mesh.resource_name.begins_with("Bruiser_"), "Morel Bruiser uses the Blender-built mesh")
+	br.goal = br.pos
+	var dummy = g._spawn_unit(0, "wartling", br.pos + Vector2(1.6, 0))
+	dummy.goal = dummy.pos
+	var dhp: float = dummy.hp
+	br.target = dummy
+	br.cd = 0.0
+	step(0.1)
+	check(br.strike > 0.0 and dummy.hp == dhp, "The Bruiser's arms go up before its blow lands")
+	step(0.4)
+	check(dummy.hp < dhp, "The smash lands the blow")
 
 	# --- pictures ---
 	var dir: String = ""

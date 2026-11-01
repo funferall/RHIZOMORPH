@@ -18,6 +18,9 @@ const CepBulwark = preload("res://scripts/cep_bulwark.gd")
 const CepActions = preload("res://scripts/cep_actions.gd")
 const Angel = preload("res://scripts/destroying_angel.gd")
 const Webcap = preload("res://scripts/webcap.gd")
+const Bruiser = preload("res://scripts/morel_bruiser.gd")
+# Units whose art is built in Blender (tools/blender/): LOD meshes, shader-driven motion.
+const BAKED := {"webcap": Webcap, "bruiser": Bruiser}
 const AI = preload("res://scripts/ai.gd")
 const Forest = preload("res://scripts/forest.gd")
 const Fog = preload("res://scripts/fog.gd")
@@ -82,6 +85,8 @@ class Ent:
 	var cloak_shown := -1   # Angel: the material it last wore (0 revealed, 1 cloaked)
 	var reveal_t := 0.0     # Angel: seconds it stays exposed after striking or being hurt
 	var detected := 0       # Angel: bit per faction with something within its cloak radius
+	var strike := 0.0       # Bruiser: 1 when a swing starts, falling to 0 over the swing
+	var visual_strike := 0.0
 	var think_t := 0.0
 	var home := Vector2.INF
 	var squad := ""
@@ -349,7 +354,7 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 		match uid:
 			"wartling": e.mi.mesh = Wartling.mesh(e.visual_lod)
 			"cep": e.mi.mesh = CepBulwark.mesh(e.visual_lod)
-			"webcap": e.mi.mesh = Webcap.mesh(e.visual_lod)
+			"webcap", "bruiser": e.mi.mesh = BAKED[uid].mesh(e.visual_lod)
 			_: e.mi.mesh = FungusLib.mesh(d["species"])
 		e.node.add_child(e.mi)
 	e.mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, tint))
@@ -358,6 +363,8 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 		e.mi.set_instance_shader_parameter("gait", 4.4 + _rng.randf() * 0.8)   # a slow, planted four-beat crawl
 	elif uid == "webcap":
 		e.mi.set_instance_shader_parameter("gait", 6.4 + _rng.randf() * 1.2)   # long, slow stilt strides
+	elif uid == "bruiser":
+		e.mi.set_instance_shader_parameter("gait", 5.0 + _rng.randf() * 0.8)   # a heavy knuckle-walk
 	elif e.anim == null:
 		e.mi.set_instance_shader_parameter("gait", (16.0 if insect else 10.0) + _rng.randf() * 3.0)
 	units.append(e)
@@ -1855,6 +1862,8 @@ func _fire(src: Ent, t: Ent, d: Dictionary) -> void:
 				src.act.attack()
 			if src.anim:
 				_angel_attack(src, d)
+			if src.id == "bruiser":
+				src.strike = 1.0   # arms up overhead, then the smash lands the blow
 			_swings.append({"src": src, "target": t, "t": d["windup"], "dmg": dmg, "d": d})
 			return
 		_melee_hit(src, t, dmg, d)
@@ -2546,16 +2555,21 @@ func _update_visuals(delta: float) -> void:
 					u.visual_lod = level
 					u.mi.mesh = Wartling.mesh(level)
 			u.mi.set_instance_shader_parameter("motion_time", time)
-		elif u.id == "webcap":
+		elif BAKED.has(u.id):
 			if not u.node.visible:
 				continue
+			var art = BAKED[u.id]
 			if update_lod:
 				var distance := maxf(rig.cam.global_position.distance_to(u.node.global_position), 0.1)
-				var level := Webcap.choose_lod(Webcap.CAP_R * 2.0 * px_scale / distance, u.visual_lod)
+				var level: int = art.choose_lod(art.LOD_SIZE * px_scale / distance, u.visual_lod)
 				if level != u.visual_lod:
 					u.visual_lod = level
-					u.mi.mesh = Webcap.mesh(level)
+					u.mi.mesh = art.mesh(level)
 			u.mi.set_instance_shader_parameter("motion_time", time)
+			if u.strike > 0.0 or u.visual_strike != 0.0:
+				u.strike = maxf(u.strike - game_dt / Bruiser.SWING_SECONDS, 0.0)
+				u.visual_strike = u.strike
+				u.mi.set_instance_shader_parameter("strike", u.strike)
 		elif u.act:
 			if not u.node.visible:
 				continue
@@ -2575,7 +2589,7 @@ func _update_visuals(delta: float) -> void:
 		var gy: float = board.ground_y(u.pos)
 		u.node.position = Vector3(u.pos.x, lerpf(u.node.position.y, gy, 1.0 - exp(-delta * 12.0)), u.pos.y)
 		u.node.rotation.y = -u.facing
-		if u.act == null and u.anim == null and u.id != "webcap":
+		if u.act == null and u.anim == null and not BAKED.has(u.id):
 			u.mi.position.y = absf(sin(time * 9.0 + u.think_t * 20.0)) * 0.06 * u.walk
 		if u.visual_walk != u.walk and u.anim == null:
 			u.visual_walk = u.walk

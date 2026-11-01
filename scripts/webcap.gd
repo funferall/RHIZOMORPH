@@ -17,6 +17,7 @@ const NORMAL := preload("res://art/webcap/webcap_normal.png")
 const ORM := preload("res://art/webcap/webcap_orm.png")
 const LOD_NAMES := ["close", "battle", "distant"]
 const CAP_R := 0.52
+const LOD_SIZE := CAP_R * 2.0   # cap width (m), for on-screen detail choice
 const HEIGHT := 1.80
 static var _meshes := {}
 static var _material: ShaderMaterial

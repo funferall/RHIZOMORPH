@@ -141,6 +141,16 @@ the cap) and the blended silk veil (`shaders/webcap_silk.gdshader`); both step w
 `tools/webcap/`; `tools/webcap/perf_webcap.gd` measured 60 Webcaps at battle LOD at +0.25 ms per frame
 (today's old model +0.08, v1 procedural +0.15) on an RTX 4060 laptop; vsync off, interleaved rounds.
 
+**Morel Bruiser, the second Blender-built unit.** `tools/blender/bruiser_build.py` (shared helpers in
+`tools/blender/unitlib.py`) sculpts a Voronoi honeycomb cap with pits about 5 cm deep, two morel shoulders
+on thick knuckle-walking arms, two rear legs, padded clawed feet and glowing golden cracks, and bakes it
+onto 5.8k / 2.1k / 0.5k-triangle LODs sharing one 1024 atlas (orm alpha = pit height). One opaque surface.
+`shaders/morel_bruiser.gdshader`: diagonal knuckle-walk, breathing, close-range parallax on the honeycomb
+(fades out by 16 m), and the attack: both arms rise overhead and smash down at 45% of a 0.9 s swing, where
+`windup` 0.4 lands the blow. glTF flips the data UV's v: the shader reads `1.0 - UV2.y`.
+Generic tools for any Blender-built unit: `tools/art/render_unit.gd`, `ingame_unit.gd`, `perf_unit.gd`
+(`--unit=bruiser|webcap`); `FungusLib.legacy_mesh(id)` still builds the old procedural model for comparisons.
+
 **Balance (2026-11-01).** Population cap 40 -> 100 for every court (Brood Chamber now +10). Every Choir
 unit at 80% hp and 85% damage. Bot batches (24 seeds each, Court / Hollow / Choir wins): cap 40 at full
 stats 3 / 2 / 17; cap 100 at full stats 0 / 3 / 20 (a higher cap alone helps the Choir, whose army is free

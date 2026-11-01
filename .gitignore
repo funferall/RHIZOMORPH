@@ -20,3 +20,7 @@ art/cep_bulwark/frames/
 
 # Reproducible Violet Webcap walk-cycle source frames
 art/webcap/frames/
+
+# Reproducible Morel Bruiser walk and attack source frames
+art/bruiser/frames_*/
+tools/blender/__pycache__/

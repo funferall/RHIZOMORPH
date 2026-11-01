@@ -9,6 +9,7 @@ const CepBulwark := preload("res://scripts/cep_bulwark.gd")
 const Wartling := preload("res://scripts/wartling.gd")
 const Angel := preload("res://scripts/destroying_angel.gd")
 const Webcap := preload("res://scripts/webcap.gd")
+const Bruiser := preload("res://scripts/morel_bruiser.gd")
 
 static var _meshes := {}
 static var _mats := {}
@@ -252,6 +253,11 @@ static func mesh(id: String) -> ArrayMesh:
 		_meshes[id] = cep
 		_heights[id] = cep.get_aabb().end.y
 		return cep
+	if id == "u_bruiser":
+		var bruiser := Bruiser.mesh(0)
+		_meshes[id] = bruiser
+		_heights[id] = Bruiser.HEIGHT
+		return bruiser
 	if id == "u_webcap":
 		var webcap := Webcap.mesh(0)
 		_meshes[id] = webcap
@@ -277,6 +283,19 @@ static func mesh(id: String) -> ArrayMesh:
 		m.surface_set_material(s, material(m.surface_get_name(s)))
 	_meshes[id] = m
 	_heights[id] = b.top
+	return m
+
+
+# The original procedural model of a species, even where newer art replaces it in mesh().
+# Uncached; for before/after comparisons such as tools/art/perf_unit.gd.
+static func legacy_mesh(id: String) -> ArrayMesh:
+	var b := B.new()
+	b.rng.seed = hash(id)
+	b.sc = SPECIES_SCALE.get(id, 1.0)
+	_build(b, id)
+	var m := b.commit()
+	for s in m.get_surface_count():
+		m.surface_set_material(s, material(m.surface_get_name(s)))
 	return m
 
 

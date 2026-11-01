@@ -275,7 +275,7 @@ const UNITS := {
 	"cep": {"name": "Cep Bulwark", "species": "u_cep_bulwark", "cost": [40, 30], "hp": 300, "dmg": 14, "range": 1.4, "cd": 1.1, "speed": 4.0, "train": 9.0, "shot": "",
 		"size": 1.15, "windup": 0.47, "brace": true,
 		"desc": "Boletus edulis. Heavy protector that bashes with its cap. Brace (F): sinks its roots and cannot move or attack, but catches every enemy shot that flies within 3 m and takes only 25% of its damage."},
-	"bruiser": {"name": "Morel Bruiser", "species": "u_bruiser", "cost": [32, 0], "hp": 140, "dmg": 12, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 5.5, "regen": 1.4, "shot": "",
+	"bruiser": {"name": "Morel Bruiser", "species": "u_bruiser", "cost": [32, 0], "hp": 140, "dmg": 12, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 5.5, "regen": 1.4, "shot": "", "windup": 0.4, "size": 0.65,
 		"desc": "Honeycombed tank. Regenerates."},
 	"slinger": {"name": "Elf-Cup Slinger", "species": "u_slinger", "cost": [32, 8], "hp": 75, "dmg": 10, "range": 7.5, "cd": 1.15, "speed": 5.4, "train": 5.5, "regen": 0.8, "shot": "puff",
 		"desc": "Scarlet cup that fires its asci like a cannon."},

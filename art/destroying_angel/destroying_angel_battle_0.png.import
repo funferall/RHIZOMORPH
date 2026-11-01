@@ -2,13 +2,10 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cv6o6ef2mvflr"
+uid="uid://b2rwtdrxsij51"
 path="res://.godot/imported/destroying_angel_battle_0.png-410c6f91014db990da61ba0ddc547bd7.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "fa3f81b7c1d5fc68073b83440c266917"
 }
 
 [deps]
@@ -26,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
