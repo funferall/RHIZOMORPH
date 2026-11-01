@@ -12,7 +12,7 @@ const COARSE_W := 192         # 1 cell per world unit, read back to the CPU
 const COARSE_H := 144
 
 const NEUTRAL := 3            # faction index of the forest's insects
-const POP_CAP := 40
+const POP_CAP := 100
 const BASE_LINK := 14.0       # how far a rhizomorph cord can reach
 const CORD_REGROW := 12.0     # seconds before a severed cord regrows
 const NUTRIENT_RATE := 0.013  # income per (density * nutrient) per coarse cell per second
@@ -214,8 +214,8 @@ const STRUCTURES := {
 	"root_snare": {"name": "Root Snare", "species": "root_snare", "tint": 0.08, "cost": [60, 30], "hp": 520, "build": 10.0, "radius": 1.8, "myc": 5.0, "on": "tree",
 		"attack": {"dmg": 9, "range": 9.5, "cd": 0.9, "slow": 0.5, "slow_t": 2.0, "shot": "spit", "vigor": true},
 		"desc": "The tree's own roots, turned. Grips and slows. Hits harder the healthier its tree."},
-	"cortina_thicket": {"name": "Cortina Thicket", "species": "cortina_thicket", "cost": [100, 30], "hp": 600, "build": 11.0, "radius": 2.2, "myc": 6.0, "on": "tree", "fed_tree": true, "trains": ["milkcap", "webcap"],
-		"desc": "Webcaps and milkcaps fruiting with their partner tree - it must stand in the roots of a tree you feed. Trains Milkcaps and Violet Webcaps."},
+	"cortina_thicket": {"name": "Cortina Thicket", "species": "cortina_thicket", "cost": [100, 30], "hp": 600, "build": 11.0, "radius": 2.2, "myc": 6.0, "on": "tree", "fed_tree": true, "trains": ["milkcap", "webcap", "cep"],
+		"desc": "Webcaps and milkcaps fruiting with their partner tree - it must stand in the roots of a tree you feed. Trains Milkcaps, Violet Webcaps and Cep Bulwarks."},
 	"truffle": {"name": "Truffle Mine", "species": "truffle", "cost": [35, 15], "hp": 90, "build": 6.0, "radius": 0.9, "myc": 0.0, "on": "territory", "unlinked": true, "hidden": true,
 		"mine": {"trigger": 3.75, "radius": 6.0, "dmg": 100, "slow": 0.5, "slow_t": 3.0},
 		"desc": "A buried truffle: no cord, no glow, invisible to enemies until they are almost on it. Bursts in a pungent spore cloud when they walk over it (100 dmg, slows). Plant it in your own territory."},
@@ -257,19 +257,24 @@ const STRUCTURES := {
 }
 
 # thrall: decays over time (Choir). insect: neutral wildlife. host: the thrall an insect becomes.
+# 2026-11-01: every Choir unit at 80% hp and 85% damage: the free thrall army outclassed paid units.
 const UNITS := {
 	"wartling": {"name": "Wartling", "species": "u_wartling", "cost": [14, 16], "hp": 100, "dmg": 10, "range": 1.3, "cd": 0.75, "speed": 6.2, "train": 4.5, "poison": 3.0, "shot": "",
 		"desc": "Warty melee sporeling. Poisons on hit."},
 	"spitter": {"name": "Muscarine Spitter", "species": "u_spitter", "cost": [16, 20], "hp": 62, "dmg": 9, "range": 7.0, "cd": 1.05, "speed": 5.6, "train": 5.5, "poison": 2.5, "shot": "spit",
 		"desc": "Ranged. Spits toxic slime."},
 	"angel": {"name": "Destroying Angel", "species": "u_angel", "cost": [30, 70], "hp": 170, "dmg": 30, "range": 1.5, "cd": 0.85, "speed": 8.2, "train": 8.0, "poison": 6.0, "shot": "", "elite": true, "cutter": true,
-		"desc": "Pure-white assassin. Hunts cords and lone units."},
+		"windup": 0.36, "cloak": 5.0,
+		"desc": "Pure-white assassin. Hunts cords and lone units. Cloaked: enemies cannot see or target it unless they come within 5 m, or for a moment after it strikes or is hurt."},
 
 	"milkcap": {"name": "Saffron Milkcap", "species": "u_milkcap", "cost": [20, 18], "hp": 170, "dmg": 9, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 6.0, "shot": "",
 		"latex": {"dmg": 3.0, "slow": 0.4, "slow_t": 2.0},
 		"desc": "Lactarius. Bleeds sticky orange latex when struck: melee attackers are slowed and stung."},
-	"webcap": {"name": "Violet Webcap", "species": "u_webcap", "cost": [18, 22], "hp": 70, "dmg": 7, "range": 8.0, "cd": 1.4, "speed": 5.4, "train": 6.0, "shot": "web", "root": 1.2,
+	"webcap": {"name": "Violet Webcap", "species": "u_webcap", "cost": [18, 22], "hp": 70, "dmg": 7, "range": 8.0, "cd": 1.4, "speed": 5.4, "train": 6.0, "shot": "web", "root": 1.2, "size": 0.7,
 		"desc": "Cortinarius violaceus. Spits cobweb veil that roots its target in place for a moment."},
+	"cep": {"name": "Cep Bulwark", "species": "u_cep_bulwark", "cost": [40, 30], "hp": 300, "dmg": 14, "range": 1.4, "cd": 1.1, "speed": 4.0, "train": 9.0, "shot": "",
+		"size": 1.15, "windup": 0.47, "brace": true,
+		"desc": "Boletus edulis. Heavy protector that bashes with its cap. Brace (F): sinks its roots and cannot move or attack, but catches every enemy shot that flies within 3 m and takes only 25% of its damage."},
 	"bruiser": {"name": "Morel Bruiser", "species": "u_bruiser", "cost": [32, 0], "hp": 140, "dmg": 12, "range": 1.3, "cd": 1.0, "speed": 5.0, "train": 5.5, "regen": 1.4, "shot": "",
 		"desc": "Honeycombed tank. Regenerates."},
 	"slinger": {"name": "Elf-Cup Slinger", "species": "u_slinger", "cost": [32, 8], "hp": 75, "dmg": 10, "range": 7.5, "cd": 1.15, "speed": 5.4, "train": 5.5, "regen": 0.8, "shot": "puff",
@@ -279,17 +284,17 @@ const UNITS := {
 	"sniper": {"name": "Pilobolus Sniper", "species": "u_sniper", "cost": [45, 55], "hp": 70, "dmg": 34, "range": 14.0, "cd": 2.3, "speed": 5.2, "train": 8.0, "shot": "egg", "elite": true,
 		"desc": "Fires its sporangium at 25 m/s. Extreme range. Costs nitrogen - feed on the dead."},
 
-	"t_ant": {"name": "Ant Thrall", "species": "t_ant", "cost": [0, 0], "hp": 55, "dmg": 8, "range": 1.2, "cd": 0.6, "speed": 7.4, "train": 0.0, "shot": "", "thrall": true, "cutter": true,
+	"t_ant": {"name": "Ant Thrall", "species": "t_ant", "cost": [0, 0], "hp": 44, "dmg": 6.8, "range": 1.2, "cd": 0.6, "speed": 7.4, "train": 0.0, "shot": "", "thrall": true, "cutter": true,
 		"desc": "An infected ant. Fast, cheap, a good cord cutter. Decays."},
-	"t_beetle": {"name": "Beetle Thrall", "species": "t_beetle", "cost": [0, 0], "hp": 180, "dmg": 13, "range": 1.3, "cd": 1.1, "speed": 4.6, "train": 0.0, "shot": "", "thrall": true, "armor": 0.3, "bores": true,
+	"t_beetle": {"name": "Beetle Thrall", "species": "t_beetle", "cost": [0, 0], "hp": 144, "dmg": 11, "range": 1.3, "cd": 1.1, "speed": 4.6, "train": 0.0, "shot": "", "thrall": true, "armor": 0.3, "bores": true,
 		"desc": "An infected bark beetle. Armoured against spit and spores; bores into trees. Decays."},
-	"t_stag": {"name": "Stag Thrall", "species": "t_stag", "cost": [0, 0], "hp": 220, "dmg": 15, "range": 1.6, "cd": 1.3, "speed": 4.2, "train": 0.0, "shot": "", "thrall": true, "armor": 0.4,
+	"t_stag": {"name": "Stag Thrall", "species": "t_stag", "cost": [0, 0], "hp": 176, "dmg": 12.8, "range": 1.6, "cd": 1.3, "speed": 4.2, "train": 0.0, "shot": "", "thrall": true, "armor": 0.4,
 		"desc": "An infected stag beetle. The Choir's heaviest body: armoured, slow, crushing. Decays."},
-	"t_fly": {"name": "Fly Thrall", "species": "t_fly", "cost": [0, 0], "hp": 45, "dmg": 6, "range": 1.2, "cd": 0.6, "speed": 9.0, "train": 0.0, "shot": "", "thrall": true, "flies": true, "sight": 18.0,
+	"t_fly": {"name": "Fly Thrall", "species": "t_fly", "cost": [0, 0], "hp": 36, "dmg": 5.1, "range": 1.2, "cd": 0.6, "speed": 9.0, "train": 0.0, "shot": "", "thrall": true, "flies": true, "sight": 18.0,
 		"desc": "An infected fly. Crosses water; sees far. Fragile. Decays."},
-	"zombie": {"name": "Cordyceps Thrall", "species": "u_zombie", "cost": [0, 0], "hp": 80, "dmg": 9, "range": 1.3, "cd": 0.9, "speed": 5.4, "train": 0.0, "shot": "", "thrall": true,
+	"zombie": {"name": "Cordyceps Thrall", "species": "u_zombie", "cost": [0, 0], "hp": 64, "dmg": 7.6, "range": 1.3, "cd": 0.9, "speed": 5.4, "train": 0.0, "shot": "", "thrall": true,
 		"desc": "A converted enemy, sprouting orange clubs. Decays."},
-	"stalker": {"name": "Cordyceps Stalker", "species": "u_stalker", "cost": [0, 0], "spores": 85, "hp": 120, "dmg": 16, "range": 8.5, "cd": 1.35, "speed": 6.0, "train": 8.0, "regen": 1.0, "shot": "spit", "elite": true, "infects": true,
+	"stalker": {"name": "Cordyceps Stalker", "species": "u_stalker", "cost": [0, 0], "spores": 85, "hp": 96, "dmg": 13.6, "range": 8.5, "cd": 1.35, "speed": 6.0, "train": 8.0, "regen": 1.0, "shot": "spit", "elite": true, "infects": true,
 		"desc": "Parasite grown from spores. Everything it kills rises as your thrall."},
 
 	"ant": {"name": "Wood Ant", "species": "i_ant", "cost": [0, 0], "hp": 25, "dmg": 4, "range": 1.0, "cd": 0.8, "speed": 6.0, "train": 0.0, "shot": "", "insect": true, "host": "t_ant",
@@ -356,7 +361,7 @@ const TECHS := {
 	"agrilus": {"name": "Agrilus Swarm", "tier": 3, "cost": [80, 0], "spores": 120, "time": 36.0, "req": ["ophiocordyceps"],
 		"desc": "Unlocks Agrilus Swarm: call jewel-beetle borers down on a tree."},
 	"brood": {"name": "Brood Chamber", "tier": 3, "cost": [100, 0], "spores": 120, "time": 36.0, "req": ["summit"],
-		"desc": "Unlocks the Brood Chamber. Population cap 50."},
+		"desc": "Unlocks the Brood Chamber. Population cap +10."},
 }
 
 # Spore actions. tech: required tech (empty = available from the start).

@@ -1,0 +1,11 @@
+{
+  "triangles": 19544,
+  "vertices": 11380,
+  "bones": 13,
+  "surfaces": 1,
+  "animations": [
+    "Idle",
+    "Walk",
+    "Attack"
+  ]
+}

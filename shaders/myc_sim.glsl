@@ -89,6 +89,12 @@ void main() {
 		} else {
 			dist = length(wp - a.xy);
 		}
+		// Noise scales distance by [0.725, 1.275]. Outside this conservative
+		// bound a source cannot contribute, including capsules, rings and burns.
+		// Leave a margin for floating-point rounding at the boundary.
+		if (dist > a.z / 0.725 + 0.0001) {
+			continue;
+		}
 		// ragged, lobed edges instead of perfect circles
 		dist *= 1.0 + (vnoise(wp * 0.21 + a.xy * 0.37) - 0.5) * 0.55;
 		if (dist > a.z) {

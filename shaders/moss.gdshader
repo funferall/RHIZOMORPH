@@ -53,10 +53,6 @@ void fragment() {
 	if (m < 0.05) {
 		discard;
 	}
-	// cushions
-	vec2 cv = voronoi2(p * 0.9 + vec2(fbm(p * 0.5), fbm(p * 0.5 + 9.0)) * 0.8);
-	float dome = 1.0 - smoothstep(0.1, 0.8, cv.x);
-	float gap = smoothstep(0.0, 0.14, cv.y);
 	// strands lean with height so the shells do not stack into visible discs
 	vec2 lean = vlean;
 	vec2 q = p * strand_freq + lean * shell * 1.5;
@@ -64,9 +60,17 @@ void fragment() {
 	vec2 local = fract(q) - 0.5;
 	float r = hash12(cell);
 	vec2 jit = hash22(cell + 3.1) - 0.5;
-	float h = (0.3 + 0.7 * r) * (0.3 + 0.7 * dome) * (0.35 + 0.65 * gap) * m;
 	float radius = 0.5 * (1.0 - shell * shell * 0.8);
-	if (shell > h || length(local - jit * 0.3) > radius) {
+	// Strand coverage is independent of cushion height. Reject empty pixels
+	// before evaluating the two fractal noises and nine Voronoi neighbours.
+	if (length(local - jit * 0.3) > radius) {
+		discard;
+	}
+	vec2 cv = voronoi2(p * 0.9 + vec2(fbm(p * 0.5), fbm(p * 0.5 + 9.0)) * 0.8);
+	float dome = 1.0 - smoothstep(0.1, 0.8, cv.x);
+	float gap = smoothstep(0.0, 0.14, cv.y);
+	float h = (0.3 + 0.7 * r) * (0.3 + 0.7 * dome) * (0.35 + 0.65 * gap) * m;
+	if (shell > h) {
 		discard;
 	}
 	float sp = vnoise(p * 0.18 + 2.0);

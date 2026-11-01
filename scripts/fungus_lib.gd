@@ -5,6 +5,10 @@ extends RefCounted
 
 const FUNGUS_SHADER := preload("res://shaders/fungus.gdshader")
 const LEG_SHADER := preload("res://shaders/legs.gdshader")
+const CepBulwark := preload("res://scripts/cep_bulwark.gd")
+const Wartling := preload("res://scripts/wartling.gd")
+const Angel := preload("res://scripts/destroying_angel.gd")
+const Webcap := preload("res://scripts/webcap.gd")
 
 static var _meshes := {}
 static var _mats := {}
@@ -243,6 +247,27 @@ static func sphere_prof(R: float, squash := 1.0, base := 0.0) -> PackedVector2Ar
 static func mesh(id: String) -> ArrayMesh:
 	if _meshes.has(id):
 		return _meshes[id]
+	if id == "u_cep_bulwark":
+		var cep := CepBulwark.mesh(0)
+		_meshes[id] = cep
+		_heights[id] = cep.get_aabb().end.y
+		return cep
+	if id == "u_webcap":
+		var webcap := Webcap.mesh(0)
+		_meshes[id] = webcap
+		_heights[id] = Webcap.HEIGHT
+		return webcap
+	if id == "u_angel":
+		# the skinned close mesh in its bind pose, for portraits and catalogs
+		var angel: ArrayMesh = Angel.lod(0)[0]
+		_meshes[id] = angel
+		_heights[id] = Angel.HEIGHT
+		return angel
+	if id == "u_wartling":
+		var wartling := Wartling.mesh(0)
+		_meshes[id] = wartling
+		_heights[id] = wartling.get_aabb().end.y
+		return wartling
 	var b := B.new()
 	b.rng.seed = hash(id)
 	b.sc = SPECIES_SCALE.get(id, 1.0)
@@ -492,11 +517,6 @@ static func _build(b: B, id: String) -> void:
 				b.lathe("inkcap", egg_prof(0.12, 0.42), 10, Transform3D(Basis(), at + Vector3(0, h * 0.7, 0)))
 
 		# --- walking sporelings -------------------------------------------------
-		"u_wartling":
-			legs(b, O, 6, 0.75, 0.32)
-			b.lathe("stem_white", stem_prof(0.35, 0.22, 0.2), 10, Transform3D(Basis(), Vector3(0, 0.25, 0)))
-			b.lathe("agaric_cap", dome_prof(0.55, 0.42), 18, Transform3D(Basis(), Vector3(0, 0.55, 0)))
-			b.lathe("gill", gill_prof(0.55, 0.2, 0.42), 18, Transform3D(Basis(), Vector3(0, 0.55, 0)))
 		"u_spitter":
 			legs(b, O, 4, 0.6, 0.35)
 			b.lathe("stem_white", stem_prof(0.85, 0.16, 0.11, 0.08), 10, Transform3D(Basis(), Vector3(0, 0.25, 0)))

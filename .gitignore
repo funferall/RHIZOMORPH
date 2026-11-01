@@ -11,3 +11,12 @@ tools/audio/__pycache__/
 # Verification screenshots
 screenshots/
 sim_runs/
+
+# Reproducible Wartling walk-cycle source frames (keep the compact GIF instead)
+art/wartling/frames/
+
+# Reproducible Cep Bulwark review-animation frames
+art/cep_bulwark/frames/
+
+# Reproducible Violet Webcap walk-cycle source frames
+art/webcap/frames/

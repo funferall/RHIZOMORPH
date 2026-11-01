@@ -6,6 +6,7 @@ extends CanvasLayer
 
 const Data = preload("res://scripts/data.gd")
 const FungusLib = preload("res://scripts/fungus_lib.gd")
+const CepActions = preload("res://scripts/cep_actions.gd")
 
 const INK := Color(0.055, 0.045, 0.035, 0.86)
 const EDGE := Color(0.85, 0.74, 0.45, 0.35)
@@ -65,6 +66,14 @@ var _font_b: SystemFont
 var _menu_choice := 1
 var _menu_cards := []
 var _ctx_refresh := 0.0
+var _ctx_key: Array = []
+var _ctx_hp: Label
+var _ctx_status: Label
+var _ctx_train_buttons: Array = []
+var _ctx_queue: HBoxContainer
+var _ctx_queue_ids: Array = []
+var _ctx_progress: Control
+var _ctx_progress_value := 0.0
 
 
 func _ready() -> void:
@@ -206,7 +215,7 @@ func _build_pill() -> void:
 	info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	info_lbl.add_theme_color_override("font_color", DIM)
 	root.add_child(info_lbl)
-	help.text = "LMB select, move, attack   drag box-select   Ctrl+LMB attack-move   RMB cancel   WASD pan   Q/E rotate   Y stop   F sporulate   Tab lineages   Space Heart   P pause   +/- speed   Esc settings"
+	help.text = "LMB select, move, attack   drag box-select   Ctrl+LMB attack-move   RMB cancel   WASD pan   Q/E rotate   Y stop   F sporulate / brace   Tab lineages   Space Heart   P pause   +/- speed   Esc settings"
 	help.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	help.position = Vector2(-430, -20)
 	help.size = Vector2(860, 16)
@@ -557,47 +566,87 @@ func _build_ctx() -> void:
 	root.add_child(ctx)
 
 
+# Only selection/action changes rebuild the panel. Live values and queue progress
+# retain their controls so refreshes cannot interrupt hover, focus or presses.
 func _refresh_ctx() -> void:
-	for c in ctx_box.get_children():
-		c.queue_free()
 	var sel: Array = game.selected
 	if sel.is_empty():
 		ctx.visible = false
+		_ctx_key.clear()
 		return
 	ctx.visible = true
 	var e = sel[0]
-	var f: int = game.player
+	var actions: bool = sel.size() == 1 and e.kind == game.STRUCT and e.f == game.player and e.built >= 1.0
+	var key: Array = [sel.duplicate(), actions, e.d.get("trains", []).duplicate(), e.d.has("research")]
+	if key != _ctx_key:
+		_ctx_key = key
+		_rebuild_ctx(sel, actions)
+	if sel.size() != 1:
+		return
+	_ctx_hp.text = "%d / %d" % [ceili(e.hp), int(e.max_hp)]
+	var d: Dictionary = e.d
+	if e.kind == game.UNIT:
+		_ctx_status.text = "%s   dmg %d  range %.1f  speed %.1f" % [d["desc"], d["dmg"], d["range"], d["speed"]]
+		if e.act and e.f == game.player:
+			_ctx_status.text = "%s
+%s" % [_brace_state(e), _ctx_status.text]
+		elif d.has("cloak") and e.f == game.player:
+			var cloaked: bool = game.hidden_from(e, (e.f + 1) % 3) and game.hidden_from(e, (e.f + 2) % 3)
+			_ctx_status.text = "%s
+%s" % ["CLOAKED - unseen by the enemy" if cloaked else "REVEALED - the enemy can see it", _ctx_status.text]
+	elif e.kind == game.PUFF:
+		_ctx_status.text = "Swelling... bursts in %.1fs" % maxf(6.0 - e.timer, 0.0)
+	else:
+		var status: String = d["desc"]
+		if e.built < 1.0:
+			status = "Growing %d%%  -  %s" % [int(e.built * 100), d["desc"]]
+		elif not e.connected:
+			status = "CUT OFF from the Heart: no income, withering. Rebuild a cord or wait for one to regrow."
+		if e.f == game.player and d.has("research") and e.research != "":
+			status = "Researching %s  %d%%" % [Data.TECHS[e.research]["name"], int(100 * e.research_t / Data.TECHS[e.research]["time"])]
+		_ctx_status.text = status
+	if actions:
+		for item in _ctx_train_buttons:
+			var ud: Dictionary = Data.UNITS[item[1]]
+			item[0].modulate = Color.WHITE if game.afford(game.player, ud["cost"], ud.get("spores", 0.0)) else Color(1, 0.75, 0.7, 0.8)
+		_refresh_ctx_queue(e)
+
+
+func _rebuild_ctx(sel: Array, actions: bool) -> void:
+	for c in ctx_box.get_children():
+		ctx_box.remove_child(c)
+		c.queue_free()
+	_ctx_train_buttons.clear()
+	_ctx_queue_ids.clear()
+	_ctx_progress = null
+	_ctx_queue = null
+	_ctx_hp = null
+	_ctx_status = null
+	var e = sel[0]
 	var head := HBoxContainer.new()
-	var t := _label(e.d["name"] if sel.size() == 1 else "%d selected" % sel.size(), 17, Data.faction_color(e.f).lerp(TEXT, 0.4), true)
-	head.add_child(t)
+	head.add_child(_label(e.d["name"] if sel.size() == 1 else "%d selected" % sel.size(), 17, Data.faction_color(e.f).lerp(TEXT, 0.4), true))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
 	if sel.size() == 1:
-		head.add_child(_label("%d / %d" % [ceili(e.hp), int(e.max_hp)], 13, DIM))
+		_ctx_hp = _label("", 13, DIM)
+		head.add_child(_ctx_hp)
 	ctx_box.add_child(head)
+	if sel.any(func(u): return u.kind == game.UNIT and u.f == game.player and u.act != null):
+		var bb := Button.new()
+		bb.text = "Brace / Uproot  [F]"
+		bb.tooltip_text = "Cep Bulwark: sink the roots. While braced it cannot move or attack, but every enemy shot
+that flies within 3 m bends into its cap for 25% damage. A move order pulls the roots up first."
+		bb.pressed.connect(func(): game.order_brace(game.selected))
+		ctx_box.add_child(bb)
 	if sel.size() > 1:
 		ctx_box.add_child(_label("Right-click to move, right-click an enemy to attack, A then click to attack-move.", 12, DIM))
 		return
-	if e.kind == game.UNIT:
-		var d: Dictionary = e.d
-		var line := "%s   dmg %d  range %.1f  speed %.1f" % [d["desc"], d["dmg"], d["range"], d["speed"]]
-		ctx_box.add_child(_wrap(line))
-		return
-	if e.kind == game.PUFF:
-		ctx_box.add_child(_wrap("Swelling... bursts in %.1fs" % maxf(6.0 - e.timer, 0.0)))
+	_ctx_status = _wrap("")
+	ctx_box.add_child(_ctx_status)
+	if not actions:
 		return
 	var d: Dictionary = e.d
-	var status: String = d["desc"]
-	if e.built < 1.0:
-		status = "Growing %d%%  -  %s" % [int(e.built * 100), d["desc"]]
-	elif not e.connected:
-		status = "CUT OFF from the Heart: no income, withering. Rebuild a cord or wait for one to regrow."
-	if e.f == game.player and d.has("research") and e.research != "":
-		status = "Researching %s  %d%%" % [Data.TECHS[e.research]["name"], int(100 * e.research_t / Data.TECHS[e.research]["time"])]
-	ctx_box.add_child(_wrap(status))
-	if e.f != f or e.built < 1.0:
-		return
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var trains: Array = d.get("trains", [])
@@ -608,44 +657,12 @@ func _refresh_ctx() -> void:
 		b.custom_minimum_size = Vector2(64, 70)
 		b.tooltip_text = "%s [%d]\n%s\nhp %d  dmg %d  range %.1f\nCost: %s" % [ud["name"], i + 1, ud["desc"], ud["hp"], ud["dmg"], ud["range"], _cost_text(ud["cost"], ud.get("spores", 0.0))]
 		b.pressed.connect(func(): _train(uid))
-		if not game.afford(f, ud["cost"], ud.get("spores", 0.0)):
-			b.modulate = Color(1, 0.75, 0.7, 0.8)
+		_ctx_train_buttons.append([b, uid])
 		row.add_child(b)
-	if not e.queue.is_empty():
-		# the queue as little portraits; the first one grows a progress bar
-		var qb := HBoxContainer.new()
-		qb.add_theme_constant_override("separation", 3)
-		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(10, 0)
-		qb.add_child(gap)
-		for i in e.queue.size():
-			var ud: Dictionary = Data.UNITS[e.queue[i]]
-			var cell := Control.new()
-			cell.custom_minimum_size = Vector2(42, 50)
-			var tr := TextureRect.new()
-			tr.texture = icon(ud["species"])
-			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tr.position = Vector2(1, 0)
-			tr.size = Vector2(40, 40)
-			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cell.add_child(tr)
-			if i == 0:
-				var prog := clampf(e.train_t / ud["train"], 0.0, 1.0)
-				cell.draw.connect(func():
-					cell.draw_rect(Rect2(3, 44, 36, 4), Color(0, 0, 0, 0.6))
-					cell.draw_rect(Rect2(3, 44, 36 * prog, 4), GOLD))
-			else:
-				tr.modulate = Color(1, 1, 1, 0.55)
-			qb.add_child(cell)
-		var cb := Button.new()
-		cb.text = "x"
-		cb.tooltip_text = "Cancel the last one (refunds it)"
-		cb.custom_minimum_size = Vector2(30, 30)
-		cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		cb.pressed.connect(func(): game.cancel_train(e))
-		qb.add_child(cb)
-		row.add_child(qb)
+	_ctx_queue = HBoxContainer.new()
+	_ctx_queue.add_theme_constant_override("separation", 3)
+	_ctx_queue.visible = false
+	row.add_child(_ctx_queue)
 	if d.has("research"):
 		var rb := Button.new()
 		rb.text = "Lineages (Tab)"
@@ -654,6 +671,58 @@ func _refresh_ctx() -> void:
 	if not trains.is_empty():
 		row.add_child(_label("  RMB sets rally", 11, DIM))
 	ctx_box.add_child(row)
+
+
+func _refresh_ctx_queue(e) -> void:
+	_ctx_queue.visible = not e.queue.is_empty()
+	if _ctx_queue_ids != e.queue:
+		_ctx_queue_ids = e.queue.duplicate()
+		for c in _ctx_queue.get_children():
+			_ctx_queue.remove_child(c)
+			c.queue_free()
+		_ctx_progress = null
+		if not e.queue.is_empty():
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(10, 0)
+			_ctx_queue.add_child(gap)
+			for i in e.queue.size():
+				var ud: Dictionary = Data.UNITS[e.queue[i]]
+				var cell := Control.new()
+				cell.custom_minimum_size = Vector2(42, 50)
+				var tr := TextureRect.new()
+				tr.texture = icon(ud["species"])
+				tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				tr.position = Vector2(1, 0)
+				tr.size = Vector2(40, 40)
+				tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				cell.add_child(tr)
+				if i == 0:
+					_ctx_progress = cell
+					cell.draw.connect(func():
+						cell.draw_rect(Rect2(3, 44, 36, 4), Color(0, 0, 0, 0.6))
+						cell.draw_rect(Rect2(3, 44, 36 * _ctx_progress_value, 4), GOLD))
+				else:
+					tr.modulate = Color(1, 1, 1, 0.55)
+				_ctx_queue.add_child(cell)
+			var cb := Button.new()
+			cb.text = "x"
+			cb.tooltip_text = "Cancel the last one (refunds it)"
+			cb.custom_minimum_size = Vector2(30, 30)
+			cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			cb.pressed.connect(func(): game.cancel_train(e))
+			_ctx_queue.add_child(cb)
+	if _ctx_progress:
+		_ctx_progress_value = clampf(e.train_t / Data.UNITS[e.queue[0]]["train"], 0.0, 1.0)
+		_ctx_progress.queue_redraw()
+
+
+func _brace_state(e) -> String:
+	match e.act.state:
+		CepActions.State.ROOTING: return "ROOTING..."
+		CepActions.State.BRACED: return "BRACED - catching enemy shots within 3 m (25% damage)"
+		CepActions.State.UPROOTING: return "UPROOTING..."
+	return "Loose - press F to brace"
 
 
 func _wrap(text: String) -> Label:
@@ -1299,7 +1368,12 @@ func _apply_settings() -> void:
 	# render scale: FSR2 upscales a smaller 3D render (and does its own anti-aliasing)
 	var vp := root.get_viewport()
 	var rm: Array = RENDER_MODES.get(settings["render"], RENDER_MODES["quality"])
-	if not OS.get_cmdline_user_args().has("--fsr") and not OS.get_cmdline_user_args().has("--fpstest"):
+	var render_override := false
+	for arg in OS.get_cmdline_user_args():
+		if arg.get_slice("=", 0) in ["--fsr", "--fpstest"]:
+			render_override = true
+			break
+	if not render_override:
 		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR if rm[1] >= 1.0 else Viewport.SCALING_3D_MODE_FSR2
 		vp.scaling_3d_scale = rm[1]
 		vp.use_taa = rm[1] >= 1.0
@@ -1392,7 +1466,7 @@ func _build_settings() -> void:
 			settings[key] = on
 			_apply_settings())
 		vb.add_child(cb)
-	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir)   1-3 train   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
+	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir) / brace (Cep Bulwark)   1-3 train   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
 	ctl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ctl.custom_minimum_size = Vector2(520, 0)
 	vb.add_child(ctl)
@@ -1866,6 +1940,7 @@ func _key(ev: InputEventKey) -> void:
 		return
 	if k == KEY_F and _own_units_selected():
 		game.order_sporulate(_own_selected(game.UNIT))
+		game.order_brace(_own_selected(game.UNIT))
 		return
 	if k >= KEY_1 and k <= KEY_3:
 		var i := k - KEY_1

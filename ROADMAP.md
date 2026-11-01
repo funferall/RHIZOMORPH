@@ -113,11 +113,39 @@ Controls (in game, since 2026-10-30):
 - **Right click:** cancel placing or casting, otherwise drop the selection.
 - **Camera:** WASD or arrows (and the screen edge, which can be turned off) to pan, Q/E or middle-drag
   to rotate, wheel to zoom.
-- **Keys:** Y stop, F sporulate (Choir); build keys N M B T G L K H (Shift keeps placing); Z X C V R
+- **Keys:** Y stop, F sporulate (Choir) / brace (Cep Bulwark); build keys N M B T G L K H (Shift keeps placing); Z X C V R
   spore actions; 1-3 train; Tab lineages; Space your Heart; P pause; +/- speed.
 - **Esc:** opens the settings page, which pauses the game. It has Master / Music / Effects volume
   (audio buses, saved to user://settings.cfg; default 50/55/60%), camera speed, fullscreen, edge
   scrolling, the controls, and Resume / Quit to menu / Quit game. `--settings` stages it for screenshots.
+
+**2026-11-01:** three Court units integrated from art kits (sources in `art/<unit>/README.md`;
+roster sheets for all three courts in `reference_images/`).
+
+| Unit | State |
+|---|---|
+| Wartling | second art pass: `scripts/wartling.gd` + `shaders/wartling.gdshader`, cached close / battle / distant meshes chosen by projected cap width |
+| Cep Bulwark | new trainable unit at the Cortina Thicket. `scripts/cep_bulwark.gd` meshes and LODs, `scripts/cep_actions.gd` bash / brace states driven by game.gd; braced Ceps catch direct shots in `_catch_shot`. Review scene: `scenes/art_review/cep_bulwark.tscn` |
+| Destroying Angel | skinned GLBs (13 joints, Idle / Walk / Attack) in `art/destroying_angel/`, `scripts/destroying_angel.gd`; clips advance with game time; LOD swaps mesh + skin; cloak hides it from enemies (`game.hidden_from`) |
+
+Melee blows with a `windup` (Cep, Angel) now land on the animation's impact frame (`_swings`).
+Check: `$G --path . --script tools/tests/court_units.gd [-- --shots=DIR]` (22 assertions, real renderer).
+
+**Violet Webcap v2, the first Blender-built unit.** `tools/blender/webcap_build.py` (headless Blender 4.2,
+`blender -b --factory-startup -P tools/blender/webcap_build.py`, ~25 s on OptiX) builds a 350k-face sculpt,
+bakes normals and occlusion onto three low-poly LODs that share one 1024 atlas, paints colour, roughness,
+glow and silk, and exports `art/webcap/webcap_{close,battle,distant}.glb`. `scripts/webcap.gd` loads them as
+one mesh with two surfaces: the opaque body (`shaders/webcap.gdshader`: clear coat and anisotropic sheen on
+the cap) and the blended silk veil (`shaders/webcap_silk.gdshader`); both step with
+`shaders/webcap_gait.gdshaderinc`. Reuse this pipeline for the next units. Renders and the preview scene:
+`tools/webcap/`; `tools/webcap/perf_webcap.gd` measured 60 Webcaps at battle LOD at +0.25 ms per frame
+(today's old model +0.08, v1 procedural +0.15) on an RTX 4060 laptop; vsync off, interleaved rounds.
+
+**Balance (2026-11-01).** Population cap 40 -> 100 for every court (Brood Chamber now +10). Every Choir
+unit at 80% hp and 85% damage. Bot batches (24 seeds each, Court / Hollow / Choir wins): cap 40 at full
+stats 3 / 2 / 17; cap 100 at full stats 0 / 3 / 20 (a higher cap alone helps the Choir, whose army is free
+thralls); cap 100 at 75% hp / 85% dmg 15 / 2 / 4; at 50% / 70% 15 / 4 / 0. 80% / 85% is untested; the Choir
+is very sensitive to thrall stats. The Hollow loses in every setup: the next balance problem.
 
 ## Pick up here next
 

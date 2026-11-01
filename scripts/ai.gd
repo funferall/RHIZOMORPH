@@ -11,6 +11,7 @@ extends RefCounted
 # knows. A scout keeps the picture fresh.
 
 const Data = preload("res://scripts/data.gd")
+const CepActions = preload("res://scripts/cep_actions.gd")
 
 var g: Node
 var f := 0
@@ -65,6 +66,7 @@ func tick(dt: float) -> void:
 			_sporulate()
 	_scout()
 	_army()
+	_brace()
 	_abilities()
 
 
@@ -72,6 +74,11 @@ func tick(dt: float) -> void:
 
 func _sees(p: Vector2) -> bool:
 	return g.fog.visible(f, p)
+
+
+# An enemy unit in sight, unless it is a cloaked Angel none of ours is close enough to sense.
+func _spots(u) -> bool:
+	return _sees(u.pos) and not g.hidden_from(u, f)
 
 
 func _knows(s) -> bool:
@@ -439,7 +446,7 @@ func rival() -> int:
 	for o in 3:
 		if g.fs[o]["alive"]:
 			# judged only by what this court has seen of them
-			power[o] = g.units.filter(func(e): return e.f == o and e.alive and (o == f or _sees(e.pos))).size() * 1.0 \
+			power[o] = g.units.filter(func(e): return e.f == o and e.alive and (o == f or _spots(e))).size() * 1.0 \
 				+ g.structs.filter(func(e): return e.f == o and e.alive and (o == f or _knows(e))).size() * 0.6
 	var leader := -1
 	for o in 3:
@@ -579,7 +586,7 @@ func _train() -> void:
 func _army() -> void:
 	var army := []
 	for u in g.units:
-		if u.f == f and u.alive and u.squad == "" and u.summit == Vector2.INF:
+		if u.f == f and u.alive and u.squad == "" and u.summit == Vector2.INF and not g.rooted(u):
 			army.append(u)
 	# raids on supply cords
 	raid_t -= p["think"]
@@ -599,7 +606,7 @@ func _army() -> void:
 	# the Heart under attack: drop everything and come home
 	var hp: Vector2 = g.heart(f).pos
 	for u in g.units:
-		if u.alive and u.f != f and u.f != Data.NEUTRAL and u.pos.distance_to(hp) < 24.0 and _sees(u.pos):
+		if u.alive and u.f != f and u.f != Data.NEUTRAL and u.pos.distance_to(hp) < 24.0 and _spots(u):
 			if attacking:
 				attacking = false
 				attack_t = g.time + 40.0
@@ -649,6 +656,28 @@ func _army() -> void:
 			gather.append(u)
 	if not gather.is_empty():
 		g.order_move(gather, rally, true)
+
+
+# Cep Bulwarks dig in when enemy shooters are in range and nothing is biting them,
+# and pull up once the shooting has stopped. A rooted Cep sits out army orders.
+func _brace() -> void:
+	for u in g.units:
+		if u.f != f or not u.alive or u.act == null:
+			continue
+		var shooters := 0
+		var biters := 0
+		for o in g.units:
+			if o.alive and o.f != f and o.f != Data.NEUTRAL and _spots(o):
+				var dd: float = o.pos.distance_to(u.pos)
+				if o.d["shot"] != "" and dd < 13.0:
+					shooters += 1
+				elif o.d["shot"] == "" and dd < 3.5:
+					biters += 1
+		var bracing: bool = u.act.state in [CepActions.State.ROOTING, CepActions.State.BRACED]
+		if not bracing and shooters >= 2 and biters == 0:
+			g.order_brace([u])
+		elif bracing and (shooters == 0 or biters >= 2):
+			g.order_brace([u])
 
 
 # The Choir's idle army goes looking for hosts: the nearest insects, in bites of a few.
@@ -728,7 +757,7 @@ func _rally() -> Vector2:
 
 func _threat() -> Vector2:
 	for u in g.units:
-		if u.f == f or not u.alive or u.f == Data.NEUTRAL or not _sees(u.pos):
+		if u.f == f or not u.alive or u.f == Data.NEUTRAL or not _spots(u):
 			continue
 		for s in _mine():
 			if s.pos.distance_to(u.pos) < 16.0:
@@ -803,7 +832,7 @@ func _abilities() -> void:
 		var bn := 0.0
 		var pts := []
 		for u in g.units:
-			if u.f != f and u.alive and u.f != Data.NEUTRAL and _sees(u.pos):
+			if u.f != f and u.alive and u.f != Data.NEUTRAL and _spots(u):
 				pts.append(u.pos)
 		if vs_structs:
 			for s in g.structs:

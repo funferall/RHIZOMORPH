@@ -78,6 +78,7 @@ LATIN = {
     "nursery": "Betula sapling with Cantharellus",
     "u_webcap": "Cortinarius violaceus, walking",
     "u_milkcap": "Lactarius deliciosus, walking",
+    "u_cep_bulwark": "Boletus edulis, walking",
 }
 
 COURTS = [

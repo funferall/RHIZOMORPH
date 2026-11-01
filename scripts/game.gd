@@ -13,6 +13,11 @@ signal sound(name: String, at: Vector3)   # at = Vector3.INF for flat UI sounds
 
 const Data = preload("res://scripts/data.gd")
 const FungusLib = preload("res://scripts/fungus_lib.gd")
+const Wartling = preload("res://scripts/wartling.gd")
+const CepBulwark = preload("res://scripts/cep_bulwark.gd")
+const CepActions = preload("res://scripts/cep_actions.gd")
+const Angel = preload("res://scripts/destroying_angel.gd")
+const Webcap = preload("res://scripts/webcap.gd")
 const AI = preload("res://scripts/ai.gd")
 const Forest = preload("res://scripts/forest.gd")
 const Fog = preload("res://scripts/fog.gd")
@@ -34,6 +39,15 @@ class Ent:
 	var mi: MeshInstance3D
 	var ring: MeshInstance3D
 	var flash := 0.0
+	# Sentinels force the first upload; typed fields avoid per-frame dictionary work.
+	var visual_walk := INF
+	var visual_wither := INF
+	var visual_progress := INF
+	var visual_load := INF
+	var visual_severed := INF
+	var visual_flash := INF
+	var visual_built := -1.0
+	var visual_selected := -1
 	var poison_dps := 0.0
 	var poison_t := 0.0
 	var slow := 0.0
@@ -61,6 +75,13 @@ class Ent:
 	var amove := false
 	var facing := 0.0
 	var walk := 0.0
+	var visual_lod := 1     # Wartling, Cep, Angel: close, battle or distant shared mesh
+	var act: RefCounted = null   # Cep Bulwark: bash / brace state (scripts/cep_actions.gd)
+	var anim: AnimationPlayer = null   # Destroying Angel: skinned clips, advanced with game time
+	var attack_anim := 0.0  # Angel: seconds left in the Attack clip
+	var cloak_shown := -1   # Angel: the material it last wore (0 revealed, 1 cloaked)
+	var reveal_t := 0.0     # Angel: seconds it stays exposed after striking or being hurt
+	var detected := 0       # Angel: bit per faction with something within its cloak radius
 	var think_t := 0.0
 	var home := Vector2.INF
 	var squad := ""
@@ -124,6 +145,10 @@ var _econ_t := 0.0
 var _decor_t := 0.0
 var _ff_left := 0.0
 var _shake := 0.0
+var _wartling_lod_t := 0.0
+var _visual_time := 0.0   # game time at the last visual update: drives skinned clips
+var _swings: Array[Dictionary] = []   # melee blows waiting for their animation's impact frame
+var _braced: Array[Ent] = []          # Cep Bulwarks rooted this step, catching shots
 var _rng := RandomNumberGenerator.new()
 var _log := true   # stats are always kept: bot logs print them, sims and playtests save them
 var _print_log := OS.get_cmdline_user_args().has("--log")
@@ -304,26 +329,42 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 	if d.get("thrall", false) and has_tech(f, "chitin_lysis"):
 		e.max_hp *= 1.15
 	e.hp = e.max_hp
-	e.radius = 0.55 if not d.get("elite", false) else 0.7
+	e.radius = d.get("size", 0.55 if not d.get("elite", false) else 0.7)
 	e.facing = _rng.randf() * TAU
 	e.cd = _rng.randf() * 0.5
 	e.think_t = _rng.randf() * 0.3
 	e.node = Node3D.new()
 	e.node.position = _v3(p)
 	add_child(e.node)
-	e.mi = MeshInstance3D.new()
-	e.mi.mesh = FungusLib.mesh(d["species"])
 	var c: Color = Data.faction_color(f)
 	var insect: bool = f == Data.NEUTRAL
 	var tint := 0.0 if insect else (0.18 if d.get("thrall", false) else 0.45)   # a thrall's own fungus shows through
+	if uid == "angel":
+		var rig_parts: Array = Angel.instance()
+		e.node.add_child(rig_parts[0])
+		e.mi = rig_parts[1]
+		e.anim = rig_parts[2]
+	else:
+		e.mi = MeshInstance3D.new()
+		match uid:
+			"wartling": e.mi.mesh = Wartling.mesh(e.visual_lod)
+			"cep": e.mi.mesh = CepBulwark.mesh(e.visual_lod)
+			"webcap": e.mi.mesh = Webcap.mesh(e.visual_lod)
+			_: e.mi.mesh = FungusLib.mesh(d["species"])
+		e.node.add_child(e.mi)
 	e.mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, tint))
-	e.mi.set_instance_shader_parameter("gait", (16.0 if insect else 10.0) + _rng.randf() * 3.0)
-	e.node.add_child(e.mi)
+	if d.get("brace", false):
+		e.act = CepActions.new()
+		e.mi.set_instance_shader_parameter("gait", 4.4 + _rng.randf() * 0.8)   # a slow, planted four-beat crawl
+	elif uid == "webcap":
+		e.mi.set_instance_shader_parameter("gait", 6.4 + _rng.randf() * 1.2)   # long, slow stilt strides
+	elif e.anim == null:
+		e.mi.set_instance_shader_parameter("gait", (16.0 if insect else 10.0) + _rng.randf() * 3.0)
 	units.append(e)
 	if insect:
 		e.radius = 0.4
 		return e
-	_make_ring(e, 1.6 if not d.get("elite", false) else 2.0)
+	_make_ring(e, e.radius * 2.86 if d.has("size") else (1.6 if not d.get("elite", false) else 2.0))
 	_burst(_v3(p, 0.4), Data.faction_color(f).lightened(0.4), 16, 1.5, 0.6)
 	if started and time > 1.0:
 		var kind := "spawn_elite" if d.get("elite", false) else ("spawn_heavy" if d["hp"] >= 130 else "spawn_light")
@@ -516,7 +557,7 @@ func laces(f: int) -> bool:
 
 
 func pop_cap(f: int) -> int:
-	return 50 if has_tech(f, "brood") else Data.POP_CAP
+	return Data.POP_CAP + (10 if has_tech(f, "brood") else 0)
 
 
 func res(f: int) -> Array:
@@ -705,6 +746,8 @@ func order_move(group: Array, p: Vector2, attack_move := false) -> void:
 	for u in group:
 		if not u.alive or u.kind != UNIT:
 			continue
+		if u.act:
+			u.act.move()   # a braced Cep pulls its roots up first, then walks
 		var off := Vector2.ZERO
 		if i > 0:
 			var a := i * 2.39996
@@ -718,9 +761,40 @@ func order_move(group: Array, p: Vector2, attack_move := false) -> void:
 func order_attack(group: Array, t: Ent) -> void:
 	for u in group:
 		if u.alive and u.kind == UNIT:
+			if u.act:
+				u.act.move()
 			u.target = t
 			u.goal = Vector2.INF
 			u.amove = false
+
+
+# Cep Bulwarks sink their roots (or pull them up). A group goes one way together:
+# if any of them is still loose, all of them brace.
+func order_brace(group: Array) -> void:
+	var ceps := group.filter(func(u): return u.alive and u.kind == UNIT and u.act != null)
+	if ceps.is_empty():
+		return
+	var bracing := func(u): return u.act.state in [CepActions.State.ROOTING, CepActions.State.BRACED]
+	var all_bracing: bool = ceps.all(bracing)
+	for u in ceps:
+		if bracing.call(u) == all_bracing:
+			u.act.toggle_brace()
+		if not all_bracing:
+			u.goal = Vector2.INF
+			u.target = null
+			u.amove = false
+			u.home = u.pos
+	emit_signal("sound", "place", _v3(ceps[0].pos))
+
+
+# Rooting, braced or pulling up: a Cep that cannot walk or swing.
+func rooted(u: Ent) -> bool:
+	return u.act != null and u.act.state in [CepActions.State.ROOTING, CepActions.State.BRACED, CepActions.State.UPROOTING]
+
+
+# A cloaked Angel nobody of faction f is close enough to sense.
+func hidden_from(u: Ent, f: int) -> bool:
+	return u.d.has("cloak") and u.f != f and u.reveal_t <= 0.0 and u.detected & (1 << f) == 0
 
 
 func order_stop(group: Array) -> void:
@@ -1131,6 +1205,7 @@ func _step(dt: float) -> void:
 		for k in cds:
 			cds[k] = maxf(cds[k] - dt, 0.0)
 	_rebuild_grid()
+	_braced.clear()
 	var t1 := _prof_t()
 	for s in structs:
 		if s.alive:
@@ -1140,6 +1215,7 @@ func _step(dt: float) -> void:
 	for u in units:
 		if u.alive:
 			_update_unit(u, dt)
+	_update_swings(dt)
 	_prof("units", t1)
 	t1 = _prof_t()
 	for c in cords:
@@ -1586,13 +1662,28 @@ func _update_unit(u: Ent, dt: float) -> void:
 		_insect_think(u, dt)
 	elif d.get("bores", false) and u.target == null:
 		_bore(u, dt)
+	if u.reveal_t > 0.0:
+		u.reveal_t -= dt
+	if u.act:
+		u.act.advance(dt)
+		if rooted(u):
+			# roots in the soil: no walking, no swinging, and nothing shoves it aside
+			if u.act.capture_active():
+				_braced.append(u)
+			u.target = null
+			u.vel = Vector2.ZERO
+			u.walk = lerpf(u.walk, 0.0, 1.0 - exp(-dt * 8.0))
+			return
 	u.cd -= dt
-	if u.target and (not u.target.alive or (u.target.kind == CORD and u.target.regrow > 0.0)):
+	if u.target and (not u.target.alive or (u.target.kind == CORD and u.target.regrow > 0.0) \
+			or (u.target.kind == UNIT and hidden_from(u.target, u.f))):
 		u.target = null
 	# look for trouble
 	u.think_t -= dt
 	if u.think_t <= 0.0:
 		u.think_t = 0.3
+		if d.has("cloak"):
+			_sense_cloak(u)
 		if econ(u.f) == "mycorrhizal":
 			# the Wood Wide Web feeds the Court's defenders among its trees
 			var t: int = forest.tree_in_roots(u.pos)
@@ -1665,6 +1756,19 @@ func _update_unit(u: Ent, dt: float) -> void:
 	u.walk = lerpf(u.walk, clampf(sp / maxf(spd, 0.1), 0.0, 1.0), 1.0 - exp(-dt * 8.0))
 
 
+# Which factions have a unit or a finished structure close enough to sense a cloaked Angel.
+func _sense_cloak(u: Ent) -> void:
+	var r: float = u.d["cloak"]
+	var mask := 0
+	for o in _near_units(u.pos, r):
+		if o.alive and o.f != u.f and o.f != Data.NEUTRAL:
+			mask |= 1 << o.f
+	for s: Ent in _near_structs(u.pos):
+		if s.alive and s.f != u.f and s.built >= 1.0 and u.pos.distance_to(s.pos) - s.radius < r:
+			mask |= 1 << s.f
+	u.detected = mask
+
+
 func _dist_to(u: Ent, t: Ent) -> float:
 	if t.kind == CORD:
 		return _seg_dist(u.pos, t.a.pos, t.b.pos)
@@ -1691,7 +1795,7 @@ func _find_target(e: Ent, r: float, include_cords: bool) -> Ent:
 	var best: Ent = null
 	var bs := INF
 	for o in _near_units(e.pos, r + 1.0):
-		if o.f != e.f and o.alive and (o.f != Data.NEUTRAL or _hunts(e, o)):
+		if o.f != e.f and o.alive and (o.f != Data.NEUTRAL or _hunts(e, o)) and not hidden_from(o, e.f):
 			var dd: float = e.pos.distance_to(o.pos)
 			if dd < bs:
 				bs = dd
@@ -1742,11 +1846,18 @@ func _fire(src: Ent, t: Ent, d: Dictionary) -> void:
 	var dmg: float = d["dmg"]
 	if d.get("vigor", false):
 		dmg *= 0.8 + 1.0 * forest.vigor(src.tree)
+	if src.kind == UNIT and src.d.has("cloak"):
+		src.reveal_t = 2.0   # striking throws off the cloak
 	if shot == "":
-		_damage(t, dmg, src.f, src, false, d)
-		var hp3 := _v3(_aim_point(src, t), 0.5)
-		emit_signal("sound", "hit_" + src.id if src.kind == UNIT else "hit_melee", hp3)
-		_burst(hp3, Data.faction_color(src.f).lightened(0.3), 6, 1.5, 0.35)
+		if src.kind == UNIT and d.has("windup"):
+			# the blow lands on the animation's impact frame, if the target is still in reach
+			if src.act:
+				src.act.attack()
+			if src.anim:
+				_angel_attack(src, d)
+			_swings.append({"src": src, "target": t, "t": d["windup"], "dmg": dmg, "d": d})
+			return
+		_melee_hit(src, t, dmg, d)
 		return
 	var from := src.node.global_position + Vector3(0, FungusLib.height_of(src.d["species"]) * (0.7 if src.kind == UNIT else 0.8), 0)
 	var to := _aim_point(src, t)
@@ -1759,6 +1870,40 @@ func _fire(src: Ent, t: Ent, d: Dictionary) -> void:
 		"arc": arc, "dmg": dmg, "f": src.f, "src": src, "d": d, "shot": shot,
 		"node": _shot_node(shot, src.f),
 	})
+
+
+func _melee_hit(src: Ent, t: Ent, dmg: float, d: Dictionary) -> void:
+	_damage(t, dmg, src.f, src, false, d)
+	var hp3 := _v3(_aim_point(src, t), 0.5)
+	emit_signal("sound", "hit_" + src.id if src.kind == UNIT else "hit_melee", hp3)
+	_burst(hp3, Data.faction_color(src.f).lightened(0.3), 6, 1.5, 0.35)
+
+
+# Wound-up melee blows (Cep bash, Angel lunge) resolve at their impact frame.
+func _update_swings(dt: float) -> void:
+	if _swings.is_empty():
+		return
+	var keep: Array[Dictionary] = []
+	for w in _swings:
+		w["t"] -= dt
+		if w["t"] > 0.0:
+			keep.append(w)
+			continue
+		var src: Ent = w["src"]
+		var t: Ent = w["target"]
+		if src.alive and t.alive and not rooted(src):
+			var reach: float = w["d"]["range"] + src.radius + (t.radius if t.kind != CORD else 0.2) + 0.8
+			if _dist_to(src, t) <= reach:
+				_melee_hit(src, t, w["dmg"], w["d"])
+	_swings = keep
+
+
+func _angel_attack(u: Ent, d: Dictionary) -> void:
+	# the clip is 0.95 s; quicken it so a swing never outlasts the attack cooldown
+	var rate := maxf(1.0, Angel.ATTACK_SECONDS / float(d["cd"]))
+	u.anim.play("Attack", 0.06, rate)
+	u.anim.seek(0.0, false)
+	u.attack_anim = Angel.ATTACK_SECONDS / rate
 
 
 func _shot_node(shot: String, f: int) -> MeshInstance3D:
@@ -1797,8 +1942,15 @@ func _update_shots(dt: float) -> void:
 		var to3 := _v3(s["to"], 0.5)
 		var from: Vector3 = s["from"]
 		var p := from.lerp(to3, k)
-		if s["arc"]:
+		if s.has("bend"):
+			# caught: curve off the old heading into the Cep's cap
+			p = from.lerp(s["bend"], k).lerp(s["bend"].lerp(to3, k), k)
+		elif s["arc"]:
 			p.y += sin(k * PI) * maxf(from.distance_to(to3) * 0.35, 2.0)
+		elif not _braced.is_empty() and _catch_shot(s, p):
+			keep.append(s)
+			continue
+		s["pos"] = p
 		var node: MeshInstance3D = s["node"]
 		node.position = p
 		if k >= 1.0:
@@ -1807,6 +1959,31 @@ func _update_shots(dt: float) -> void:
 		else:
 			keep.append(s)
 	shots = keep
+
+
+# A braced Cep's roots pull in any hostile direct shot that crosses its circle,
+# even one aimed past it; the cap takes the hit at a quarter of its damage.
+# Lobbed shots (arc) fly over. Returns true when this shot was just caught.
+func _catch_shot(s: Dictionary, p: Vector3) -> bool:
+	var last: Vector3 = s.get("pos", s["from"])
+	for c in _braced:
+		if not c.alive or c.f == s["f"]:
+			continue
+		var at := _v3(c.pos)
+		if CepActions.entry_fraction(last, p, at) < 0.0:
+			continue
+		var heading := (p - last).normalized() if p.distance_to(last) > 0.001 else Vector3.ZERO
+		s["from"] = last
+		s["bend"] = last + heading * 1.4
+		s["target"] = c
+		s["to"] = c.pos
+		s["dmg"] *= CepActions.CAPTURE_DAMAGE_SCALE
+		s["t"] = 0.0
+		s["dur"] = maxf(last.distance_to(_v3(c.pos, 0.5)) / 14.0, 0.18)
+		s["pos"] = last
+		_burst(_v3(c.pos, 0.8), Color(0.75, 0.6, 0.35), 8, 1.2, 0.4)
+		return true
+	return false
 
 
 func _impact(s: Dictionary) -> void:
@@ -1866,6 +2043,8 @@ func _damage(e: Ent, amt: float, src_f: int, src: Ent, quiet := false, d := {}) 
 	e.hp -= amt
 	if not quiet:
 		e.flash = 1.0
+		if e.kind == UNIT and e.d.has("cloak"):
+			e.reveal_t = maxf(e.reveal_t, 1.5)   # a wounded Angel shimmers into view
 		if d.has("poison"):
 			var pz: float = d["poison"] * (1.5 if has_tech(src_f, "muscarine") else 1.0)
 			e.poison_dps = maxf(e.poison_dps if e.poison_t > 0.0 else 0.0, pz)
@@ -2331,10 +2510,17 @@ func _push_sources() -> void:
 # --- visuals -------------------------------------------------------------------
 
 func _update_visuals(delta: float) -> void:
+	_wartling_lod_t -= delta
+	var update_lod := _wartling_lod_t <= 0.0
+	if update_lod:
+		_wartling_lod_t = 0.2
+	var px_scale := get_viewport().get_visible_rect().size.y / (2.0 * tan(deg_to_rad(rig.cam.fov * 0.5)))
 	# fog: enemy units and insects show only in sight; enemy structures once spotted
+	var game_dt := clampf(time - _visual_time, 0.0, 0.5)   # pause and game speed apply to clips
+	_visual_time = time
 	for u in units:
 		if u.alive:
-			u.node.visible = u.f == player or fog.visible(player, u.pos)
+			u.node.visible = u.f == player or (fog.visible(player, u.pos) and not hidden_from(u, player))
 	for s in structs:
 		if s.alive and s.f != player:
 			if not s.spotted and fog.visible(player, s.pos) and (not s.d.get("hidden", false) or _unit_within(player, s.pos, 3.0)):
@@ -2349,27 +2535,79 @@ func _update_visuals(delta: float) -> void:
 	for u in units:
 		if not u.alive:
 			continue
+		if u.id == "wartling":
+			if not u.node.visible:
+				continue
+			if update_lod:
+				var distance := maxf(rig.cam.global_position.distance_to(u.node.global_position), 0.1)
+				var pixels := (Wartling.CAP_R * 2.0) * px_scale * u.node.scale.x / distance
+				var level := Wartling.choose_lod(pixels, u.visual_lod)
+				if level != u.visual_lod:
+					u.visual_lod = level
+					u.mi.mesh = Wartling.mesh(level)
+			u.mi.set_instance_shader_parameter("motion_time", time)
+		elif u.id == "webcap":
+			if not u.node.visible:
+				continue
+			if update_lod:
+				var distance := maxf(rig.cam.global_position.distance_to(u.node.global_position), 0.1)
+				var level := Webcap.choose_lod(Webcap.CAP_R * 2.0 * px_scale / distance, u.visual_lod)
+				if level != u.visual_lod:
+					u.visual_lod = level
+					u.mi.mesh = Webcap.mesh(level)
+			u.mi.set_instance_shader_parameter("motion_time", time)
+		elif u.act:
+			if not u.node.visible:
+				continue
+			if update_lod:
+				var distance := maxf(rig.cam.global_position.distance_to(u.node.global_position), 0.1)
+				var level := CepBulwark.choose_lod(CepBulwark.CAP_WIDTH * px_scale / distance, u.visual_lod)
+				if level != u.visual_lod:
+					u.visual_lod = level
+					u.mi.mesh = CepBulwark.mesh(level)
+			u.mi.set_instance_shader_parameter("motion_time", time)
+			u.mi.set_instance_shader_parameter("brace", u.act.brace)
+			u.mi.set_instance_shader_parameter("bash", u.act.bash)
+		elif u.anim:
+			if not u.node.visible:
+				continue
+			_angel_visual(u, game_dt, update_lod, px_scale)
 		var gy: float = board.ground_y(u.pos)
 		u.node.position = Vector3(u.pos.x, lerpf(u.node.position.y, gy, 1.0 - exp(-delta * 12.0)), u.pos.y)
 		u.node.rotation.y = -u.facing
-		u.mi.position.y = absf(sin(time * 9.0 + u.think_t * 20.0)) * 0.06 * u.walk
-		u.mi.set_instance_shader_parameter("walk", u.walk)
+		if u.act == null and u.anim == null and u.id != "webcap":
+			u.mi.position.y = absf(sin(time * 9.0 + u.think_t * 20.0)) * 0.06 * u.walk
+		if u.visual_walk != u.walk and u.anim == null:
+			u.visual_walk = u.walk
+			u.mi.set_instance_shader_parameter(&"walk", u.visual_walk)
 		_fx_common(u, delta)
 	for s in structs:
 		if not s.alive:
 			continue
-		s.node.scale = Vector3.ONE * lerpf(0.3, 1.0, smoothstep(0.0, 1.0, s.built))
-		s.mi.set_instance_shader_parameter("growing", 1.0 - s.built)
-		s.mi.set_instance_shader_parameter("wither", 0.0 if s.connected else 0.55)
+		if s.visual_built != s.built:
+			s.visual_built = s.built
+			s.node.scale = Vector3.ONE * lerpf(0.3, 1.0, smoothstep(0.0, 1.0, s.built))
+			s.mi.set_instance_shader_parameter(&"growing", 1.0 - s.built)
+		if s.visual_wither != (0.0 if s.connected else 0.55):
+			s.visual_wither = 0.0 if s.connected else 0.55
+			s.mi.set_instance_shader_parameter(&"wither", s.visual_wither)
 		_fx_common(s, delta)
 	for c in cords:
 		if not c.alive:
 			continue
-		c.mi.set_instance_shader_parameter("progress", c.grow if c.regrow <= 0.0 else 1.0)
-		c.mi.set_instance_shader_parameter("load", c.load)
-		c.mi.set_instance_shader_parameter("severed", 1.0 if c.regrow > 0.0 else 0.0)
+		if c.visual_progress != (c.grow if c.regrow <= 0.0 else 1.0):
+			c.visual_progress = c.grow if c.regrow <= 0.0 else 1.0
+			c.mi.set_instance_shader_parameter(&"progress", c.visual_progress)
+		if c.visual_load != c.load:
+			c.visual_load = c.load
+			c.mi.set_instance_shader_parameter(&"load", c.visual_load)
+		if c.visual_severed != (1.0 if c.regrow > 0.0 else 0.0):
+			c.visual_severed = 1.0 if c.regrow > 0.0 else 0.0
+			c.mi.set_instance_shader_parameter(&"severed", c.visual_severed)
 		c.flash = maxf(c.flash - delta * 4.0, 0.0)
-		c.mi.set_instance_shader_parameter("flash", c.flash)
+		if c.visual_flash != c.flash:
+			c.visual_flash = c.flash
+			c.mi.set_instance_shader_parameter(&"flash", c.visual_flash)
 	for p in puffs:
 		if p.alive:
 			_fx_common(p, delta)
@@ -2382,10 +2620,42 @@ func _update_visuals(delta: float) -> void:
 		rig.cam.v_offset = 0.0
 
 
+# The Angel's skinned clips, detail level and cloak, as its owner sees it.
+func _angel_visual(u: Ent, game_dt: float, update_lod: bool, px_scale: float) -> void:
+	if update_lod:
+		var distance := maxf(rig.cam.global_position.distance_to(u.node.global_position), 0.1)
+		var level := Angel.choose_lod(Angel.HEIGHT * px_scale / distance, u.visual_lod)
+		if level != u.visual_lod:
+			u.visual_lod = level
+			Angel.set_lod(u.mi, level)
+	var cloaked := 1 if u.f == player and hidden_from(u, (u.f + 1) % 3) and hidden_from(u, (u.f + 2) % 3) else 0
+	if cloaked != u.cloak_shown:
+		u.cloak_shown = cloaked
+		u.mi.material_override = Angel.material(cloaked == 1)
+		u.mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if cloaked == 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var rate := 1.0
+	if u.attack_anim > 0.0:
+		u.attack_anim -= game_dt
+		if u.attack_anim <= 0.0:
+			u.anim.play("Walk" if u.walk > 0.25 else "Idle", 0.12)
+	else:
+		var clip := "Walk" if u.walk > 0.25 else "Idle"
+		if u.anim.current_animation != clip:
+			u.anim.play(clip, 0.15)
+		if clip == "Walk":
+			# a 1.2 s stride cycle; quicken it with pace so the feet keep up with the ground
+			rate = clampf(u.vel.length() / 3.2, 0.7, 2.3)
+	if game_dt > 0.0:
+		u.anim.advance(game_dt * rate)
+
+
 func _fx_common(e: Ent, delta: float) -> void:
 	e.flash = maxf(e.flash - delta * 5.0, 0.0)
-	e.mi.set_instance_shader_parameter("flash", e.flash)
-	if e.ring:
+	if e.visual_flash != e.flash:
+		e.visual_flash = e.flash
+		e.mi.set_instance_shader_parameter(&"flash", e.visual_flash)
+	if e.ring and e.visual_selected != int(e.selected):
+		e.visual_selected = int(e.selected)
 		e.ring.set_instance_shader_parameter("selected", 1.0 if e.selected else 0.0)
 
 

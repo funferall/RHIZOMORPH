@@ -38,6 +38,8 @@ var _fps_frames: Array[float] = []
 var _fps_cpu := 0.0
 var _fps_gpu := 0.0
 var _fps_proc := 0.0
+var _fps_last_usec := 0
+var _fps_prof_start := {}
 
 
 func _ready() -> void:
@@ -254,7 +256,7 @@ func _showcase() -> void:
 	var groups := [
 		["giant_agaric", "fly_agaric", "clathrus", "death_cap", "armillaria", "chanterelle", "mycena_lantern", "bracket",
 			"giant_morel", "morel", "earthstar", "cordyceps", "giant_veiled", "veiled_lady", "birds_nest", "pilobolus", "giant_puffball", "inkcap_bed", "anthill"],
-		["u_wartling", "u_spitter", "u_angel", "u_bruiser", "u_slinger", "u_bomber", "u_sniper", "u_stalker", "u_zombie",
+		["u_wartling", "u_spitter", "u_angel", "u_cep_bulwark", "u_bruiser", "u_slinger", "u_bomber", "u_sniper", "u_stalker", "u_zombie",
 			"i_ant", "t_ant", "i_beetle", "t_beetle", "i_fly", "t_fly", "i_springtail"],
 		["agaric_button", "mycena_white", "morel_small", "elf_cup_small", "puffball_small", "inkcap"],
 	]
@@ -288,19 +290,27 @@ func _showcase() -> void:
 # Every species in the game, with who uses it: structures and units by court,
 # the forest's insects, decor sprouts and spore-action props.
 # Frame the biggest fight, settle, then time 20 s of frames at 1x.
-func _fps_test(delta: float) -> void:
+func _fps_test(_delta: float) -> void:
+	var now := Time.get_ticks_usec()
 	if _fps_t < 0.0:
 		_fps_t = 0.0
+		_fps_last_usec = now
 		var hp: Vector2 = game.hotspot()
 		var dist := float(args["fpstest"]) if args["fpstest"] != "1" else 45.0
 		rig.set_view(rig.yaw, dist, Vector3(hp.x, 0, hp.y))
 		rig.snap()
 		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 		return
-	_fps_t += delta / maxf(Engine.time_scale, 0.01)
+	# Measure wall time, independent of engine delta smoothing and time scale.
+	var frame_sec := (now - _fps_last_usec) / 1000000.0
+	_fps_last_usec = now
+	_fps_t += frame_sec
 	if _fps_t < 3.0:
 		return
-	_fps_frames.append(delta / maxf(Engine.time_scale, 0.01))
+	if _fps_prof_start.is_empty():
+		_fps_prof_start = game._prof_report()
+		return
+	_fps_frames.append(frame_sec)
 	var vrid := get_viewport().get_viewport_rid()
 	_fps_cpu += RenderingServer.viewport_get_measured_render_time_cpu(vrid) + RenderingServer.get_frame_setup_time_cpu()
 	_fps_gpu += RenderingServer.viewport_get_measured_render_time_gpu(vrid)
@@ -313,17 +323,19 @@ func _fps_test(delta: float) -> void:
 			avg += m
 		avg /= ms.size()
 		var p99: float = ms[int(ms.size() * 0.99)]
-		print("FPSTEST dist=%s scale=%s fsr=%s: avg %.1f fps (%.2f ms), 1%% low %.1f fps, %d frames, %d units" % [args["fpstest"],
-			args.get("scale", "1.0"), args.has("fsr"), 1.0 / avg, avg * 1000.0, 1.0 / p99, ms.size(), game.units.filter(func(u): return u.alive).size()])
+		var vp := get_viewport()
+		print("FPSTEST dist=%s scale=%.2f fsr=%s viewport=%s: avg %.1f fps (%.2f ms), 1%% low %.1f fps, %d frames, %d units" % [args["fpstest"],
+			vp.scaling_3d_scale, vp.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR2, vp.get_visible_rect().size,
+			1.0 / avg, avg * 1000.0, 1.0 / p99, ms.size(), game.units.filter(func(u): return u.alive).size()])
 		var n := float(ms.size())
 		if game._profiling:
 			var pr: Dictionary = game._prof_report()
 			var tot := float(ms.size())
 			var parts := []
 			for k in pr:
-				parts.append("%s %.1f" % [k, float(pr[k]) / tot])
-			print("FPSTEST game ms/frame (whole run incl. fast-forward): " + ", ".join(parts))
-		print("FPSTEST split: scripts (_process) %.1f ms, render CPU %.1f ms, render GPU %.1f ms, draw calls %d, objects %d" % [_fps_proc / n, _fps_cpu / n, _fps_gpu / n,
+				parts.append("%s %.3f" % [k, float(pr[k] - _fps_prof_start.get(k, 0)) / tot])
+			print("FPSTEST game ms/frame (measurement window): " + ", ".join(parts))
+		print("FPSTEST monitors (not additive): process %.1f ms, render CPU %.1f ms, render GPU %.1f ms, draw calls %d, objects %d" % [_fps_proc / n, _fps_cpu / n, _fps_gpu / n,
 			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)])
 		get_tree().quit()
 
@@ -437,7 +449,6 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	if args.has("fpstest") and game and not game.busy():
 		_fps_test(delta)
-		return
 	if args.has("sim") and game and (game.over or game.time >= float(args.get("seconds", "1200"))):
 		print("SIM " + JSON.stringify(game.sim_summary()))
 		get_tree().quit()

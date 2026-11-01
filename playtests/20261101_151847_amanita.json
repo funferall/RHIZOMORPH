@@ -1,0 +1,223 @@
+{
+ "alive": [
+  1,
+  2
+ ],
+ "casts": {
+  "built_agaric_ring": 3,
+  "built_brood_chamber": 1,
+  "built_clathrus_cage": 7,
+  "built_cordyceps_spire": 1,
+  "built_cortina_thicket": 1,
+  "built_deathcap_grove": 3,
+  "built_earthstar": 1,
+  "built_honey_rot": 6,
+  "built_inkcap_bed": 1,
+  "built_mantle": 6,
+  "built_morel_patch": 1,
+  "built_node": 21,
+  "built_nursery": 3,
+  "built_oyster_shelf": 2,
+  "built_root_snare": 5,
+  "built_rot_bracket": 4,
+  "built_stinkhorn_lure": 7,
+  "built_truffle": 19,
+  "cast_borer_swarm": 1,
+  "cast_lure": 6,
+  "cast_pandemic": 1,
+  "cast_volley": 7,
+  "cast_zombify": 4,
+  "spor2": 89
+ },
+ "courts": [
+  {
+   "alive": false,
+   "court": "amanita",
+   "died": 531.561790525274,
+   "hist": [
+    [
+     8.5,
+     4.2,
+     0.6,
+     3
+    ],
+    [
+     9.3,
+     5.3,
+     1.0,
+     9
+    ],
+    [
+     9.9,
+     5.3,
+     1.0,
+     20
+    ],
+    [
+     10.5,
+     5.3,
+     1.0,
+     15
+    ],
+    [
+     9.9,
+     5.3,
+     1.0,
+     26
+    ],
+    [
+     10.9,
+     11.1,
+     1.2,
+     16
+    ],
+    [
+     13.6,
+     11.1,
+     1.2,
+     11
+    ],
+    [
+     10.1,
+     11.1,
+     1.2,
+     7
+    ]
+   ],
+   "pop": 0,
+   "structs": 7,
+   "techs": 5,
+   "trained": 58
+  },
+  {
+   "alive": true,
+   "court": "morel",
+   "died": -1.0,
+   "hist": [
+    [
+     5.8,
+     0.5,
+     0.5,
+     5
+    ],
+    [
+     6.3,
+     0.6,
+     0.5,
+     8
+    ],
+    [
+     8.6,
+     0.8,
+     0.7,
+     10
+    ],
+    [
+     8.2,
+     8.4,
+     0.7,
+     4
+    ],
+    [
+     10.0,
+     6.8,
+     0.7,
+     5
+    ],
+    [
+     6.7,
+     1.8,
+     0.6,
+     7
+    ],
+    [
+     4.8,
+     10.8,
+     0.6,
+     5
+    ],
+    [
+     4.4,
+     1.8,
+     0.5,
+     8
+    ]
+   ],
+   "pop": 5,
+   "structs": 11,
+   "techs": 4,
+   "trained": 58
+  },
+  {
+   "alive": true,
+   "court": "veiled",
+   "died": -1.0,
+   "hist": [
+    [
+     1.8,
+     0.0,
+     1.1,
+     8
+    ],
+    [
+     2.1,
+     0.0,
+     1.4,
+     12
+    ],
+    [
+     2.3,
+     0.0,
+     1.8,
+     24
+    ],
+    [
+     2.7,
+     0.0,
+     2.1,
+     25
+    ],
+    [
+     3.0,
+     0.0,
+     2.4,
+     21
+    ],
+    [
+     3.4,
+     0.0,
+     2.7,
+     27
+    ],
+    [
+     3.2,
+     0.0,
+     2.7,
+     30
+    ],
+    [
+     3.2,
+     0.0,
+     2.7,
+     39
+    ]
+   ],
+   "pop": 31,
+   "structs": 14,
+   "techs": 8,
+   "trained": 22
+  }
+ ],
+ "cpu_mycelium": false,
+ "date": "2026-11-01T15:18:47",
+ "difficulty": "gentle",
+ "human": "amanita",
+ "match": 0,
+ "profile_ms": {
+  "mycelium_cpu": 0
+ },
+ "rival_step": 1,
+ "time": 531.6,
+ "winner": -1,
+ "won": false
+}

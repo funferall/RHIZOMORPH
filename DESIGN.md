@@ -51,7 +51,7 @@ These systems are the same for every court.
   territory. Units fight better on their own mycelium (see Bootlaces-style techs).
 - **Spores.** Every court spends spores on **spore actions**, which are targeted abilities.
   Each court earns spores in its own way (see below).
-- **Population.** The cap is 40. For the Choir, the population is the number of thralls it has.
+- **Population.** The cap is 100 (raised from 40 on 2026-11-01). For the Choir, the population is the number of thralls it has.
 - **Selection, orders, combat, poison, slow, splash, arcs.** These are unchanged.
 
 What changes is income, building rules, vision, and what each court is allowed to build.
@@ -118,6 +118,15 @@ happening one tree over.
 
 **Units:** Wartling (poison melee), Muscarine Spitter (poison ranged), and Destroying Angel
 (elite assassin, strong against cords). Stats are unchanged.
+
+- **Destroying Angel cloak (2026-11-01).** Enemies cannot see or target an Angel unless one of
+  their units or finished structures is within 5 m, or for 2 s after it strikes (1.5 s after it is
+  hurt). Splash still lands on it. Its owner sees it as a blue shimmer while it is unseen.
+- **Cep Bulwark (2026-11-01).** *Boletus edulis*, trained at the Cortina Thicket (40/30, hp 300,
+  bash 14 per 1.1 s, speed 4). **Brace (F):** it roots for 1 s, then cannot move or attack, but
+  every hostile *direct* shot that crosses the 3 m circle around it bends into its cap for 25%
+  damage, including shots aimed past it. Lobbed shots fly over. A move order uproots it (0.85 s)
+  and then walks. The AI braces when 2+ enemy shooters are within 13 m and nothing bites it.
 
 **Spore actions:** Muscimol Haze, Fairy Ring, Death Cap Bloom. These are unchanged.
 
@@ -502,7 +511,7 @@ HUD tree already draws per court.
     become infected.
 - **Third flush**
   - *Pandemic*, needs Hypocreales: unlocks the Pandemic spore action.
-  - *Brood Chamber*: unlocks the Brood Chamber structure, and the population cap becomes 50.
+  - *Brood Chamber*: unlocks the Brood Chamber structure, and the population cap rises by 10.
   - *Agrilus Swarm*, needs Ophiocordyceps: unlocks the Agrilus Swarm spore action (V). See §5.
 
 ---
