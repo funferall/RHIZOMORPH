@@ -1,5 +1,38 @@
 # RHIZOMORPH — roadmap & handoff
 
+## Roles, counters and controls (proposal, 2026-11-02; not started)
+
+A roster review against the usual RTS roles. The design and the full role table are in DESIGN §4.5.
+The short version: the roster has no siege that outranges towers, the Court has no fast raider,
+nobody has anti-air, and the Choir has no cheap ranged unit. Under all of that, the controls are
+too thin to show tactical depth.
+
+**Build order:**
+1. **Controls.** Everything else depends on these.
+   - Control groups: Ctrl+1–9 to set, 1–9 to select, double tap to jump the camera. Training
+     moves off 1–4 (`hud.gd` key handling, around `KEY_1`…`KEY_4`).
+   - Shift-queued move, attack and build orders, with waypoint lines.
+   - Patrol and hold position (next to Y stop).
+   - Right-click to move or attack, A then click to attack-move, left-click select only. Keep the
+     current left-click scheme as a setting. Update the controls list in this file and the Esc
+     page.
+2. **Siege that outranges towers (more than 13 m, the Bird's Nest's range), and AI that brings it.**
+   - Court: Root Heave (breaks structures inside a fed tree's root zone).
+   - Hollow: rework the Bomber or Sniper to about 15–16 m, with setup time or a minimum range.
+   - Choir: a summit sporulation burst that damages structures.
+   - `ai.gd`: when towers have been spotted, waves wait for siege.
+   - Check it in a 48-seed batch, and against the turtle from the first human win.
+3. **Fast raiders.** Court: a truffle vole ally (fast, fragile, a cord cutter). Hollow: a
+   rhizomorph lunge to go with the Runner.
+4. **Roster depth, one at a time,** each followed by a 48-seed batch:
+   - Damage kinds against armor kinds: poison, crushing and enzyme against chitin, soft flesh and
+     woody. This replaces the thralls' single `armor`.
+   - Webcap nets that ground flyers.
+   - A bombardier beetle thrall for the Choir (plus its nest).
+   - Burrow as sclerotia on your own ground.
+   - Travel through the cords, from node to node (Court and Hollow).
+   - A detector role for the Angel's cloak.
+
 ## First human win, and polish from it (2026-11-02)
 
 **The game.** The user won as the Morel Hollow on Gentle, a 26-minute free-for-all
@@ -349,6 +382,8 @@ is very sensitive to thrall stats. The Hollow loses in every setup: the next bal
 
 ## Pick up here next
 
+0. **Roles, counters and controls** (top of this file, DESIGN §4.5): control groups and queueing
+   first, then siege that outranges towers and AI that uses it.
 1. **Play it by hand.** Every automated check is bot-vs-bot. The HUD input paths (placement,
    right-click orders, box select, minimap clicks, tech buttons) parse and are wired, but no human has
    clicked through them yet.

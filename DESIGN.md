@@ -384,6 +384,114 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
 - Should the Court also get a cure beyond its groves, such as Universal Veil halving infection?
 - Should infection show to the infected unit's owner, so they can pull it back to recover?
 
+### 4.5 Proposal (2026-11-02): roles, counters and controls
+
+**Status:** a proposal from a roster review on 2026-11-02, not yet agreed or built. The build order
+is in ROADMAP ("Roles, counters and controls").
+
+**The roster against the usual RTS roles** (checked against `scripts/data.gd`):
+
+| Role | Amanita Court | Morel Hollow | Veiled Choir |
+|---|---|---|---|
+| Cheap melee | Wartling | Morel Bruiser | Ant Thrall |
+| Basic ranged | Muscarine Spitter, Violet Webcap (roots its target) | Elf-cup Slinger | **none** (only the elite Stalker) |
+| Tank | Cep Bulwark, Saffron Milkcap | Morel Bruiser | Beetle and Stag Thralls |
+| Fast raider ("cavalry") | **none** (the Angel is elite) | Candlesnuff Runner (speed 8.6, holds its target 1 s) | Ant Thrall |
+| Siege that outranges towers | **none** | **barely**: the Sniper's 14 m beats the Bird's Nest's 13 m by 1 m; the Bomber reaches 8 m | **none** |
+| Air | — | — | Fly Thrall |
+| Anti-air | **none** | **none** | **none** |
+| Mobile support / healer | **none** | (the Bruiser and Slinger regenerate) | (the Brood Chamber is a structure) |
+| Stealth / detection | the Angel's cloak; detection is only being within 5 m | — | — |
+
+**1. Controls come first.** Every tactic the roster is meant to reward (flanking, kiting ranged
+units, splitting against splash, pulling a hurt unit back) depends on controls the game doesn't
+have yet:
+- **Control groups:** Ctrl+1–9 to set, 1–9 to select, a double tap to jump the camera. Today 1–4
+  train units, so training moves to keys on the context panel (or to Q W E R while a trainer is
+  selected).
+- **Shift-queued orders and waypoints**, including queued build placements.
+- **Patrol** and **hold position**.
+- **Standard order buttons:** right-click to move or attack, and A followed by a click to
+  attack-move. Left-click becomes select only. Keep the current scheme as an option in settings.
+
+**2. Siege that outranges towers.** The first human win was a turtle of 45 Bird's Nests and 11
+Earthstars, and enemy waves died against it. In an RTS that means siege is weak, or the AI doesn't
+use it. The fix is the siege tank and trebuchet pattern: something that hits towers from outside
+their range (more than 13 m) but is helpless up close.
+- **Court: Root Heave.** Tree roots crack stone. A slow unit or spore action breaks structures
+  inside a fed tree's root zone.
+- **Hollow:** rework the Bomber or the Sniper to outrange towers clearly (about 15–16 m), with a
+  setup time or a big minimum range.
+- **Choir:** a sporulation burst on a summit point next to a tower cluster, which damages
+  structures.
+- **The AI** brings siege when it has spotted towers, and doesn't send waves into a tower line
+  without it.
+
+**3. A fast raider for each court.** In AoE, cavalry exists to hit the economy, chase down
+archers, and get back home. Here the economy is the cords, the thing pillar 3 says to raid.
+- **Court: truffle vole.** Truffle-eating voles and squirrels spread mycorrhizal spores in real
+  forests, so the Court could have one as an animal ally. It is fast and fragile, cuts cords, and
+  catches ranged units.
+- **Hollow:** the Candlesnuff Runner already fits. A possible addition is a fast rhizomorph lunge,
+  because *Armillaria* cords really do grow toward food.
+- **Choir:** the Ant Thrall already covers it.
+
+**4. Counters: damage kinds against armor kinds.** These would tie together the pieces that
+already exist (the Beetle's armor against ranged, and the Bulwark's brace catching shots), so
+army composition becomes a choice. First-pass multipliers, to tune in batches:
+
+| damage → / armor ↓ | poison | crushing | enzyme |
+|---|---|---|---|
+| **chitin** (insects, thralls) | ×0.7 | ×1.0 | ×1.5 |
+| **soft flesh** (most fungal units) | ×1.3 | ×1.0 | ×0.8 |
+| **woody** (structures, the Cep, brackets) | ×0.6 | ×1.4 | ×1.0 |
+
+- **The biology:** *Beauveria* and other insect pathogens break through chitin with chitinase
+  enzymes, so enzyme damage beats chitin. That gives the Hollow a natural answer to the Choir's
+  beetles. Crushing is how roots crack stone and how Bird's Nest eggs land, so it suits siege.
+- **First assignment:**
+  - Court spit and poison melee: poison.
+  - Hollow units, Honey Rot, Bruiser blows: enzyme.
+  - Stag and Beetle Thralls, the Cep's bash, tower eggs, Root Heave: crushing.
+
+  This needs a pass per unit before it is built.
+- It replaces the single `armor` value that thralls have today.
+
+**5. Anti-air.** Fly Thralls cross water and cliffs, and nothing is built to catch them.
+*Cortinarius* webcaps have a cobweb veil, the cortina. The Violet Webcap already roots ground
+targets with it; let its web also **net a flyer and bring it down** (grounded for a few seconds, so
+melee can hit it). Then the Webcap has a clear job and the Fly Thrall has an obvious counter.
+
+**6. A cheap ranged unit for the Choir.** The Choir has no basic ranged unit, like Zerg with
+zerglings but no hydralisks. That may suit a swarm court, but it means the Cep Bulwark's brace does
+nothing against it. A **bombardier beetle thrall** would be a short-range sprayer that fits the
+host theme. It needs one more nest type in the forest.
+
+**7. Fungal versions of StarCraft's best mechanics:**
+- **Burrow (sclerotia).** Units sink into their own mycelium as sclerotia: hidden, slowly healing,
+  and ready to spring an ambush. It works only on your own ground, which gives territory another
+  use.
+- **Travel through the cords (a Nydus network).** Court and Hollow units enter the cord network and
+  come out at any connected node, which is what rhizomorphs really do. Cutting a cord then strands
+  reinforcements as well as income, which makes pillar 3 stronger. It also covers most of the
+  wishlist's "second Heart". The Choir has no cords, so it doesn't get this.
+- **Detection.** The Angel's cloak breaks only within 5 m today. A detector role (Fly Thralls, or a
+  Court spore action) turns the cloak into a scouting contest instead of a coin flip.
+
+**Order:**
+1. Controls.
+2. Siege that outranges towers, and AI that uses it.
+3. A fast raider for the Court (and the Hollow's lunge).
+
+Those three change how matches play the most. The rest is roster depth, added one unit at a time.
+
+**Open questions**
+- Is a Choir with no basic ranged unit part of its identity? If so, the brace needs another job
+  against the Choir.
+- Should the truffle vole be trained, or recruited as an animal drawn to Court truffles? The second
+  fits the "allies, not buildings" feel better.
+- Do the damage kinds replace poison as a separate effect, or sit beside it?
+
 ---
 
 ## 5. Insects (neutral wildlife)
