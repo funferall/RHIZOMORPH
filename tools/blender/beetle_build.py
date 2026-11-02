@@ -36,7 +36,9 @@ import bpy
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
-from unitlib import bake, frames_along, hide_from_rays, log, save_png, setup_cycles
+from unitlib import export_glb, hide_from_rays, log, save_png, setup_cycles
+from paintlib import (Acc, bake_atlas, data_arr, ellipsoid, fbm, mix, orient_out, grid_normals, preview_render, rect_uv,
+	smooth, surface, sweep, texel_grid, tri_count, vnoise)
 
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 OPT = {a.split("=", 1)[0].lstrip("-"): (a.split("=", 1)[1] if "=" in a else True) for a in ARGS}
@@ -51,132 +53,6 @@ SHELL, LEG, PRONOTUM, HEAD = 0, 1, 2, 3
 TUFT = 5
 
 
-# --- numpy noise: the same functions shape the sculpt and paint the atlas ------------------------
-
-def _hash(ix, iy, iz):
-	h = (ix * 374761393 + iy * 668265263 + iz * 2147483647) & 0xFFFFFFFF
-	h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
-	return ((h ^ (h >> 16)) & 0xFFFFFF) / float(0xFFFFFF)
-
-
-def vnoise(x, y, z):
-	"""Smooth value noise in [-1, 1] on arrays."""
-	x, y, z = np.asarray(x, np.float64), np.asarray(y, np.float64), np.asarray(z, np.float64)
-	fx, fy, fz = np.floor(x), np.floor(y), np.floor(z)
-	ix, iy, iz = fx.astype(np.int64), fy.astype(np.int64), fz.astype(np.int64)
-	tx, ty, tz = x - fx, y - fy, z - fz
-	tx, ty, tz = tx * tx * (3 - 2 * tx), ty * ty * (3 - 2 * ty), tz * tz * (3 - 2 * tz)
-	out = 0.0
-	for dx in (0, 1):
-		for dy in (0, 1):
-			for dz in (0, 1):
-				w = (tx if dx else 1 - tx) * (ty if dy else 1 - ty) * (tz if dz else 1 - tz)
-				out = out + w * _hash(ix + dx, iy + dy, iz + dz)
-	return out * 2.0 - 1.0
-
-
-def fbm(x, y, z, octaves=3):
-	s, amp, f = 0.0, 0.5, 1.0
-	for i in range(octaves):
-		s = s + amp * vnoise(x * f + i * 17.3, y * f - i * 9.1, z * f + i * 5.7)
-		amp *= 0.5
-		f *= 2.03
-	return s
-
-
-def smooth(e0, e1, x):
-	t = np.clip((np.asarray(x, np.float64) - e0) / (e1 - e0), 0.0, 1.0)
-	return t * t * (3 - 2 * t)
-
-
-def mix(a, b, t):
-	t = np.asarray(t)[..., None]
-	return np.asarray(a) * (1 - t) + np.asarray(b) * t
-
-
-def g2b(p):
-	return np.stack([p[..., 0], -p[..., 2], p[..., 1]], axis=-1)
-
-
-# --- a fast mesh accumulator (numpy grids, one from_pydata) ------------------------------------
-
-class Acc:
-	def __init__(self):
-		self.verts, self.quads, self.uv, self.data = [], [], [], []
-		self.n = 0
-
-	def grid(self, P, N, UV, D, wrap=True):
-		"""P, N: (R+1, C, 3) if wrap else (R+1, C+1, 3); UV, D: (R+1, C+1, 2). Faces point along N."""
-		R = P.shape[0] - 1
-		C = UV.shape[1] - 1
-		cols = P.shape[1]
-		idx = np.arange(P.shape[0] * cols).reshape(P.shape[0], cols) + self.n
-		j, i = np.mgrid[0:R, 0:C]
-		i1 = (i + 1) % cols if wrap else i + 1
-		q = np.stack([idx[j, i], idx[j, i1], idx[j + 1, i1], idx[j + 1, i]], axis=-1).reshape(-1, 4)
-		uvq = np.stack([UV[j, i], UV[j, i + 1], UV[j + 1, i + 1], UV[j + 1, i]], axis=2).reshape(-1, 4, 2)
-		dq = np.stack([D[j, i], D[j, i + 1], D[j + 1, i + 1], D[j + 1, i]], axis=2).reshape(-1, 4, 2)
-		# orient every face along the given normals
-		flat = P.reshape(-1, 3)
-		a, b, c = flat[q[:, 0] - self.n], flat[q[:, 1] - self.n], flat[q[:, 2] - self.n]
-		d4 = flat[q[:, 3] - self.n]
-		fn = np.cross(c - a, d4 - b)
-		hint = N.reshape(-1, 3)[q[:, 0] - self.n] + N.reshape(-1, 3)[q[:, 2] - self.n]
-		flip = np.einsum("ij,ij->i", fn, hint) < 0
-		ok = np.einsum("ij,ij->i", fn, fn) > 1e-18
-		if ok.any() and flip[ok].mean() > 0.5:
-			q, uvq, dq = q[:, ::-1], uvq[:, ::-1], dq[:, ::-1]
-		self.verts.append(flat)
-		self.quads.append(q)
-		self.uv.append(uvq.reshape(-1, 2))
-		self.data.append(dq.reshape(-1, 2))
-		self.n += flat.shape[0]
-
-	def obj(self, name):
-		verts = g2b(np.concatenate(self.verts))
-		quads = np.concatenate(self.quads)
-		me = bpy.data.meshes.new(name)
-		me.from_pydata(verts.tolist(), [], quads.tolist())
-		uv = me.uv_layers.new(name="UVMap")
-		data = me.uv_layers.new(name="data")
-		uv.data.foreach_set("uv", np.concatenate(self.uv).astype(np.float32).ravel())
-		data.data.foreach_set("uv", np.concatenate(self.data).astype(np.float32).ravel())
-		me.polygons.foreach_set("use_smooth", np.ones(len(me.polygons), bool))
-		me.uv_layers.active = uv
-		uv.active_render = True
-		me.update()
-		ob = bpy.data.objects.new(name, me)
-		bpy.context.scene.collection.objects.link(ob)
-		return ob
-
-
-def grid_normals(P, wrap=True):
-	"""Outward-ish normals of a (rows, cols) grid from central differences."""
-	if wrap:
-		da = np.roll(P, -1, axis=1) - np.roll(P, 1, axis=1)
-	else:
-		da = np.gradient(P, axis=1)
-	dt = np.gradient(P, axis=0)
-	n = np.cross(dt, da)
-	ln = np.linalg.norm(n, axis=-1, keepdims=True)
-	return n / np.maximum(ln, 1e-12)
-
-
-def rect_uv(rect, u, v):
-	return np.stack([rect[0] + (rect[2] - rect[0]) * u, rect[1] + (rect[3] - rect[1]) * v], axis=-1)
-
-
-def data_arr(kind, weight, group, shape):
-	u = np.broadcast_to(kind + 0.98 * np.clip(weight, 0.0, 1.0), shape)
-	v = np.broadcast_to(np.asarray(group, np.float64), shape)
-	return np.stack([u, v], axis=-1)
-
-
-def orient_out(N, P, centre):
-	s = np.sign(np.einsum("...i,...i->...", N, P - centre).mean())
-	return N * (1.0 if s >= 0 else -1.0)
-
-
 # --- atlas regions (Blender UV, v up) -----------------------------------------------------------
 SHELL_RECT = (0.006, 0.400, 0.994, 0.994)
 PRONOTUM_RECT = (0.006, 0.204, 0.400, 0.392)
@@ -186,6 +62,8 @@ MAND_RECT = (0.708, 0.204, 0.740, 0.392)
 EYE_RECT = (0.748, 0.204, 0.790, 0.392)
 LEG_RECT = (0.006, 0.006, 0.400, 0.196)
 TUFT_RECTS = [(0.798, 0.204, 0.994, 0.392), (0.408, 0.006, 0.698, 0.196), (0.706, 0.006, 0.994, 0.196)]
+RECTS = {"shell": SHELL_RECT, "pronotum": PRONOTUM_RECT, "head": HEAD_RECT, "leg": LEG_RECT, "ant": ANT_RECT,
+	"mand": MAND_RECT, "eye": EYE_RECT, "tuft0": TUFT_RECTS[0], "tuft1": TUFT_RECTS[1], "tuft2": TUFT_RECTS[2]}
 
 
 # --- the shell: elytra over the abdomen ---------------------------------------------------------
@@ -338,16 +216,7 @@ def head_mask(a, t):
 
 
 def build_dome(acc, kind, group, rect, fn, centre, rows, cols, relief=None):
-	j, i = np.mgrid[0:rows + 1, 0:cols + 1]
-	t = j / rows
-	u = i / cols
-	a = u * TAU - PI
-	P, s = fn(a, t)
-	N = orient_out(grid_normals(P[:, :-1]), P[:, :-1], np.array(centre))
-	Pw = P[:, :-1]
-	if relief is not None:
-		Pw = Pw + N * relief(a[:, :-1], t[:, :-1], Pw)[..., None]
-	acc.grid(Pw, N, rect_uv(rect, u, t), data_arr(kind, 0.0, group, t.shape))
+	surface(acc, fn, centre, rows, cols, rect, kind, group, relief)
 
 
 def pronotum_relief(a, t, P):
@@ -367,41 +236,6 @@ def head_relief(a, t, P):
 
 
 # --- eyes, antennae, mandibles ---------------------------------------------------------------
-
-def ellipsoid(acc, centre, radii, kind, group, rect, rows, cols, rot=0.0):
-	j, i = np.mgrid[0:rows + 1, 0:cols + 1]
-	v = j / rows
-	u = i / cols
-	th = PI * v
-	ph = u * TAU
-	n = np.stack([np.sin(th) * np.cos(ph), -np.cos(th), np.sin(th) * np.sin(ph)], axis=-1)
-	P = n * np.array(radii)
-	c, s = math.cos(rot), math.sin(rot)
-	P = np.stack([P[..., 0] * c - P[..., 1] * s, P[..., 0] * s + P[..., 1] * c, P[..., 2]], axis=-1) + np.array(centre)
-	N = orient_out(grid_normals(P[:, :-1]), P[:, :-1], np.array(centre))
-	acc.grid(P[:, :-1], N, rect_uv(rect, u, v), data_arr(kind, 0.0, group, v.shape))
-
-
-def sweep(acc, path, radii, sides, samples, rect, kind, group, weight_fn, relief=None, radius_fn=None):
-	"""A tube along a Catmull-Rom path, radius lerped through radii (one per path point)."""
-	from mathutils import Vector
-	fr = frames_along([Vector(p) for p in path], radii, samples)
-	C = np.array([list(f[0]) for f in fr])
-	R = np.array([f[1] for f in fr])
-	T = np.array([f[2] for f in fr])
-	U = np.array([list(f[4]) for f in fr])
-	V = np.array([list(f[5]) for f in fr])
-	if radius_fn is not None:
-		R = R * radius_fn(T)
-	ang = np.arange(sides + 1) / sides * TAU
-	n = U[:, None, :] * np.cos(ang)[None, :, None] + V[:, None, :] * np.sin(ang)[None, :, None]
-	P = C[:, None, :] + n * R[:, None, None]
-	if relief is not None:
-		P = P + n * relief(T[:, None], ang[None, :], P)[..., None]
-	uu, tt = np.meshgrid(np.arange(sides + 1) / sides, T)
-	acc.grid(P[:, :-1], n[:, :-1], rect_uv(rect, uu, tt), data_arr(kind, weight_fn(tt), group, tt.shape))
-	return C, T
-
 
 def antenna_path(sd):
 	return [(0.60, 0.445, sd * 0.085), (0.655, 0.48, sd * 0.13), (0.715, 0.52, sd * 0.19), (0.775, 0.535, sd * 0.25),
@@ -639,15 +473,6 @@ COTTON = np.array([0.97, 0.965, 0.93])
 COTTON_SHADE = np.array([0.84, 0.83, 0.77])
 
 
-def texel_grid(rect, size):
-	x0, x1 = int(rect[0] * size), int(math.ceil(rect[2] * size))
-	y0, y1 = int(rect[1] * size), int(math.ceil(rect[3] * size))
-	ys, xs = np.mgrid[y0:y1, x0:x1]
-	u = np.clip(((xs + 0.5) / size - rect[0]) / (rect[2] - rect[0]), 0.0, 1.0)
-	v = np.clip(((ys + 0.5) / size - rect[1]) / (rect[3] - rect[1]), 0.0, 1.0)
-	return (slice(y0, y1), slice(x0, x1)), u, v
-
-
 def paint(size):
 	albedo = np.zeros((size, size, 3), np.float64)
 	albedo[...] = CREAM
@@ -749,22 +574,6 @@ def paint(size):
 
 # --- the bake ----------------------------------------------------------------------------------
 
-def region_masks(size):
-	yy, xx = np.mgrid[0:size, 0:size]
-	u = (xx + 0.5) / size
-	v = (yy + 0.5) / size
-	pad = 4.0 / size
-
-	def rect(r):
-		return (u >= r[0] - pad) & (u <= r[2] + pad) & (v >= r[1] - pad) & (v <= r[3] + pad)
-
-	m = {"shell": rect(SHELL_RECT), "pronotum": rect(PRONOTUM_RECT), "head": rect(HEAD_RECT), "leg": rect(LEG_RECT),
-		"ant": rect(ANT_RECT), "mand": rect(MAND_RECT), "eye": rect(EYE_RECT)}
-	for k, r in enumerate(TUFT_RECTS):
-		m["tuft%d" % k] = rect(r)
-	return u, v, m
-
-
 def main():
 	os.makedirs(OUT, exist_ok=True)
 	bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -793,32 +602,13 @@ def main():
 		hide_from_rays(ob)
 	body_hi = [hi["shell"], hi["pronotum"], hi["head"], hi["leg"]] + others
 	reach = {"shell": (0.02, 0.04), "pronotum": (0.012, 0.03), "head": (0.01, 0.025), "leg": (0.005, 0.009)}
+	poles = {"shell": (0.025, 0.975), "pronotum": (0.04, 0.96), "head": (0.05, 0.95), "leg": (0.02, 0.985)}
 	for k in range(3):
 		reach["tuft%d" % k] = (0.03, 0.06)
-	u, v, masks = region_masks(SIZE)
-	normal = np.zeros((SIZE, SIZE, 4), np.float32)
-	normal[...] = (0.5, 0.5, 1.0, 1.0)
-	ao = np.ones((SIZE, SIZE), np.float32)
-	for part, low in lo.items():
-		ext, dist = reach[part]
-		src = [hi[part]]
-		px = bake("NORMAL", low, src, ext, dist, 8, SIZE)
-		normal[masks[part]] = px[masks[part]]
-		occl = body_hi if not part.startswith("tuft") else src
-		px = bake("AO", low, occl, ext, dist, 96, SIZE)
-		ao[masks[part]] = px[..., 0][masks[part]]
-		log(TAG, "baked " + part)
-	# fade bake noise at the poles of every lathe and the ends of the leg
-	flat = np.array((0.5, 0.5, 1.0, 1.0), np.float32)
-	keep = np.ones((SIZE, SIZE), np.float32)
-	poles = [("shell", SHELL_RECT, 0.025, 0.975), ("pronotum", PRONOTUM_RECT, 0.04, 0.96), ("head", HEAD_RECT, 0.05, 0.95),
-		("leg", LEG_RECT, 0.02, 0.985)] + [("tuft%d" % k, TUFT_RECTS[k], 0.05, 0.95) for k in range(3)]
-	for part, rect, lo_end, hi_end in poles:
-		f = (v - rect[1]) / (rect[3] - rect[1])
-		m = masks[part]
-		keep[m] = np.clip((f[m] - lo_end * 0.4) / (lo_end * 0.6), 0.0, 1.0) * np.clip((hi_end - f[m]) / 0.03 + 0.0, 0.0, 1.0) ** 0.5
-	normal = flat + (normal - flat) * keep[..., None]
-	ao = 1.0 + (ao - 1.0) * keep
+		poles["tuft%d" % k] = (0.05, 0.95)
+	parts = {name: {"low": low, "normal_from": [hi[name]], "ao_from": [hi[name]] if name.startswith("tuft") else body_hi,
+		"reach": reach[name], "poles": poles[name]} for name, low in lo.items()}
+	normal, ao, u, v, masks = bake_atlas(parts, RECTS, SIZE, TAG)
 	log(TAG, "painting")
 	albedo, orm = paint(SIZE)
 	orm[..., 0] = ao
@@ -834,9 +624,8 @@ def main():
 	stats = []
 	for lod, name in enumerate(("close", "battle", "distant")):
 		ob = build_lod(lod).obj("Beetle_" + name)
-		tris = sum(len(p.vertices) - 2 for p in ob.data.polygons)
-		clean = sum(len(p.vertices) - 2 for p in build_lod(lod, tufts=False).obj("tmp").data.polygons)
-		from unitlib import export_glb
+		tris = tri_count(ob)
+		clean = tri_count(build_lod(lod, tufts=False).obj("tmp"))
 		export_glb([ob], os.path.join(OUT, "beetle_%s.glb" % name))
 		stats.append("%s %d (healthy %d)" % (name, tris, clean))
 	hips = [tuple(round(float(c), 4) for c in leg_frame(k)[0]) for k in range(6)]
@@ -851,26 +640,9 @@ def preview(path):
 	a = build_lod(int(OPT.get("lod", 0)), tufts=False).obj("healthy")
 	b = build_lod(int(OPT.get("lod", 0)), tufts=True).obj("infected")
 	b.location = (0.0, 1.6, 0.0)
-	scene = bpy.context.scene
-	scene.render.engine = "BLENDER_WORKBENCH"
-	scene.display.shading.light = "STUDIO"
-	scene.display.shading.color_type = "OBJECT"
 	a.color = (0.85, 0.65, 0.30, 1.0)
 	b.color = (0.85, 0.80, 0.70, 1.0)
-	scene.render.resolution_x, scene.render.resolution_y = 1200, 800
-	cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
-	scene.collection.objects.link(cam)
-	scene.camera = cam
-	cam.data.type = "ORTHO"
-	cam.data.ortho_scale = 3.4
-	from mathutils import Vector
-	for name, yaw, pitch in (("side", 0.0, 0.15), ("q", 0.8, 0.45), ("top", 0.3, 1.4)):
-		d = Vector((math.sin(yaw) * math.cos(pitch), -math.cos(yaw) * math.cos(pitch), math.sin(pitch))).normalized()
-		target = Vector((0.0, 0.8, 0.35))
-		cam.location = target + d * 6.0
-		cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
-		scene.render.filepath = path.replace(".png", "_%s.png" % name)
-		bpy.ops.render.render(write_still=True)
+	preview_render([a, b], path, target=(0.0, 0.35, -0.8), scale=3.4)
 
 
 if OPT.get("preview"):

@@ -174,6 +174,13 @@ both beetles, so their blows now land 0.3 s after the swing starts, and miss if 
 A thrall's bite shakes off a puff of white conidia. Tuft edges fray with a per-texel discard. The display names
 are still "Bark Beetle" / "Beetle Thrall". Details and commands: `art/beetle/README.md`.
 
+**unit-art skill (2026-11-02).** `.claude/skills/unit-art/` (copied to `~/.codex/skills/unit-art`; `AGENTS.md`
+points Codex at it) teaches the Blender pipeline to any model: a workflow with gates, painting and Godot
+references, and a runnable `template_build.py`. Shared code: `tools/blender/paintlib.py` (noise, Voronoi cells,
+colour ramps, parametric surfaces, sweeps, `bake_atlas`, previews). `tools/art/atlas_lint.py` gates atlas quality.
+It currently fails Runner and Slinger (per-pixel noise), fails Bomber's normal map, and warns on Sniper and Inkcap
+Bed (no baked normals or ORM). Those are candidates for a rebuild with the skill.
+
 **Balance (2026-11-01).** Population cap 40 -> 100 for every court (Brood Chamber now +10). Every Choir
 unit at 80% hp and 85% damage. Bot batches (24 seeds each, Court / Hollow / Choir wins): cap 40 at full
 stats 3 / 2 / 17; cap 100 at full stats 0 / 3 / 20 (a higher cap alone helps the Choir, whose army is free
