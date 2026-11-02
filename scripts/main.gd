@@ -12,6 +12,7 @@ extends Node3D
 #   --showcase         every species lined up
 #   --catalog=DIR      one close-up plate per species + catalog.json, then quit
 #   --perf-nocanopy    hide the shadow-only tree crowns, for before/after shots and FPS
+#   --courts=0,2       only these courts take part (a duel); the default is all three
 #   --fpstest[=dist]   after --seconds, 20 s at 1x with vsync off framed on the biggest fight; prints FPS (--scale=0.75 --fsr)
 #   --sim              headless balance run (with --headless --fixed-fps): all bots, no HUD or
 #                      audio, ends when one court is left or at --seconds, prints one SIM {json} line
@@ -82,8 +83,9 @@ func _ready() -> void:
 			return
 		game.sim = true
 		add_child(game)
-		game.start(0, true)
-		if game.ais.size() < 3:
+		var sim_courts := _courts_arg(args)
+		game.start(sim_courts[0], true, sim_courts)
+		if game.ais.size() < sim_courts.size():
 			print("SIM {\"failed\": true}")   # an AI script did not load
 			get_tree().quit(1)
 			return
@@ -110,7 +112,7 @@ func _ready() -> void:
 		add_child(hud)
 		var bot := args.has("bot")
 		if args.has("faction") or bot or (args.has("shot") and not args.has("menu")):
-			game.start(int(args.get("faction", "1")), bot)
+			game.start(int(args.get("faction", "1")), bot, _courts_arg(args))
 		else:
 			hud.show_menu()
 		if args.has("seconds"):
@@ -144,6 +146,18 @@ func _ready() -> void:
 		var at := Vector3(float(v[2]), 0, float(v[3])) if v.size() >= 4 else Vector3.ZERO
 		rig.set_view(deg_to_rad(float(v[0])), float(v[1]), at, float(v[4]) if v.size() >= 5 else 0.0)
 	rig.snap()
+
+
+# --courts=0,2 -> [0, 2]; all three courts by default.
+func _courts_arg(a: Dictionary) -> Array:
+	if not a.has("courts"):
+		return [0, 1, 2]
+	var out := []
+	for k in str(a["courts"]).split(","):
+		var f := int(k)
+		if f >= 0 and f < 3 and not out.has(f):
+			out.append(f)
+	return out if out.size() >= 2 else [0, 1, 2]
 
 
 func _build_light() -> void:

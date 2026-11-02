@@ -210,7 +210,10 @@ func _ready() -> void:
 	_spark_mesh.material = sm
 
 
-func start(faction: int, as_bot: bool) -> void:
+# courts: which of the three courts take part (a duel leaves one out entirely).
+func start(faction: int, as_bot: bool, courts: Array = [0, 1, 2]) -> void:
+	if not courts.has(faction):
+		courts = courts + [faction]
 	_rng.seed = 1234 + match_seed * 7919
 	rival_step = 1 if match_seed % 2 == 0 else 2
 	player = faction
@@ -225,26 +228,31 @@ func start(faction: int, as_bot: bool) -> void:
 	for f in 3:
 		var fd: Dictionary = Data.FACTIONS[f]
 		var sr: Array = fd["start_res"]
+		var here: bool = courts.has(f)
 		fs.append({
 			"res": [sr[0], sr[1], sr[2]],
 			"rate": [0.0, 0.0, 0.0],
-			"techs": {}, "cds": {}, "alive": true, "heart": null, "web": {},
+			"techs": {}, "cds": {}, "alive": here, "present": here, "heart": null, "web": {},
 			"key": fd["key"], "name": fd["name"], "color": fd["color"], "economy": fd["economy"],
 		})
+		_decor.append([])
+		if not here:
+			continue   # a court left out of this match: no Heart, no army, never alive
 		var h := _spawn_struct(f, fd["heart"], Data.START_POS[f], true)
 		fs[f]["heart"] = h
 		h.rally = Data.START_POS[f].lerp(Vector2.ZERO, 0.2)
-		_decor.append([])
 		for sp in fd["decor"]:
 			_decor[f].append(_make_decor(sp))
 	ais.clear()
 	for f in 3:
-		if f != player or bot:
+		if fs[f]["present"] and (f != player or bot):
 			var ai = AI.new()
 			ai.setup(self, f)
 			ais.append(ai)
 	# a few starting bodies so the opening has something on the board
 	for f in 3:
+		if not fs[f]["present"]:
+			continue
 		var st: Array = Data.FACTIONS[f]["starters"]
 		for i in st.size():
 			var u := _spawn_unit(f, st[i], Data.START_POS[f] + Vector2(cos(i * 2.1), sin(i * 2.1)) * 5.0)
@@ -272,6 +280,9 @@ func start(faction: int, as_bot: bool) -> void:
 	rig.set_view(atan2(sp.x, sp.y), 52.0, _v3(sp.lerp(Vector2.ZERO, 0.3)))
 	rig.snap()
 	emit_signal("message", "%s awakens. Spread, link, and digest." % fs[player]["name"], fs[player]["color"])
+	if courts.size() == 2:
+		var foe: int = courts[0] if courts[0] != player else courts[1]
+		emit_signal("message", "A duel: only %s stands against you." % fs[foe]["name"], fs[foe]["color"])
 
 
 func fast_forward(sec: float, spd: float) -> void:
@@ -2630,7 +2641,7 @@ func sim_summary() -> Dictionary:
 			alive.append(f)
 	var per := []
 	for f in 3:
-		per.append({"court": fs[f]["key"], "alive": fs[f]["alive"], "died": fs[f].get("died", -1.0),
+		per.append({"court": fs[f]["key"], "present": fs[f]["present"], "alive": fs[f]["alive"], "died": fs[f].get("died", -1.0),
 			"trained": _stats.get("trained%d" % f, 0), "techs": fs[f]["techs"].size(),
 			"structs": structs.filter(func(e): return e.f == f and e.alive).size(), "pop": pop(f),
 			"hist": fs[f].get("hist", [])})

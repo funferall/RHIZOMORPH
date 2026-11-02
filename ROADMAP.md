@@ -1,5 +1,42 @@
 # RHIZOMORPH — roadmap & handoff
 
+## Match setup: duel or free-for-all (2026-11-02)
+
+The start menu now walks through three steps:
+1. **Your court:** pick one of three cards.
+2. **The battle:** *Duel · 1 v 1* or *Free-for-all · 3 courts*.
+3. **Your rivals:** chips for the two other courts, plus Rival strength (Gentle / Fair / Cruel).
+
+In a duel the chips pick the one opponent. Clicking a single rival during a free-for-all switches
+to a duel against it. A summary line shows the matchup ("Morel Hollow against Amanita Court").
+Choices are saved in `user://settings.cfg` (`court`, `mode`, `rival`).
+
+**How it works:**
+- `game.start(faction, bot, courts)` takes the list of courts in the match. A court left out gets
+  `fs[f]["present"] = false` and `alive = false` from the start: no Heart, no starters, no AI.
+- Everything that already skips fallen courts (AI rival choice, win check, income, fog) works
+  unchanged.
+- **Test flags:** `--courts=1,2` (also in `--sim`), and `--menu=duel` stages the duel menu for
+  screenshots.
+- `sim_summary` records `present` per court. `run_batch.py` still assumes three courts; teach it
+  about `present` before running duel batches.
+
+### Team play (not built yet; noted for later)
+
+Teams such as 2 v 2, or 2 v 1 against a stronger AI. What it needs:
+- **More than one of a court.** Today a court and a faction index are the same thing (`Data.FACTIONS[f]`,
+  `fs[f]`, and the mycelium sim's three channels). A 2 v 2 needs four players, so two of them
+  would share a court. That means splitting "player slot" from "court kind", and a fourth
+  mycelium channel, or two allies sharing one channel.
+- **Teams.** A `team` per slot. Every `f != o` hostility check (`_enemies_in`, targeting, cord
+  cutting, fog sharing, Choir infection via `_hostable`, Hollow digestion of enemy ground)
+  becomes a team check. Allies share vision, and perhaps cords: a Court cord feeding a Hollow
+  bracket is a fun question.
+- **Start positions** for four (the map has three), plus a team win check.
+- **Menu:** a fourth step for team assignment, shown only when there are more than three slots.
+- **Cheaper first step:** 2 v 1 with the current three courts. Two courts allied against the
+  third needs only a team table and the hostility changes, not more slots.
+
 ## The living and the dead (2026-11-02)
 
 This implements DESIGN §4.4. The Choir now infects the living, and the Hollow eats the dead.
@@ -412,6 +449,7 @@ Factions and gameplay
 - A different win condition for each faction.
 - Grow a second Heart elsewhere, so a court is not pinned to defending one spot.
 - Remove the unit limit (and its bar in the resource pill).
+- Team play (2 v 2, 2 v 1). Duel and free-for-all are built; see "Team play" at the top.
 - Rebalance. The 2026-10-30 Amanita playtest: on Gentle the Choir still reached 47 units, because
   difficulty scales only income and its army comes from infected insects; Zombify and Pandemic turned
   the Court's army.

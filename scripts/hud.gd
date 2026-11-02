@@ -42,7 +42,8 @@ var _tech_faction := -1
 var menu := Control.new()
 var end_panel := Control.new()
 var settings_panel := Control.new()
-var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true, "difficulty": "fair", "render": "quality", "show_fps": false}
+var settings := {"master": 0.5, "music": 0.55, "sfx": 0.6, "cam_speed": 1.0, "fullscreen": false, "edge_pan": true, "difficulty": "fair", "render": "quality", "show_fps": false,
+	"court": 1, "mode": "ffa", "rival": -1}
 const RENDER_MODES := {"native": ["Native", 1.0], "quality": ["FSR Quality", 0.77], "balanced": ["FSR Balanced", 0.67], "performance": ["FSR Performance", 0.59]}
 var _diff_btns := {}
 var _paused_before := false
@@ -66,6 +67,13 @@ var _font: SystemFont
 var _font_b: SystemFont
 var _menu_choice := 1
 var _menu_cards := []
+var _menu_mode := "ffa"       # "duel" (1 v 1) or "ffa" (all three courts)
+var _menu_rival := -1         # the court a duel is fought against
+var _mode_btns := {}
+var _rival_chips: Array = []  # two chips, one per other court: {b, icon, name, line, f}
+var _rival_note: Label
+var _menu_summary: RichTextLabel
+const COURT_LINES := ["feeds the living trees", "eats everything dead", "rides the forest's insects"]
 var _ctx_refresh := 0.0
 var _ctx_key: Array = []
 var _ctx_hp: Label
@@ -1261,65 +1269,130 @@ func _build_menu() -> void:
 	menu.mouse_filter = Control.MOUSE_FILTER_STOP
 	menu.visible = false
 	var shade := ColorRect.new()
-	shade.color = Color(0.02, 0.015, 0.01, 0.55)
+	shade.color = Color(0.02, 0.015, 0.01, 0.6)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu.add_child(shade)
+	var cc := CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu.add_child(cc)
 	var vb := VBoxContainer.new()
-	vb.set_anchors_preset(Control.PRESET_CENTER)
-	vb.position = Vector2(-450, -260)
 	vb.custom_minimum_size = Vector2(900, 0)
-	vb.add_theme_constant_override("separation", 14)
-	menu.add_child(vb)
-	var title := _label("RHIZOMORPH", 64, Color(0.97, 0.88, 0.62), true)
+	vb.add_theme_constant_override("separation", 9)
+	cc.add_child(vb)
+	var title := _label("RHIZOMORPH", 54, Color(0.97, 0.88, 0.62), true)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(title)
 	var sub := _label("Three fungal courts. One forest floor. Each eats it a different way.", 15, DIM)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(sub)
+
+	# 1 - your court
+	vb.add_child(_menu_head("1  ·  Your court"))
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 16)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_child(row)
 	for f in 3:
 		var fd: Dictionary = Data.FACTIONS[f]
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(280, 300)
+		b.custom_minimum_size = Vector2(260, 228)
 		b.toggle_mode = true
-		b.button_pressed = f == _menu_choice
 		var tr := TextureRect.new()
 		tr.texture = icon(Data.STRUCTURES[fd["heart"]]["species"])
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.position = Vector2(40, 10)
-		tr.size = Vector2(200, 180)
+		tr.position = Vector2(55, 6)
+		tr.size = Vector2(150, 136)
 		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(tr)
-		var n := _label(fd["name"], 22, fd["color"].lerp(TEXT, 0.25), true)
-		n.position = Vector2(0, 196)
-		n.size = Vector2(280, 30)
+		var n := _label(fd["name"], 21, fd["color"].lerp(TEXT, 0.25), true)
+		n.position = Vector2(0, 144)
+		n.size = Vector2(260, 28)
 		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.add_child(n)
 		var m := _label(fd["motto"], 13, DIM)
-		m.position = Vector2(14, 232)
-		m.size = Vector2(252, 50)
 		m.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		m.position = Vector2(14, 176)
+		m.size = Vector2(232, 44)
 		m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.add_child(m)
 		b.pressed.connect(func():
 			_menu_choice = f
-			for i in _menu_cards.size():
-				_menu_cards[i].button_pressed = i == f)
+			_refresh_menu())
 		_menu_cards.append(b)
 		row.add_child(b)
-	# how hard the rival courts push, chosen once your court is picked
-	var dl := _label("Rival courts", 18, Color(0.97, 0.88, 0.62), true)
-	dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(dl)
+
+	# 2 - how many courts
+	vb.add_child(_menu_head("2  ·  The battle"))
+	var mrow := HBoxContainer.new()
+	mrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	mrow.add_theme_constant_override("separation", 16)
+	vb.add_child(mrow)
+	for key in ["duel", "ffa"]:
+		var mb := Button.new()
+		mb.toggle_mode = true
+		mb.custom_minimum_size = Vector2(300, 62)
+		var t := _label("Duel  ·  1 v 1" if key == "duel" else "Free-for-all  ·  3 courts", 19, TEXT, true)
+		t.position = Vector2(0, 7)
+		t.size = Vector2(300, 26)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		mb.add_child(t)
+		var d := _label("You against one rival court." if key == "duel" else "Everyone against everyone.", 13, DIM)
+		d.position = Vector2(0, 35)
+		d.size = Vector2(300, 20)
+		d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		mb.add_child(d)
+		mb.pressed.connect(func():
+			_menu_mode = key
+			_refresh_menu())
+		_mode_btns[key] = mb
+		mrow.add_child(mb)
+
+	# 3 - who you face, and how hard they push
+	vb.add_child(_menu_head("3  ·  Your rivals"))
+	var rrow := HBoxContainer.new()
+	rrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	rrow.add_theme_constant_override("separation", 16)
+	vb.add_child(rrow)
+	for i in 2:
+		var cb := Button.new()
+		cb.toggle_mode = true
+		cb.custom_minimum_size = Vector2(300, 64)
+		var ic := TextureRect.new()
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.position = Vector2(10, 4)
+		ic.size = Vector2(60, 56)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cb.add_child(ic)
+		var nl := _label("", 18, TEXT, true)
+		nl.position = Vector2(80, 9)
+		nl.size = Vector2(210, 24)
+		cb.add_child(nl)
+		var ll := _label("", 13, DIM)
+		ll.position = Vector2(80, 35)
+		ll.size = Vector2(210, 20)
+		cb.add_child(ll)
+		var chip := {"b": cb, "icon": ic, "name": nl, "line": ll, "f": -1}
+		cb.pressed.connect(func():
+			# picking one rival is a duel against it
+			_menu_mode = "duel"
+			_menu_rival = chip["f"]
+			_refresh_menu())
+		_rival_chips.append(chip)
+		rrow.add_child(cb)
+	_rival_note = _label("", 13, DIM)
+	_rival_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(_rival_note)
 	var drow := HBoxContainer.new()
 	drow.alignment = BoxContainer.ALIGNMENT_CENTER
-	drow.add_theme_constant_override("separation", 12)
+	drow.add_theme_constant_override("separation", 10)
 	vb.add_child(drow)
+	var dl := _label("Rival strength", 15, DIM)
+	dl.custom_minimum_size = Vector2(110, 0)
+	drow.add_child(dl)
 	var ddesc := _label("", 13, DIM)
 	ddesc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var pick_diff := func(key: String):
@@ -1331,12 +1404,24 @@ func _build_menu() -> void:
 		var db := Button.new()
 		db.text = Data.DIFFICULTY[key]["name"]
 		db.toggle_mode = true
-		db.custom_minimum_size = Vector2(150, 40)
+		db.custom_minimum_size = Vector2(130, 36)
 		db.pressed.connect(func(): pick_diff.call(key))
 		drow.add_child(db)
 		_diff_btns[key] = db
 	vb.add_child(ddesc)
 	pick_diff.call(settings["difficulty"] if Data.DIFFICULTY.has(settings["difficulty"]) else "fair")
+
+	# the matchup, then go
+	_menu_summary = RichTextLabel.new()
+	_menu_summary.bbcode_enabled = true
+	_menu_summary.fit_content = true
+	_menu_summary.scroll_active = false
+	_menu_summary.custom_minimum_size = Vector2(900, 30)
+	_menu_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_menu_summary.add_theme_font_override("bold_font", _font_b)
+	_menu_summary.add_theme_font_size_override("bold_font_size", 21)
+	_menu_summary.add_theme_font_size_override("normal_font_size", 17)
+	vb.add_child(_menu_summary)
 	var go := Button.new()
 	go.text = "Awaken"
 	go.custom_minimum_size = Vector2(220, 52)
@@ -1345,15 +1430,75 @@ func _build_menu() -> void:
 	go.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	go.pressed.connect(func():
 		menu.visible = false
+		settings["court"] = _menu_choice
+		settings["mode"] = _menu_mode
+		settings["rival"] = _menu_rival
 		_save_settings()
 		game.difficulty = settings["difficulty"]
-		game.start(_menu_choice, false))
+		game.start(_menu_choice, false, _menu_courts()))
 	vb.add_child(go)
-	var tips := _label("The Court feeds living trees, the Hollow eats the dead, the Choir rides the forest's insects.\nCourt and Hollow buildings live on rhizomorph cords to the Heart - cut a rival's cords and everything past them starves. Esc: settings and controls.", 13, Color(0.8, 0.75, 0.65))
+	var tips := _label("Court and Hollow buildings live on rhizomorph cords to the Heart: cut a rival's cords and everything past them starves. Esc: settings and controls.", 13, Color(0.8, 0.75, 0.65))
 	tips.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tips.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(tips)
 	root.add_child(menu)
+	# start from the last match's choices
+	_menu_choice = clampi(int(settings["court"]), 0, 2)
+	_menu_mode = "duel" if settings["mode"] == "duel" else "ffa"
+	_menu_rival = int(settings["rival"])
+	if OS.get_cmdline_user_args().has("--menu=duel"):
+		_menu_mode = "duel"   # automated screenshots of the duel setup
+	_refresh_menu()
+
+
+func _menu_head(text: String) -> Label:
+	var l := _label(text, 16, Color(0.97, 0.88, 0.62), true)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	l.custom_minimum_size = Vector2(0, 34)   # breathing room above each step
+	return l
+
+
+# The courts in the chosen match: yours first.
+func _menu_courts() -> Array:
+	if _menu_mode == "duel":
+		return [_menu_choice, _menu_rival]
+	return [_menu_choice] + _menu_others()
+
+
+func _menu_others() -> Array:
+	return [0, 1, 2].filter(func(o): return o != _menu_choice)
+
+
+func _court_bb(f: int) -> String:
+	var fd: Dictionary = Data.FACTIONS[f]
+	return "[b][color=#%s]%s[/color][/b]" % [fd["color"].lerp(TEXT, 0.25).to_html(false), fd["name"]]
+
+
+func _refresh_menu() -> void:
+	for i in _menu_cards.size():
+		_menu_cards[i].button_pressed = i == _menu_choice
+	for k in _mode_btns:
+		_mode_btns[k].button_pressed = k == _menu_mode
+	var others := _menu_others()
+	if not others.has(_menu_rival):
+		_menu_rival = others[0]
+	var duel := _menu_mode == "duel"
+	for i in _rival_chips.size():
+		var c: Dictionary = _rival_chips[i]
+		var o: int = others[i]
+		var fd: Dictionary = Data.FACTIONS[o]
+		c["f"] = o
+		c["icon"].texture = icon(Data.STRUCTURES[fd["heart"]]["species"])
+		c["name"].text = fd["name"]
+		c["name"].add_theme_color_override("font_color", fd["color"].lerp(TEXT, 0.25))
+		c["line"].text = COURT_LINES[o]
+		var on: bool = not duel or o == _menu_rival
+		c["b"].button_pressed = on
+		c["b"].modulate = Color(1, 1, 1, 1.0 if on else 0.5)
+	_rival_note.text = "Click the other court to face it instead." if duel else "Both rival courts take the field, and fight each other too. Click one to duel it alone."
+	var vs := _court_bb(_menu_rival) if duel else "%s  and  %s" % [_court_bb(others[0]), _court_bb(others[1])]
+	_menu_summary.text = "[center]%s   [color=#%s]against[/color]   %s[/center]" % [_court_bb(_menu_choice), DIM.to_html(false), vs]
 
 
 # --- settings (Esc) -------------------------------------------------------------
