@@ -4,6 +4,12 @@ extends SceneTree
 ##   godot --path . --script tools/art/render_unit.gd -- --unit=bruiser [--out=res://art/bruiser] [--frames=24]
 
 const UNITS := {
+	"spitter": ["res://scripts/muscarine_spitter.gd", "MUSCARINE SPITTER", "Amanita Court / ranged poison", Color(0.92, 0.18, 0.12, 0.25)],
+	"inkcap_bed": ["res://scripts/inkcap_bed.gd", "INKCAP BED", "Morel Hollow / salvage", Color(0.98, 0.8, 0.22, 0.25)],
+	"runner": ["res://scripts/candlesnuff_runner.gd", "CANDLESNUFF RUNNER", "Morel Hollow / scout", Color(0.98, 0.8, 0.22, 0.25)],
+	"sniper": ["res://scripts/pilobolus_sniper.gd", "PILOBOLUS SNIPER", "Morel Hollow / precision fire", Color(0.98, 0.8, 0.22, 0.25)],
+	"bomber": ["res://scripts/puffball_bomber.gd", "PUFFBALL BOMBER", "Morel Hollow / area bombardment", Color(0.98, 0.8, 0.22, 0.25)],
+	"slinger": ["res://scripts/elf_cup_slinger.gd", "ELF-CUP SLINGER", "Morel Hollow / ranged pressure", Color(0.98, 0.8, 0.22, 0.25)],
 	"webcap": ["res://scripts/webcap.gd", "VIOLET WEBCAP", "Amanita Court / control", Color(0.92, 0.18, 0.12, 0.25)],
 	"bruiser": ["res://scripts/morel_bruiser.gd", "MOREL BRUISER", "Morel Hollow / regenerating frontline", Color(0.98, 0.8, 0.22, 0.25)],
 }
@@ -61,12 +67,12 @@ func _run() -> void:
 			var vp := _view(art.mesh(0), Vector2i(640, 560), 0.0)
 			var mi: MeshInstance3D = vp.get_node("Stage/Unit")
 			mi.set_instance_shader_parameter("walk", 1.0 if clip == "walk" else 0.0)
-			var gait: float = 5.6 if unit == "bruiser" else 7.0
+			var gait: float = 6.6 if unit == "spitter" else (5.6 if unit == "bruiser" else (9.2 if unit == "runner" else 7.0))
 			mi.set_instance_shader_parameter("gait", gait)
 			await _settle(8)
 			for i in frames:
 				var t := float(i) / frames
-				mi.set_instance_shader_parameter("motion_time", t * TAU / gait if clip == "walk" else 1.0 + t * 0.6)
+				mi.set_instance_shader_parameter("motion_time", t * TAU * (2.0 if unit == "runner" else 1.0) / gait if clip == "walk" else 1.0 + t * (art.SWING_SECONDS if unit == "spitter" else 0.72 if unit == "slinger" else (0.8 if unit == "runner" else 0.6)))
 				mi.set_instance_shader_parameter("strike", 0.0 if clip == "walk" else 1.0 - t)
 				await _settle(3)
 				vp.get_texture().get_image().save_png(ProjectSettings.globalize_path(dir.path_join("%03d.png" % i)))

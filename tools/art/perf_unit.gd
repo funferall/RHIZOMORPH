@@ -6,7 +6,8 @@ extends SceneTree
 # interleaved over rounds and each is compared with "none" in its own round.
 
 const FungusLib = preload("res://scripts/fungus_lib.gd")
-const ART := {"webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"]}
+const ART := {"webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
+	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"]}
 
 
 func _initialize() -> void:

@@ -9,7 +9,13 @@ const CepBulwark := preload("res://scripts/cep_bulwark.gd")
 const Wartling := preload("res://scripts/wartling.gd")
 const Angel := preload("res://scripts/destroying_angel.gd")
 const Webcap := preload("res://scripts/webcap.gd")
+const InkcapBed := preload("res://scripts/inkcap_bed.gd")
+const Runner := preload("res://scripts/candlesnuff_runner.gd")
+const Sniper := preload("res://scripts/pilobolus_sniper.gd")
+const Bomber := preload("res://scripts/puffball_bomber.gd")
+const Slinger := preload("res://scripts/elf_cup_slinger.gd")
 const Bruiser := preload("res://scripts/morel_bruiser.gd")
+const Spitter := preload("res://scripts/muscarine_spitter.gd")
 
 static var _meshes := {}
 static var _mats := {}
@@ -253,11 +259,41 @@ static func mesh(id: String) -> ArrayMesh:
 		_meshes[id] = cep
 		_heights[id] = cep.get_aabb().end.y
 		return cep
+	if id == "inkcap_bed":
+		var inkbed := InkcapBed.mesh()
+		_meshes[id] = inkbed
+		_heights[id] = InkcapBed.HEIGHT
+		return inkbed
+	if id == "u_runner":
+		var runner := Runner.mesh(0)
+		_meshes[id] = runner
+		_heights[id] = Runner.HEIGHT
+		return runner
+	if id == "u_sniper":
+		var sniper := Sniper.mesh(0)
+		_meshes[id] = sniper
+		_heights[id] = Sniper.HEIGHT
+		return sniper
+	if id == "u_bomber":
+		var bomber := Bomber.mesh(0)
+		_meshes[id] = bomber
+		_heights[id] = Bomber.HEIGHT
+		return bomber
+	if id == "u_slinger":
+		var slinger := Slinger.mesh(0)
+		_meshes[id] = slinger
+		_heights[id] = Slinger.HEIGHT
+		return slinger
 	if id == "u_bruiser":
 		var bruiser := Bruiser.mesh(0)
 		_meshes[id] = bruiser
 		_heights[id] = Bruiser.HEIGHT
 		return bruiser
+	if id == "u_spitter":
+		var spitter := Spitter.mesh(0)
+		_meshes[id] = spitter
+		_heights[id] = Spitter.HEIGHT
+		return spitter
 	if id == "u_webcap":
 		var webcap := Webcap.mesh(0)
 		_meshes[id] = webcap

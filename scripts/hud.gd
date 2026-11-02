@@ -1466,7 +1466,7 @@ func _build_settings() -> void:
 			settings[key] = on
 			_apply_settings())
 		vb.add_child(cb)
-	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir) / brace (Cep Bulwark)   1-3 train   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
+	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir) / brace (Cep Bulwark)   1-4 train   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
 	ctl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ctl.custom_minimum_size = Vector2(520, 0)
 	vb.add_child(ctl)
@@ -1942,7 +1942,7 @@ func _key(ev: InputEventKey) -> void:
 		game.order_sporulate(_own_selected(game.UNIT))
 		game.order_brace(_own_selected(game.UNIT))
 		return
-	if k >= KEY_1 and k <= KEY_3:
+	if k >= KEY_1 and k <= KEY_4:
 		var i := k - KEY_1
 		for s in _own_selected(game.STRUCT):
 			var trains: Array = s.d.get("trains", [])

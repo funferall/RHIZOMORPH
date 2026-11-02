@@ -25,5 +25,23 @@ art/webcap/frames/
 art/bruiser/frames_*/
 tools/blender/__pycache__/
 
+# Reproducible Muscarine Spitter walk, attack and combat frames
+art/spitter/frames_*/
+
 # Reproducible Destroying Angel review-animation frames
 art/destroying_angel/frames_*/
+
+# Reproducible Elf-cup Slinger animation frames
+art/slinger/frames_*/
+
+# Reproducible Puffball Bomber animation frames
+art/bomber/frames_*/
+
+# Reproducible Pilobolus Sniper review frames
+art/sniper/frames_*/
+
+# Reproducible Candlesnuff Runner review frames
+art/runner/frames_*/
+
+# Reproducible Inkcap Bed review frames
+art/inkcap_bed/frames_*/

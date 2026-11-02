@@ -19,8 +19,14 @@ const CepActions = preload("res://scripts/cep_actions.gd")
 const Angel = preload("res://scripts/destroying_angel.gd")
 const Webcap = preload("res://scripts/webcap.gd")
 const Bruiser = preload("res://scripts/morel_bruiser.gd")
+const Spitter = preload("res://scripts/muscarine_spitter.gd")
 # Units whose art is built in Blender (tools/blender/): LOD meshes, shader-driven motion.
-const BAKED := {"webcap": Webcap, "bruiser": Bruiser}
+const Slinger = preload("res://scripts/elf_cup_slinger.gd")
+const Bomber = preload("res://scripts/puffball_bomber.gd")
+const Sniper = preload("res://scripts/pilobolus_sniper.gd")
+const Runner = preload("res://scripts/candlesnuff_runner.gd")
+const RunnerSpikes = preload("res://scripts/runner_spikes.gd")
+const BAKED := {"webcap": Webcap, "bruiser": Bruiser, "spitter": Spitter, "slinger": Slinger, "bomber": Bomber, "sniper": Sniper, "runner": Runner}
 const AI = preload("res://scripts/ai.gd")
 const Forest = preload("res://scripts/forest.gd")
 const Fog = preload("res://scripts/fog.gd")
@@ -55,6 +61,7 @@ class Ent:
 	var poison_t := 0.0
 	var slow := 0.0
 	var slow_t := 0.0
+	var immobilize_t := 0.0   # movement-only root, independent of ordinary slows
 	var selected := false
 	var dying := 0.0
 	# structures
@@ -152,7 +159,9 @@ var _ff_left := 0.0
 var _shake := 0.0
 var _wartling_lod_t := 0.0
 var _visual_time := 0.0   # game time at the last visual update: drives skinned clips
-var _swings: Array[Dictionary] = []   # melee blows waiting for their animation's impact frame
+var _runner_spikes: Array[Dictionary] = []  # temporary ground-strike visuals
+var _sniper_windups: Array[Dictionary] = []  # pending sporangium launches, in simulation time
+var _swings: Array[Dictionary] = []   # melee blows and spits waiting for their animation's impact frame
 var _braced: Array[Ent] = []          # Cep Bulwarks rooted this step, catching shots
 var _rng := RandomNumberGenerator.new()
 var _log := true   # stats are always kept: bot logs print them, sims and playtests save them
@@ -198,6 +207,10 @@ func start(faction: int, as_bot: bool) -> void:
 	bot = as_bot
 	started = true
 	time = 0.0
+	_sniper_windups.clear()
+	for effect in _runner_spikes:
+		effect["node"].queue_free()
+	_runner_spikes.clear()
 	fs.clear()
 	for f in 3:
 		var fd: Dictionary = Data.FACTIONS[f]
@@ -354,7 +367,7 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 		match uid:
 			"wartling": e.mi.mesh = Wartling.mesh(e.visual_lod)
 			"cep": e.mi.mesh = CepBulwark.mesh(e.visual_lod)
-			"webcap", "bruiser": e.mi.mesh = BAKED[uid].mesh(e.visual_lod)
+			"webcap", "bruiser", "spitter", "slinger", "bomber", "sniper", "runner": e.mi.mesh = BAKED[uid].mesh(e.visual_lod)
 			_: e.mi.mesh = FungusLib.mesh(d["species"])
 		e.node.add_child(e.mi)
 	e.mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, tint))
@@ -365,6 +378,12 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 		e.mi.set_instance_shader_parameter("gait", 6.4 + _rng.randf() * 1.2)   # long, slow stilt strides
 	elif uid == "bruiser":
 		e.mi.set_instance_shader_parameter("gait", 5.0 + _rng.randf() * 0.8)   # a heavy knuckle-walk
+	elif uid == "spitter":
+		e.mi.set_instance_shader_parameter("gait", 6.2 + _rng.randf() * 0.9)   # a wobbling waddle on four bulbs
+	elif uid == "sniper":
+		e.mi.set_instance_shader_parameter("gait", 6.0 + _rng.randf() * 0.7)   # measured stilt steps
+	elif uid == "runner":
+		e.mi.set_instance_shader_parameter("gait", 9.0 + _rng.randf())   # fast alternating tripods
 	elif e.anim == null:
 		e.mi.set_instance_shader_parameter("gait", (16.0 if insect else 10.0) + _rng.randf() * 3.0)
 	units.append(e)
@@ -1223,6 +1242,7 @@ func _step(dt: float) -> void:
 		if u.alive:
 			_update_unit(u, dt)
 	_update_swings(dt)
+	_update_sniper_windups()
 	_prof("units", t1)
 	t1 = _prof_t()
 	for c in cords:
@@ -1617,6 +1637,8 @@ func _puff_burst(p: Ent, mult: float) -> void:
 # --- units ---------------------------------------------------------------------
 
 func _unit_speed(u: Ent) -> float:
+	if u.immobilize_t > 0.0:
+		return 0.0
 	var s: float = u.d["speed"]
 	if laces(u.f) and myc.density(u.f, u.pos) > 0.3:
 		s *= 1.15
@@ -1638,6 +1660,11 @@ func _tick_status(e: Ent, dt: float) -> void:
 
 func _update_unit(u: Ent, dt: float) -> void:
 	var d := u.d
+	# Preserve the entire final simulation step of a one-second root.
+	var was_immobilized: bool = u.immobilize_t > 0.0
+	u.immobilize_t = maxf(0.0, u.immobilize_t - dt)
+	if u.immobilize_t < 0.00001:
+		u.immobilize_t = 0.0
 	_tick_status(u, dt)
 	if not u.alive:
 		return
@@ -1725,6 +1752,12 @@ func _update_unit(u: Ent, dt: float) -> void:
 			u.home = u.pos
 		else:
 			desired = to.normalized() * clampf(to.length() / 1.5, 0.2, 1.0)
+	# Ground spikes stop residual velocity and separation pushes, but do not
+	# interrupt attacks or discard the unit's movement order.
+	if was_immobilized:
+		u.vel = Vector2.ZERO
+		u.walk = 0.0
+		return
 	# separation and obstacles
 	var push := Vector2.ZERO
 	for o in _near_units(u.pos, 2.0):
@@ -1848,8 +1881,17 @@ func _hunts(e: Ent, o: Ent) -> bool:
 	return false
 
 
-func _fire(src: Ent, t: Ent, d: Dictionary) -> void:
+func _fire(src: Ent, t: Ent, d: Dictionary, release := false) -> void:
+	if src.id == "sniper" and not release:
+		src.strike = 1.0
+		_sniper_windups.append({"src": src, "target": t, "d": d, "release_at": time + Sniper.WINDUP_SECONDS})
+		return
 	var shot: String = d.get("shot", "")
+	if src.kind == UNIT and shot != "" and d.has("windup") and not release:
+		# the shot leaves on the animation's release frame; _update_swings lets it go
+		src.strike = 1.0
+		_swings.append({"src": src, "target": t, "t": d["windup"], "d": d, "shot": true})
+		return
 	var dmg: float = d["dmg"]
 	if d.get("vigor", false):
 		dmg *= 0.8 + 1.0 * forest.vigor(src.tree)
@@ -1862,13 +1904,33 @@ func _fire(src: Ent, t: Ent, d: Dictionary) -> void:
 				src.act.attack()
 			if src.anim:
 				_angel_attack(src, d)
-			if src.id == "bruiser":
-				src.strike = 1.0   # arms up overhead, then the smash lands the blow
+			if src.id in ["bruiser", "runner"]:
+				src.strike = 1.0   # animation begins at the windup
 			_swings.append({"src": src, "target": t, "t": d["windup"], "dmg": dmg, "d": d})
 			return
 		_melee_hit(src, t, dmg, d)
 		return
 	var from := src.node.global_position + Vector3(0, FungusLib.height_of(src.d["species"]) * (0.7 if src.kind == UNIT else 0.8), 0)
+	if src.id == "slinger":
+		src.strike = 1.0
+		from = src.node.global_position + Basis(Vector3.UP, -src.facing) * Slinger.MUZZLE
+		if src.node.visible:
+			_burst(from, Color(1.0, 0.65, 0.08), 12, 3.5, 0.28, 0.08, 0.55, Vector3(cos(src.facing), 0.25, sin(src.facing)))
+	if src.id == "bomber":
+		src.strike = 1.0
+		from = src.node.global_position + Basis(Vector3.UP, -src.facing) * Bomber.MUZZLE
+		if src.node.visible:
+			_burst(from, Color(0.58, 0.46, 0.29), 10, 2.5, 0.42, 0.10, 0.65, Vector3(cos(src.facing) * 0.65, 0.8, sin(src.facing) * 0.65))
+	if src.id == "spitter":
+		# a spray of golden droplets chases the glob out of the throat
+		from = src.node.global_position + Basis(Vector3.UP, -src.facing) * Spitter.MUZZLE
+		if src.node.visible:
+			var aim := (_v3(_aim_point(src, t), 0.5) - from).normalized()
+			_burst(from, Color(1.0, 0.72, 0.1), 16, 4.5, 0.45, 0.06, 0.6, aim)
+	if src.id == "sniper":
+		from = src.node.global_position + Basis(Vector3.UP, -src.facing) * Sniper.MUZZLE
+		if src.node.visible:
+			_burst(from, Color(0.025, 0.020, 0.016), 9, 3.5, 0.30, 0.05, 0.4, Vector3(cos(src.facing), 0.08, sin(src.facing)))
 	var to := _aim_point(src, t)
 	var arc: bool = d.get("arc", false)
 	var spd := 25.0 if src.id == "sniper" else 16.0
@@ -1877,18 +1939,63 @@ func _fire(src: Ent, t: Ent, d: Dictionary) -> void:
 		"from": from, "to": to, "target": null if arc else t, "t": 0.0,
 		"dur": maxf(from.distance_to(_v3(to)) / spd, 0.15) * (1.4 if arc else 1.0),
 		"arc": arc, "dmg": dmg, "f": src.f, "src": src, "d": d, "shot": shot,
-		"node": _shot_node(shot, src.f),
+		"node": _shot_node({"sniper": "sniper_spore", "slinger": "cup_spore", "spitter": "muscarine"}.get(src.id, shot), src.f),
 	})
 
 
 func _melee_hit(src: Ent, t: Ent, dmg: float, d: Dictionary) -> void:
+	if src.id == "runner":
+		_spawn_runner_spikes(_aim_point(src, t), src.f)
 	_damage(t, dmg, src.f, src, false, d)
 	var hp3 := _v3(_aim_point(src, t), 0.5)
 	emit_signal("sound", "hit_" + src.id if src.kind == UNIT else "hit_melee", hp3)
 	_burst(hp3, Data.faction_color(src.f).lightened(0.3), 6, 1.5, 0.35)
 
 
-# Wound-up melee blows (Cep bash, Angel lunge) resolve at their impact frame.
+# Grow the spike cluster only where this player can see the strike.
+func _spawn_runner_spikes(at: Vector2, faction: int) -> void:
+	if sim or (faction != player and not fog.visible(player, at)):
+		return
+	var node: MultiMeshInstance3D = RunnerSpikes.instance()
+	node.position = _v3(at)
+	add_child(node)
+	_runner_spikes.append({"node": node, "age": 0.0, "pos": at, "faction": faction})
+
+
+func _update_runner_spikes(dt: float) -> void:
+	var keep: Array[Dictionary] = []
+	for effect in _runner_spikes:
+		effect["age"] += dt
+		var age: float = effect["age"]
+		var node: MultiMeshInstance3D = effect["node"]
+		if age >= 1.15:
+			node.queue_free()
+			continue
+		node.visible = effect["faction"] == player or fog.visible(player, effect["pos"])
+		var grow := smoothstep(0.0, 0.12, age)
+		var retreat := 1.0 - smoothstep(0.90, 1.15, age)
+		node.scale.y = maxf(0.001, grow * retreat)
+		keep.append(effect)
+	_runner_spikes = keep
+
+
+# Sniper shots wait for the neck to snap forward; dead or rooted units cannot fire.
+func _update_sniper_windups() -> void:
+	var keep: Array[Dictionary] = []
+	for windup in _sniper_windups:
+		var source: Ent = windup["src"]
+		var target: Ent = windup["target"]
+		if not source.alive or not target.alive or rooted(source):
+			continue
+		if time < float(windup["release_at"]):
+			keep.append(windup)
+		else:
+			_fire(source, target, windup["d"], true)
+	_sniper_windups = keep
+
+
+# Wound-up melee blows (Cep bash, Angel lunge) resolve at their impact frame, and wound-up
+# shots (the Spitter's spit) leave on their release frame.
 func _update_swings(dt: float) -> void:
 	if _swings.is_empty():
 		return
@@ -1901,6 +2008,9 @@ func _update_swings(dt: float) -> void:
 		var src: Ent = w["src"]
 		var t: Ent = w["target"]
 		if src.alive and t.alive and not rooted(src):
+			if w.get("shot", false):
+				_fire(src, t, w["d"], true)
+				continue
 			var reach: float = w["d"]["range"] + src.radius + (t.radius if t.kind != CORD else 0.2) + 0.8
 			if _dist_to(src, t) <= reach:
 				_melee_hit(src, t, w["dmg"], w["d"])
@@ -1922,11 +2032,15 @@ func _shot_node(shot: String, f: int) -> MeshInstance3D:
 		var c: Color
 		match shot:
 			"spit": c = Data.faction_color(f).lerp(Color(0.7, 1.0, 0.3), 0.35)
+			"muscarine": c = Color(1.0, 0.74, 0.14)
 			"web": c = Color(0.82, 0.74, 0.95)
+			"sniper_spore": c = Color(0.012, 0.009, 0.008)
+			"cup_spore": c = Color(1.0, 0.62, 0.06)
 			"puff": c = Color(0.85, 0.75, 0.55)
 			_: c = Color(0.25, 0.22, 0.2)
 		m.albedo_color = c
-		m.emission_enabled = true
+		m.emission_enabled = shot != "sniper_spore"
+		m.roughness = 0.3 if shot == "sniper_spore" else 0.7
 		m.emission = c
 		m.emission_energy_multiplier = 1.5 if shot != "egg" else 0.2
 		_shot_mats[key] = m
@@ -2046,6 +2160,10 @@ func _damage(e: Ent, amt: float, src_f: int, src: Ent, quiet := false, d := {}) 
 		src.slow = maxf(src.slow, lx["slow"])
 		src.slow_t = maxf(src.slow_t, lx["slow_t"])
 		_damage(src, lx["dmg"], e.f, null, true)
+	if not quiet and d.has("immobilize") and e.kind == UNIT:
+		e.immobilize_t = maxf(e.immobilize_t, float(d["immobilize"]))
+		e.vel = Vector2.ZERO
+		e.walk = 0.0
 	if d.has("root") and e.kind == UNIT:
 		e.slow = 0.95   # caught in the cortina's cobweb
 		e.slow_t = maxf(e.slow_t, d["root"])
@@ -2527,6 +2645,7 @@ func _update_visuals(delta: float) -> void:
 	# fog: enemy units and insects show only in sight; enemy structures once spotted
 	var game_dt := clampf(time - _visual_time, 0.0, 0.5)   # pause and game speed apply to clips
 	_visual_time = time
+	_update_runner_spikes(game_dt)
 	for u in units:
 		if u.alive:
 			u.node.visible = u.f == player or (fog.visible(player, u.pos) and not hidden_from(u, player))
@@ -2567,7 +2686,7 @@ func _update_visuals(delta: float) -> void:
 					u.mi.mesh = art.mesh(level)
 			u.mi.set_instance_shader_parameter("motion_time", time)
 			if u.strike > 0.0 or u.visual_strike != 0.0:
-				u.strike = maxf(u.strike - game_dt / Bruiser.SWING_SECONDS, 0.0)
+				u.strike = maxf(u.strike - game_dt / art.SWING_SECONDS, 0.0)
 				u.visual_strike = u.strike
 				u.mi.set_instance_shader_parameter("strike", u.strike)
 		elif u.act:
@@ -2598,6 +2717,8 @@ func _update_visuals(delta: float) -> void:
 	for s in structs:
 		if not s.alive:
 			continue
+		if s.id == "inkcap_bed" and s.node.visible:
+			s.mi.set_instance_shader_parameter("motion_time", time)
 		if s.visual_built != s.built:
 			s.visual_built = s.built
 			s.node.scale = Vector3.ONE * lerpf(0.3, 1.0, smoothstep(0.0, 1.0, s.built))
@@ -2677,7 +2798,7 @@ func _fx_common(e: Ent, delta: float) -> void:
 		e.ring.set_instance_shader_parameter("selected", 1.0 if e.selected else 0.0)
 
 
-func _burst(at: Vector3, col: Color, amount: int, spd: float, life: float, spread := 0.3, size := 1.0) -> void:
+func _burst(at: Vector3, col: Color, amount: int, spd: float, life: float, spread := 0.3, size := 1.0, direction := Vector3.UP) -> void:
 	if sim:
 		return
 	var p := GPUParticles3D.new()
@@ -2689,8 +2810,8 @@ func _burst(at: Vector3, col: Color, amount: int, spd: float, life: float, sprea
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = spread
-	pm.direction = Vector3(0, 1, 0)
-	pm.spread = 70.0
+	pm.direction = direction
+	pm.spread = 18.0 if direction != Vector3.UP else 70.0
 	pm.initial_velocity_min = spd * 0.4
 	pm.initial_velocity_max = spd
 	pm.gravity = Vector3(0, -3.5, 0)

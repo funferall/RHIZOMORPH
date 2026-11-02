@@ -1,0 +1,17 @@
+[
+  {
+    "lod": "close",
+    "triangles": 14400,
+    "surfaces": 1
+  },
+  {
+    "lod": "battle",
+    "triangles": 4800,
+    "surfaces": 1
+  },
+  {
+    "lod": "distant",
+    "triangles": 1600,
+    "surfaces": 1
+  }
+]

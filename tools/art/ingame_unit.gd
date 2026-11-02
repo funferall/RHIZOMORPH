@@ -17,7 +17,7 @@ func opt(name: String, fallback: String) -> String:
 
 func run() -> void:
 	var unit := opt("unit", "bruiser")
-	var faction := int(opt("faction", "1" if unit == "bruiser" else "0"))
+	var faction := int(opt("faction", "1" if unit in ["bruiser", "slinger", "bomber", "sniper", "runner"] else "0"))
 	var out := opt("out", "res://art/" + unit)
 	var main = load("res://main.tscn").instantiate()
 	root.add_child(main)

@@ -256,7 +256,7 @@ func _showcase() -> void:
 	var groups := [
 		["giant_agaric", "fly_agaric", "clathrus", "death_cap", "armillaria", "chanterelle", "mycena_lantern", "bracket",
 			"giant_morel", "morel", "earthstar", "cordyceps", "giant_veiled", "veiled_lady", "birds_nest", "pilobolus", "giant_puffball", "inkcap_bed", "anthill"],
-		["u_wartling", "u_spitter", "u_angel", "u_cep_bulwark", "u_bruiser", "u_slinger", "u_bomber", "u_sniper", "u_stalker", "u_zombie",
+		["u_wartling", "u_spitter", "u_angel", "u_cep_bulwark", "u_bruiser", "u_slinger", "u_bomber", "u_sniper", "u_runner", "u_stalker", "u_zombie",
 			"i_ant", "t_ant", "i_beetle", "t_beetle", "i_fly", "t_fly", "i_springtail"],
 		["agaric_button", "mycena_white", "morel_small", "elf_cup_small", "puffball_small", "inkcap"],
 	]

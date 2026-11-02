@@ -151,6 +151,19 @@ onto 5.8k / 2.1k / 0.5k-triangle LODs sharing one 1024 atlas (orm alpha = pit he
 Generic tools for any Blender-built unit: `tools/art/render_unit.gd`, `ingame_unit.gd`, `perf_unit.gd`
 (`--unit=bruiser|webcap`); `FungusLib.legacy_mesh(id)` still builds the old procedural model for comparisons.
 
+**Muscarine Spitter, Blender-built after the Amanita Court roster sheet.** `tools/blender/spitter_build.py`
+(`-- --preview=out.png` renders the bare mesh in Workbench in about a second, for shape work) builds a tall,
+top-heavy Amanita: four garlic-clove volva bulbs, a swollen fibrous stalk that leans back, and a laterally
+squeezed cone of a cap that hooks back to its tip, its opening turned forward over gill lamellae and a
+golden throat. Sculpt of 470k faces (gills, raised warts, stalk scale rings, lobed bulbs), baked onto
+4.6k / 1.5k / 0.5k-triangle LODs sharing one 1024 atlas. One opaque surface. `shaders/muscarine_spitter.gdshader`
+has no skeleton: the stalk bends by height with a lag that grows up it, so the cap wobbles behind the bulbs as
+they waddle in diagonal pairs. To spit, the stalk coils back while the cap rears, squeezes and its throat
+glows, then it lashes forward; the glob leaves at 35% of a 0.85 s clip. Ranged units can now have a
+`windup` too: `_fire` parks the shot in `_swings` until the release frame (the Sniper still uses its own list).
+Gold muscarine glob with a droplet spray (`_shot_node("muscarine")`). In-game capture: `tools/art/spitter_attack.gd`.
+60 Spitters at battle detail add +0.07 ms per frame against +0.21 ms for the old procedural model (`perf_unit.gd`).
+
 **Balance (2026-11-01).** Population cap 40 -> 100 for every court (Brood Chamber now +10). Every Choir
 unit at 80% hp and 85% damage. Bot batches (24 seeds each, Court / Hollow / Choir wins): cap 40 at full
 stats 3 / 2 / 17; cap 100 at full stats 0 / 3 / 20 (a higher cap alone helps the Choir, whose army is free

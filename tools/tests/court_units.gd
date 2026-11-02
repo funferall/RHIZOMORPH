@@ -65,7 +65,7 @@ func run() -> void:
 	var cep_hp: float = cep.hp
 	var friend_hp: float = friend.hp
 	var raw: float = Data.UNITS["spitter"]["dmg"]
-	g._fire(spitter, friend, spitter.d)
+	g._fire(spitter, friend, spitter.d, true)   # released: skip the coil
 	var shot: Dictionary = g.shots[g.shots.size() - 1]
 	for i in 40:
 		g._update_shots(0.05)
@@ -147,6 +147,193 @@ func run() -> void:
 	check(br.strike > 0.0 and dummy.hp == dhp, "The Bruiser's arms go up before its blow lands")
 	step(0.4)
 	check(dummy.hp < dhp, "The smash lands the blow")
+
+	# --- Muscarine Spitter: coils, then spits on the lash ---
+	var sp = g._spawn_unit(0, "spitter", at + Vector2(-12, 8))
+	var sp_art = load("res://scripts/muscarine_spitter.gd")
+	check(sp.mi.mesh.resource_name.begins_with("Spitter_") and FungusLib.mesh("u_spitter") == sp_art.mesh(0),
+		"Muscarine Spitter uses the Blender-built mesh in matches and portraits")
+	check(sp_art.stats(0)["triangles"] > sp_art.stats(1)["triangles"] and sp_art.stats(1)["triangles"] > sp_art.stats(2)["triangles"],
+		"Spitter has three decreasing LODs")
+	var sp_target = g._spawn_unit(1, "wartling", sp.pos + Vector2(5, 0))
+	var shots_before: int = g.shots.size()
+	g._fire(sp, sp_target, sp.d)
+	check(sp.strike == 1.0 and g.shots.size() == shots_before, "The Spitter coils before it spits")
+	check(is_equal_approx(Data.UNITS["spitter"]["windup"], sp_art.WINDUP_SECONDS), "Its windup matches the animation's release frame")
+	g._update_swings(sp_art.WINDUP_SECONDS + 0.01)
+	var spit: Dictionary = g.shots.back()
+	check(g.shots.size() == shots_before + 1 and spit["src"] == sp, "The glob leaves on the lash")
+	var mouth: Vector3 = sp.node.global_position + Basis(Vector3.UP, -sp.facing) * sp_art.MUZZLE
+	check(spit["from"].distance_to(mouth) < 0.001, "It spits from its throat")
+	var sp_hp: float = sp_target.hp
+	g._update_shots(float(spit["dur"]) + 0.01)
+	check(sp_target.hp < sp_hp, "The spit lands")
+	sp.alive = false
+	sp.node.visible = false
+	sp_target.alive = false
+	sp_target.node.visible = false
+
+	# --- Elf-cup Slinger: its new visual preserves the ranged shot contract. ---
+	var sl = g._spawn_unit(1, "slinger", at + Vector2(15, 12))
+	var target = g._spawn_unit(2, "wartling", sl.pos + Vector2(4, 0))
+	var art = load("res://scripts/elf_cup_slinger.gd")
+	check(sl.mi.mesh.resource_name == "Slinger_battle" and FungusLib.mesh("u_slinger") == art.mesh(0), "Slinger mesh is used in matches and portraits")
+	check(art.stats(0)["triangles"] > art.stats(1)["triangles"] and art.stats(1)["triangles"] > art.stats(2)["triangles"], "Slinger has three decreasing LODs")
+	sl.facing = 0.7
+	var hp_before: float = target.hp
+	g._fire(sl, target, sl.d)
+	var cup_shot: Dictionary = g.shots.back()
+	check(sl.strike == 1.0 and cup_shot["shot"] == "puff" and cup_shot["dmg"] == 10, "Slinger release starts recoil and retains its projectile damage")
+	var expected: Vector3 = sl.node.global_position + Basis(Vector3.UP, -sl.facing) * art.MUZZLE
+	check(cup_shot["from"].distance_to(expected) < 0.001, "Slinger launches from its oriented cup")
+	check(target.hp == hp_before, "Slinger causes no damage before projectile arrival")
+	g._update_shots(float(cup_shot["dur"]) + 0.01)
+	check(is_equal_approx(target.hp, hp_before - 10.0), "Slinger projectile lands its original 10 damage")
+
+	# Puffball art and lobbed area attack.
+	var bomber_test = g._spawn_unit(1, "bomber", at + Vector2(20, 18))
+	var bomb_target = g._spawn_unit(2, "wartling", bomber_test.pos + Vector2(5, 0))
+	var bomb_near = g._spawn_unit(2, "wartling", bomb_target.pos + Vector2(1, 0))
+	var bomb_art = load("res://scripts/puffball_bomber.gd")
+	check(bomber_test.mi.mesh.resource_name == "Bomber_battle" and FungusLib.mesh("u_bomber") == bomb_art.mesh(0), "Bomber uses its new match and portrait meshes")
+	check(bomb_art.stats(0)["triangles"] > bomb_art.stats(1)["triangles"] and bomb_art.stats(1)["triangles"] > bomb_art.stats(2)["triangles"], "Bomber has three decreasing LODs")
+	bomber_test.facing = 0.7
+	g._rebuild_grid()
+	var hp_target: float = bomb_target.hp
+	var hp_near: float = bomb_near.hp
+	g._fire(bomber_test, bomb_target, bomber_test.d)
+	var bomb_shot: Dictionary = g.shots.back()
+	var bomb_origin: Vector3 = bomber_test.node.global_position + Basis(Vector3.UP, -bomber_test.facing) * bomb_art.MUZZLE
+	check(bomber_test.strike == 1.0 and bomb_shot["arc"] and bomb_shot["dmg"] == 14, "Bomber triggers recoil and keeps its 14-damage lob")
+	check(bomb_shot["from"].distance_to(bomb_origin) < 0.001, "Bomber launches from its oriented vent")
+	g._update_shots(float(bomb_shot["dur"]) + 0.01)
+	check(bomb_target.hp < hp_target and bomb_near.hp < hp_near, "Bomber impact damages enemies in its splash radius")
+
+	# Pilobolus Sniper: precision projectile and visual integration.
+	var sn = g._spawn_unit(1, "sniper", at + Vector2(30, 20))
+	var sn_target = g._spawn_unit(2, "wartling", sn.pos + Vector2(6, 0))
+	var sn_art = load("res://scripts/pilobolus_sniper.gd")
+	check(sn.mi.mesh.resource_name == "Sniper_battle" and FungusLib.mesh("u_sniper") == sn_art.mesh(0), "Sniper uses its match and portrait meshes")
+	check(sn_art.stats(0)["surfaces"] == 2 and sn_art.stats(1)["surfaces"] == 2 and sn_art.stats(2)["surfaces"] == 2, "Sniper separates transparent gel and opaque cap at each LOD")
+	check(sn_art.stats(0)["triangles"] > sn_art.stats(1)["triangles"] and sn_art.stats(1)["triangles"] > sn_art.stats(2)["triangles"], "Sniper has three decreasing LODs")
+	sn.facing = 0.8
+	var sn_hp: float = sn_target.hp
+	var shot_count: int = g.shots.size()
+	g._fire(sn, sn_target, sn.d)
+	check(sn.strike == 1.0 and g.shots.size() == shot_count, "Sniper coils before firing")
+	g.time += sn_art.WINDUP_SECONDS * 0.5
+	g._update_sniper_windups()
+	check(g.shots.size() == shot_count, "Sniper does not launch before its windup completes")
+	g.time += sn_art.WINDUP_SECONDS * 0.5 + 0.001
+	g._update_sniper_windups()
+	check(g.shots.size() == shot_count + 1, "Sniper launches one projectile at the end of its windup")
+	var sn_shot: Dictionary = g.shots.back()
+	var sn_origin: Vector3 = sn.node.global_position + Basis(Vector3.UP, -sn.facing) * sn_art.MUZZLE
+	check(not sn_shot["arc"] and sn_shot["dmg"] == 34 and sn_shot["shot"] == "egg", "Sniper preserves precision projectile damage")
+	check(sn_shot["from"].distance_to(sn_origin) < 0.001, "Sniper projectile starts at its extended capsule")
+	var sn_mat: StandardMaterial3D = sn_shot["node"].material_override
+	check(sn_mat.albedo_color.r < 0.03 and not sn_mat.emission_enabled, "Sniper sporangium projectile is black")
+	g._update_shots(float(sn_shot["dur"]) + 0.01)
+	check(is_equal_approx(sn_target.hp, sn_hp - 34.0), "Sniper precision shot lands its original damage")
+	g._fire(sn, sn_target, sn.d)
+	var count_before_cancel: int = g.shots.size()
+	sn_target.alive = false
+	g.time += sn_art.WINDUP_SECONDS + 0.01
+	g._update_sniper_windups()
+	check(g.shots.size() == count_before_cancel, "Sniper cancels a shot when its target dies during windup")
+
+	# Candlesnuff Runner: trainable scout and timed melee lunge.
+	var runner_unit = g._spawn_unit(1, "runner", at + Vector2(36, 24))
+	var runner_target = g._spawn_unit(2, "wartling", runner_unit.pos + Vector2(3.4, 0))
+	var runner_art = load("res://scripts/candlesnuff_runner.gd")
+	check("runner" in Data.STRUCTURES["morel_patch"]["trains"], "Morel Patch trains the Candlesnuff Runner")
+	var runner_patch = g._spawn_struct(1, "morel_patch", at + Vector2(40, 24), true)
+	runner_patch.connected = true
+	var queue_result: String = g.queue_train(runner_patch, "runner")
+	check(queue_result == "" and runner_patch.queue.has("runner"), "Runner can be queued at a connected Morel Patch")
+	if queue_result == "":
+		g.cancel_train(runner_patch)
+	check(runner_unit.mi.mesh.resource_name == "Runner_battle" and FungusLib.mesh("u_runner") == runner_art.mesh(0), "Runner uses its match and portrait meshes")
+	check(runner_art.stats(0)["triangles"] > runner_art.stats(1)["triangles"] and runner_art.stats(1)["triangles"] > runner_art.stats(2)["triangles"], "Runner has three decreasing LODs")
+	check(g.fog.sight(runner_unit) == 16.0 and runner_unit.d["speed"] == 8.6, "Runner has extended sight and scout speed")
+	runner_unit.f = g.player  # Make the impact visible to the test player.
+	runner_target.slow = 0.4
+	runner_target.slow_t = 3.0
+	runner_target.vel = Vector2(5.0, 0.0)
+	var runner_hp: float = runner_target.hp
+	var spike_count: int = g._runner_spikes.size()
+	g._fire(runner_unit, runner_target, runner_unit.d)
+	g._update_swings(0.16)
+	check(runner_unit.strike == 1.0 and runner_target.hp == runner_hp and g._runner_spikes.size() == spike_count, "Runner plants its arms before the distant strike")
+	g._update_swings(0.17)
+	check(is_equal_approx(runner_target.hp, runner_hp - 6.0), "Runner ground strike hits its distant target for configured damage")
+	check(is_equal_approx(runner_target.immobilize_t, 1.0) and runner_target.vel == Vector2.ZERO and g._unit_speed(runner_target) == 0.0, "Spike hit immediately immobilizes a moving unit for one second")
+	var stuck_pos: Vector2 = runner_target.pos
+	runner_target.target = null
+	runner_target.think_t = 100.0
+	runner_target.goal = stuck_pos + Vector2(8, 0)
+	g._update_unit(runner_target, 0.6)
+	check(runner_target.pos == stuck_pos and is_equal_approx(runner_target.immobilize_t, 0.4), "Root prevents movement and separation pushes")
+	g._damage(runner_target, 1.0, runner_unit.f, runner_unit, false, runner_unit.d)
+	check(is_equal_approx(runner_target.immobilize_t, 1.0), "Another hit refreshes the root to one second")
+	runner_target.target = null
+	runner_target.think_t = 100.0
+	g._update_unit(runner_target, 0.5)
+	g._update_unit(runner_target, 0.5)
+	check(runner_target.pos == stuck_pos and runner_target.immobilize_t == 0.0, "Target stays rooted for the full second")
+	check(is_equal_approx(runner_target.slow, 0.4) and runner_target.slow_t > 0.0, "Existing slows survive immobilization")
+	g._update_unit(runner_target, 0.05)
+	check(runner_target.pos != stuck_pos, "Target resumes its prior movement order after the root expires")
+	check(g._runner_spikes.size() == spike_count + 1, "Xylaria spikes appear at impact")
+	var spike_effect: Dictionary = g._runner_spikes.back()
+	var effect_node: MultiMeshInstance3D = spike_effect["node"]
+	check(Vector2(effect_node.position.x, effect_node.position.z).distance_to(stuck_pos) < 0.01 and is_equal_approx(effect_node.position.y, g.board.ground_y(stuck_pos)), "Spike cluster is centered on the target at ground level")
+	g._update_runner_spikes(0.0)
+	check(float(spike_effect["age"]) == 0.0, "Spike growth pauses with game time")
+	g._update_runner_spikes(0.13)
+	check(effect_node.scale.y > 0.9, "Spikes rise out of the ground")
+	g._update_runner_spikes(1.1)
+	check(g._runner_spikes.size() == spike_count, "Spikes retreat and clean up")
+
+	# The effect holds movement only: the rooted unit can still attack.
+	var rooted_fighter = g._spawn_unit(2, "wartling", at + Vector2(15, -15))
+	var nearby_enemy = g._spawn_unit(0, "wartling", rooted_fighter.pos + Vector2(1.0, 0))
+	rooted_fighter.immobilize_t = 1.0
+	rooted_fighter.target = nearby_enemy
+	rooted_fighter.cd = 0.0
+	rooted_fighter.think_t = 100.0
+	var rooted_pos: Vector2 = rooted_fighter.pos
+	var nearby_hp: float = nearby_enemy.hp
+	g._update_unit(rooted_fighter, 0.05)
+	check(rooted_fighter.pos == rooted_pos and nearby_enemy.hp < nearby_hp, "Immobilized units can still attack without moving")
+	g._damage(runner_patch, 1.0, runner_unit.f, runner_unit, false, runner_unit.d)
+	check(runner_patch.immobilize_t == 0.0, "Ground strike does not apply a movement root to structures")
+
+	# A strike cancelled by moving out of reach must not root its target.
+	var missed_target = g._spawn_unit(2, "wartling", runner_unit.pos + Vector2(3.0, 0))
+	g._fire(runner_unit, missed_target, runner_unit.d)
+	missed_target.pos += Vector2(30, 0)
+	g._update_swings(0.33)
+	check(missed_target.immobilize_t == 0.0, "A missed spike strike does not immobilize")
+
+	# Inkcap Bed art and unchanged corpse-gathering behavior.
+	var inkbed = g._spawn_struct(1, "inkcap_bed", at + Vector2(20, -18), true)
+	inkbed.connected = true
+	check(inkbed.mi.mesh.resource_name == "InkcapBed" and inkbed.d["gather"] == 10.0, "Inkcap Bed uses the new clustered mesh and retains its gather range")
+	var corpse_at: Vector2 = inkbed.pos + Vector2(2.0, 0)
+	var bed_corpse: Dictionary = g.forest._deposit("corpse", corpse_at, 0.0, 6.0)
+	bed_corpse["life"] = 40.0
+	var ink_rates: Array = [0.0, 0.0, 0.0]
+	g.forest._hollow(1, ink_rates)
+	check(bed_corpse["kept"] and bed_corpse["pos"].distance_to(inkbed.pos) < 2.0 and ink_rates[1] >= Data.CORPSE_RATE, "Inkcap Bed still preserves, pulls and digests nearby corpses")
+	inkbed.f = g.player
+	inkbed.node.visible = true
+	g.time += 0.1
+	g._update_visuals(0.1)
+	var drip_clock: float = inkbed.mi.get_instance_shader_parameter("motion_time")
+	check(is_equal_approx(drip_clock, g.time), "Inkcap droplets use game time")
+	g._update_visuals(0.1)
+	check(is_equal_approx(float(inkbed.mi.get_instance_shader_parameter("motion_time")), drip_clock), "Inkcap droplets remain paused when game time stops")
 
 	# --- pictures ---
 	var dir: String = ""
