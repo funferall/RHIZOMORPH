@@ -40,6 +40,11 @@ func run() -> void:
 	var home: Vector2 = g.heart(0).pos
 	var at := home + (Vector2.ZERO - home).normalized() * 14.0
 
+	# Coral Binder uses the baked one-surface battle LOD. Its placement and
+	# gameplay are exercised in tools/tests/coral_binder.gd.
+	var binder_art = preload("res://scripts/coral_binder.gd")
+	check(binder_art.stats(1)["surfaces"] == 1 and binder_art.stats(1)["triangles"] <= 4000, "Coral Binder has one battle surface within budget")
+
 	# --- Cep Bulwark ---
 	var cep = g._spawn_unit(0, "cep", at)
 	check(cep.act != null and cep.radius > 1.0, "Cep spawns with its action controller and a heavy footprint")

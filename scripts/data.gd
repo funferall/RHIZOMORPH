@@ -283,6 +283,9 @@ const UNITS := {
 		"desc": "Lobs bursting puffballs. Splash damage."},
 	"runner": {"name": "Candlesnuff Runner", "species": "u_runner", "cost": [20, 4], "hp": 55, "dmg": 6, "range": 4.0, "cd": 2.0, "speed": 8.6, "train": 4.0, "sight": 16.0, "shot": "", "windup": 0.32, "immobilize": 1.0,
 		"desc": "Fast, fragile scout with extended vision. Rolls onto its arms to move and raises sharp Xylaria spikes beneath its target, holding units in place for 1 second."},
+	"binder": {"name": "Coral Binder", "species": "u_binder", "cost": [65, 12], "hp": 180, "dmg": 0, "range": 0.0, "cd": 1.0, "speed": 0.0, "train": 0.0, "size": 0.65,
+		"wall_max": 12.0, "wall_growth": 0.25, "wall_width": 0.85, "wall_slow": 0.7, "thorns": 5.0,
+		"desc": "Rooted coral fungus. Grows a wall toward its marked end at 0.25 m/s. Enemies crossing it move 70% slower; melee attackers take 5 damage."},
 	"sniper": {"name": "Pilobolus Sniper", "species": "u_sniper", "cost": [45, 55], "hp": 70, "dmg": 34, "range": 14.0, "cd": 2.3, "speed": 5.2, "train": 8.0, "shot": "egg", "elite": true,
 		"desc": "Fires its sporangium at 25 m/s. Extreme range. Costs nitrogen - feed on the dead."},
 

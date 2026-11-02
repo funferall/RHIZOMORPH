@@ -30,6 +30,7 @@ var builder = null          # Choir: the thrall walking off to become a structur
 var scout = null
 var scout_t := 40.0
 var scout_route: Array[Vector2] = []
+var binder_next := 180.0
 var build_plan := {}        # Choir: {sid, at}
 
 
@@ -61,6 +62,7 @@ func tick(dt: float) -> void:
 			_build_court()
 		"saprotroph":
 			_build_hollow()
+			_plant_binder()
 		"parasite":
 			_build_choir()
 			_sporulate()
@@ -96,7 +98,7 @@ func _scout() -> void:
 			return
 		var best = null
 		for u in g.units:
-			if u.f == f and u.alive and u.squad == "" and not u.d.get("elite", false) and u.summit == Vector2.INF:
+			if u.f == f and u.alive and u.squad == "" and not u.d.get("elite", false) and u.id != "binder" and u.summit == Vector2.INF:
 				if best == null or u.d["speed"] > best.d["speed"]:
 					best = u
 		if best == null:
@@ -559,6 +561,38 @@ func _enemy_tree() -> Vector2:
 	return best
 
 
+# Plant at most two defensive walls near the front once the economy is established.
+func _plant_binder() -> void:
+	if g.time < binder_next:
+		return
+	binder_next = g.time + 45.0
+	var count := 0
+	for u in g.units:
+		if u.alive and u.f == f and u.id == "binder":
+			count += 1
+	if count >= 2 or not g.afford(f, Data.UNITS["binder"]["cost"]) or g.res(f)[0] < 140.0:
+		return
+	var patches: Array = _mine("morel_patch")
+	if patches.is_empty():
+		return
+	var front: Vector2 = _front()
+	patches.sort_custom(func(a, b): return a.pos.distance_squared_to(front) < b.pos.distance_squared_to(front))
+	for patch in patches:
+		if patch.built < 1.0 or not patch.connected:
+			continue
+		var forward: Vector2 = patch.pos.direction_to(front)
+		if forward == Vector2.ZERO:
+			forward = Vector2.RIGHT
+		for i in 12:
+			var a := TAU * i / 12.0
+			var root: Vector2 = patch.pos + forward.rotated(a) * 4.5
+			var across := Vector2(-forward.y, forward.x)
+			if g.binder_place_error(f, root) == "" and g.binder_line_limit(root, root + across * 10.0) >= 5.0:
+				if g.try_plant_binder(f, root, root + across * 10.0) == "":
+					binder_next = g.time + 150.0
+					return
+
+
 # --- army ----------------------------------------------------------------------
 
 func _train() -> void:
@@ -586,7 +620,7 @@ func _train() -> void:
 func _army() -> void:
 	var army := []
 	for u in g.units:
-		if u.f == f and u.alive and u.squad == "" and u.summit == Vector2.INF and not g.rooted(u):
+		if u.f == f and u.alive and u.squad == "" and u.summit == Vector2.INF and u.id != "binder" and not g.rooted(u):
 			army.append(u)
 	# raids on supply cords
 	raid_t -= p["think"]

@@ -1,5 +1,13 @@
 # RHIZOMORPH — roadmap & handoff
 
+## Coral Binder (2026-11-02)
+
+The Morel Patch now plants a stationary Coral Binder through a two-click root and wall-end command. The wall grows linearly, slows enemy ground movement, can be targeted along its length and retaliates against direct melee; its segments share the root's health. The Morel AI can place defensive walls. Cost, health and rates are initial tuning values; multiplayer-scale and strategic balance still need playtesting. See `art/binder/README.md` and `DESIGN.md` for controls and details.
+
+The Blender art uses a 1024 painted albedo and sculpt-baked normal/ORM, with one surface per LOD and 9,864 / 3,924 / 882 triangles. Atlas lint: 0 failures, 0 warnings. `tools/tests/coral_binder.gd` and `tools/tests/court_units.gd`: 0 failures. On the RTX 4060 laptop, 16 rounds with 60 ungrown battle roots measured median +0.16 ms. Ten fully grown walls plus battle roots measured median +0.08 ms in the same 16-round test; each wall can instance up to twelve 882-triangle modules.
+
+Two critiques widened the shape, added forked arms and thorns, adjusted bead colors and ambient occlusion, and removed unsupported barbs from the distant wall mesh. Remaining art quality work: the normal bake has visible projection artifacts, and the branch junctions and repeated modules still look simplified at close range compared with the roster and beetle quality bar. Further sculpt, UV and normal-bake cleanup is needed.
+
 ## Elf-cup Slinger art (2026-11-02)
 
 Rebuilt the Slinger with a sculpted scarlet cup and curled supports, painted 1024 albedo, normal and ORM atlas and one surface per LOD. Two critiques opened the bowl to the camera, shortened supports, softened ribs, adjusted rim and flecks and corrected projection artifacts on the rim and support bends. LOD triangles: 4,416 / 1,568 / 480. Atlas lint: 0 failures, 0 warnings. Court suite: 0 failures. RTX 4060 laptop, 16 interleaved rounds: 60 battle units median +0.05 ms over empty baseline. See `art/slinger/` for studio, match and motion captures. Existing firing timing and muzzle remain unchanged.

@@ -12,6 +12,7 @@ const Webcap := preload("res://scripts/webcap.gd")
 const InkcapBed := preload("res://scripts/inkcap_bed.gd")
 const RotBracket := preload("res://scripts/rot_bracket.gd")
 const Runner := preload("res://scripts/candlesnuff_runner.gd")
+const CoralBinder := preload("res://scripts/coral_binder.gd")
 const Sniper := preload("res://scripts/pilobolus_sniper.gd")
 const Bomber := preload("res://scripts/puffball_bomber.gd")
 const Slinger := preload("res://scripts/elf_cup_slinger.gd")
@@ -271,6 +272,11 @@ static func mesh(id: String) -> ArrayMesh:
 		_meshes[id] = inkbed
 		_heights[id] = InkcapBed.HEIGHT
 		return inkbed
+	if id == "u_binder":
+		var binder := CoralBinder.mesh(0)
+		_meshes[id] = binder
+		_heights[id] = CoralBinder.HEIGHT
+		return binder
 	if id == "u_runner":
 		var runner := Runner.mesh(0)
 		_meshes[id] = runner

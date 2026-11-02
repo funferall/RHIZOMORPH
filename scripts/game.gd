@@ -26,9 +26,10 @@ const Bomber = preload("res://scripts/puffball_bomber.gd")
 const Sniper = preload("res://scripts/pilobolus_sniper.gd")
 const Runner = preload("res://scripts/candlesnuff_runner.gd")
 const RunnerSpikes = preload("res://scripts/runner_spikes.gd")
+const CoralBinder = preload("res://scripts/coral_binder.gd")
 const Beetle = preload("res://scripts/whitecoat_beetle.gd")
 const BAKED := {"webcap": Webcap, "bruiser": Bruiser, "spitter": Spitter, "slinger": Slinger, "bomber": Bomber, "sniper": Sniper, "runner": Runner,
-	"beetle": Beetle, "t_beetle": Beetle}
+	"beetle": Beetle, "t_beetle": Beetle, "binder": CoralBinder}
 const AI = preload("res://scripts/ai.gd")
 const Forest = preload("res://scripts/forest.gd")
 const Fog = preload("res://scripts/fog.gd")
@@ -96,6 +97,10 @@ class Ent:
 	var detected := 0       # Angel: bit per faction with something within its cloak radius
 	var strike := 0.0       # Bruiser: 1 when a swing starts, falling to 0 over the swing
 	var visual_strike := 0.0
+	var wall_dir := Vector2.RIGHT
+	var wall_length := 0.0
+	var wall_limit := 0.0
+	var wall_node: MultiMeshInstance3D
 	var visual_infect := -1.0   # beetles: how white with Beauveria the art shows
 	var think_t := 0.0
 	var home := Vector2.INF
@@ -139,6 +144,7 @@ var rival_step := 1
 var _sample_min := 0
 
 var units: Array[Ent] = []
+var _binders: Array[Ent] = []  # rooted walls; only live binders affect movement
 var structs: Array[Ent] = []
 var cords: Array[Ent] = []
 var puffs: Array[Ent] = []
@@ -370,7 +376,7 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 		match uid:
 			"wartling": e.mi.mesh = Wartling.mesh(e.visual_lod)
 			"cep": e.mi.mesh = CepBulwark.mesh(e.visual_lod)
-			"webcap", "bruiser", "spitter", "slinger", "bomber", "sniper", "runner": e.mi.mesh = BAKED[uid].mesh(e.visual_lod)
+			"webcap", "bruiser", "spitter", "slinger", "bomber", "sniper", "runner", "binder": e.mi.mesh = BAKED[uid].mesh(e.visual_lod)
 			"beetle", "t_beetle": e.mi.mesh = Beetle.mesh(e.visual_lod, uid == "t_beetle")
 			_: e.mi.mesh = FungusLib.mesh(d["species"])
 		e.node.add_child(e.mi)
@@ -395,6 +401,19 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 	elif e.anim == null:
 		e.mi.set_instance_shader_parameter("gait", (16.0 if insect else 10.0) + _rng.randf() * 3.0)
 	units.append(e)
+	if uid == "binder":
+		_binders.append(e)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = CoralBinder.mesh(2)
+		mm.instance_count = ceili(float(d["wall_max"]) / 1.05)
+		mm.visible_instance_count = 0
+		for i in mm.instance_count:
+			mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(0.001, 0.001, 0.001)), Vector3.ZERO))
+		mm.custom_aabb = AABB(Vector3(-1, -2, -1), Vector3(float(d["wall_max"]) + 2, 5, 2))
+		e.wall_node = MultiMeshInstance3D.new()
+		e.wall_node.multimesh = mm
+		e.node.add_child(e.wall_node)
 	if insect:
 		e.radius = 0.4
 		return e
@@ -773,12 +792,98 @@ func try_place(f: int, sid: String, p: Vector2) -> String:
 	return ""
 
 
+# Coral Binder placement. The cost is paid only after both clicks pass validation.
+func binder_place_error(f: int, p: Vector2) -> String:
+	var d: Dictionary = Data.UNITS["binder"]
+	if econ(f) != "saprotroph":
+		return "Only the Morel Hollow can plant this"
+	var ready := false
+	for patch in structs:
+		if patch.alive and patch.f == f and patch.id == "morel_patch" and patch.built >= 1.0 and patch.connected:
+			ready = true
+			break
+	if not ready:
+		return "Needs a connected Morel Patch"
+	if pop(f) + queued(f) >= pop_cap(f):
+		return "Colony at its limit (%d)" % pop_cap(f)
+	if not afford(f, d["cost"]):
+		return "Not enough resources"
+	if not board.in_bounds(p, 1.0) or board.water_at(p) > 0.2:
+		return "Choose dry ground inside the board"
+	if not forest.owns(f, p):
+		return "Plant within your mycelium"
+	for tr in forest.trees:
+		if p.distance_to(tr["pos"]) < tr["radius"] * 1.6 + 0.8:
+			return "Blocked by a trunk"
+	for s in structs:
+		if s.alive and p.distance_to(s.pos) < s.radius + 0.8:
+			return "Too close to another fruiting body"
+	for u in units:
+		if u.alive and p.distance_to(u.pos) < u.radius + 0.7:
+			return "Too close to a unit"
+	for ah in Data.ANTHILLS:
+		if p.distance_to(ah) < 3.4:
+			return "Blocked by an anthill"
+	return ""
+
+
+# Stop before hard map obstacles; the selected endpoint also limits wall length.
+func binder_line_limit(origin: Vector2, target: Vector2) -> float:
+	var offset := target - origin
+	var wanted := minf(offset.length(), float(Data.UNITS["binder"]["wall_max"]))
+	if wanted < 1.0:
+		return 0.0
+	var direction := offset.normalized()
+	var length := 0.0
+	while length < wanted:
+		var next := minf(length + 0.25, wanted)
+		var q := origin + direction * next
+		if not board.in_bounds(q, 0.8) or board.water_at(q) > 0.2:
+			break
+		var blocked := false
+		for tr in forest.trees:
+			if q.distance_to(tr["pos"]) < tr["radius"] * 1.5 + 0.6:
+				blocked = true
+				break
+		if not blocked:
+			for structure in structs:
+				if structure.alive and q.distance_to(structure.pos) < structure.radius + 0.6:
+					blocked = true
+					break
+		if not blocked:
+			for ah in Data.ANTHILLS:
+				if q.distance_to(ah) < 3.2:
+					blocked = true
+					break
+		if blocked:
+			break
+		length = next
+	return length
+
+
+func try_plant_binder(f: int, origin: Vector2, target: Vector2) -> String:
+	var err := binder_place_error(f, origin)
+	if err != "":
+		return err
+	var length := binder_line_limit(origin, target)
+	if length < 1.0:
+		return "Choose a direction with at least 1 m of clear ground"
+	pay(f, Data.UNITS["binder"]["cost"])
+	var u := _spawn_unit(f, "binder", origin)
+	u.wall_dir = (target - origin).normalized()
+	u.wall_limit = length
+	u.facing = u.wall_dir.angle()
+	u.home = origin
+	emit_signal("sound", "place", _v3(origin))
+	return ""
+
+
 # --- orders --------------------------------------------------------------------
 
 func order_move(group: Array, p: Vector2, attack_move := false) -> void:
 	var i := 0
 	for u in group:
-		if not u.alive or u.kind != UNIT:
+		if not u.alive or u.kind != UNIT or u.id == "binder":
 			continue
 		if u.act:
 			u.act.move()   # a braced Cep pulls its roots up first, then walks
@@ -794,7 +899,7 @@ func order_move(group: Array, p: Vector2, attack_move := false) -> void:
 
 func order_attack(group: Array, t: Ent) -> void:
 	for u in group:
-		if u.alive and u.kind == UNIT:
+		if u.alive and u.kind == UNIT and u.id != "binder":
 			if u.act:
 				u.act.move()
 			u.target = t
@@ -1119,6 +1224,8 @@ func pick(screen: Vector2) -> Ent:
 		for e in list:
 			if not e.alive or not e.node.visible or cam.is_position_behind(e.node.global_position):
 				continue
+			if e.id == "binder" and e.f != player and not fog.visible(player, e.pos):
+				continue  # A visible segment must not expose an unseen root.
 			var sp := screen_pos(e)
 			var px := _px_radius(e)
 			var dd := sp.distance_to(screen)
@@ -1131,6 +1238,9 @@ func pick(screen: Vector2) -> Ent:
 	if g == Vector3.INF:
 		return null
 	var gp := Vector2(g.x, g.z)
+	for wall in _binders:
+		if wall.alive and wall.node.visible and (wall.f == player or fog.visible(player, gp)) and _seg_dist(gp, wall.pos, wall.pos + wall.wall_dir * wall.wall_length) < float(wall.d["wall_width"]):
+			return wall
 	for c in cords:
 		if c.alive and c.node.visible and c.regrow <= 0.0 and _seg_dist(gp, c.a.pos, c.b.pos) < 0.8:
 			return c
@@ -1653,6 +1763,11 @@ func _unit_speed(u: Ent) -> float:
 	if board.water_at(u.pos) > 0.3 and not u.d.get("flies", false):
 		s *= 0.6
 	s *= 1.0 - u.slow
+	if not u.d.get("flies", false) and u.id != "binder":
+		for wall in _binders:
+			if wall.alive and wall.f != u.f and _seg_dist(u.pos, wall.pos, wall.pos + wall.wall_dir * wall.wall_length) <= float(wall.d["wall_width"]) + u.radius * 0.5:
+				s *= 1.0 - float(wall.d["wall_slow"])
+				break
 	return s
 
 
@@ -1675,6 +1790,12 @@ func _update_unit(u: Ent, dt: float) -> void:
 		u.immobilize_t = 0.0
 	_tick_status(u, dt)
 	if not u.alive:
+		return
+	if u.id == "binder":
+		u.wall_length = minf(u.wall_length + float(d["wall_growth"]) * dt, u.wall_limit)
+		u.vel = Vector2.ZERO
+		u.walk = 0.0
+		u.target = null
 		return
 	if d.has("regen") and u.hp < u.max_hp:
 		u.hp = minf(u.hp + d["regen"] * dt, u.max_hp)
@@ -1820,6 +1941,8 @@ func _sense_cloak(u: Ent) -> void:
 func _dist_to(u: Ent, t: Ent) -> float:
 	if t.kind == CORD:
 		return _seg_dist(u.pos, t.a.pos, t.b.pos)
+	if t.id == "binder":
+		return _seg_dist(u.pos, t.pos, t.pos + t.wall_dir * t.wall_length) - float(t.d["wall_width"])
 	return u.pos.distance_to(t.pos) - t.radius
 
 
@@ -1828,6 +1951,9 @@ func _aim_point(u: Ent, t: Ent) -> Vector2:
 		var ab := t.b.pos - t.a.pos
 		var k := clampf((u.pos - t.a.pos).dot(ab) / ab.length_squared(), 0.1, 0.9)
 		return t.a.pos + ab * k
+	if t.id == "binder":
+		var along := clampf((u.pos - t.pos).dot(t.wall_dir), 0.0, t.wall_length)
+		return t.pos + t.wall_dir * along
 	return t.pos
 
 
@@ -1844,10 +1970,17 @@ func _find_target(e: Ent, r: float, include_cords: bool) -> Ent:
 	var bs := INF
 	for o in _near_units(e.pos, r + 1.0):
 		if o.f != e.f and o.alive and (o.f != Data.NEUTRAL or _hunts(e, o)) and not hidden_from(o, e.f):
-			var dd: float = e.pos.distance_to(o.pos)
+			var dd: float = _dist_to(e, o) if o.id == "binder" else e.pos.distance_to(o.pos)
 			if dd < bs:
 				bs = dd
 				best = o
+	# A wall's root can be far outside the unit grid search even when its tip is near.
+	for wall in _binders:
+		if wall.alive and wall.f != e.f and wall.f != Data.NEUTRAL:
+			var dd := _dist_to(e, wall)
+			if dd < r and dd < bs:
+				bs = dd
+				best = wall
 	var cutter: bool = e.d.get("cutter", false)
 	if best and not cutter:
 		return best
@@ -1957,7 +2090,10 @@ func _melee_hit(src: Ent, t: Ent, dmg: float, d: Dictionary) -> void:
 	if src.id == "t_beetle" and src.node.visible:
 		# the bite shakes a puff of white conidia off its tufts
 		_burst(src.node.global_position + Vector3(0, 0.6, 0), Color(0.95, 0.94, 0.88), 18, 1.4, 0.9, 0.35, 0.9)
+	var thorns := float(t.d.get("thorns", 0.0)) if t.id == "binder" and src.kind == UNIT and src.f != t.f and dmg > 0.0 else 0.0
 	_damage(t, dmg, src.f, src, false, d)
+	if thorns > 0.0 and src.alive:
+		_damage(src, thorns, t.f, null, true)
 	var hp3 := _v3(_aim_point(src, t), 0.5)
 	emit_signal("sound", "hit_" + src.id if src.kind == UNIT else "hit_melee", hp3)
 	_burst(hp3, Data.faction_color(src.f).lightened(0.3), 6, 1.5, 0.35)
@@ -2147,6 +2283,9 @@ func _enemies_in(f: int, p: Vector2, r: float, inc_units: bool, inc_structs: boo
 		for u in _near_units(p, r + 0.6):
 			if u.f != f and u.alive:
 				out.append(u)
+		for wall in _binders:
+			if wall.alive and wall.f != f and not out.has(wall) and _seg_dist(p, wall.pos, wall.pos + wall.wall_dir * wall.wall_length) <= r + float(wall.d["wall_width"]):
+				out.append(wall)
 	if inc_structs:
 		for s in structs:
 			if s.f != f and s.alive and s.pos.distance_to(p) < r + s.radius:
@@ -2216,6 +2355,10 @@ func _kill(e: Ent, killer: Ent) -> void:
 		_stats[key] = _stats.get(key, 0) + 1
 	e.alive = false
 	e.dying = 0.001
+	if e.id == "binder":
+		_binders.erase(e)
+		if is_instance_valid(e.wall_node):
+			e.wall_node.queue_free()
 	var col := Data.faction_color(e.f)
 	if e.kind == UNIT:
 		_burst(_v3(e.pos, 0.5), col.lerp(Color(0.9, 0.85, 0.7), 0.5), 30 if e.f != Data.NEUTRAL else 10, 3.5, 0.8)
@@ -2660,6 +2803,11 @@ func _update_visuals(delta: float) -> void:
 	for u in units:
 		if u.alive:
 			u.node.visible = u.f == player or (fog.visible(player, u.pos) and not hidden_from(u, player))
+			if u.id == "binder" and not u.node.visible:
+				for i in ceili(u.wall_length / 1.05):
+					if fog.visible(player, u.pos + u.wall_dir * minf((i + 0.5) * 1.05, u.wall_length)):
+						u.node.visible = true
+						break
 	for s in structs:
 		if s.alive and s.f != player:
 			if not s.spotted and fog.visible(player, s.pos) and (not s.d.get("hidden", false) or _unit_within(player, s.pos, 3.0)):
@@ -2725,6 +2873,8 @@ func _update_visuals(delta: float) -> void:
 		var gy: float = board.ground_y(u.pos)
 		u.node.position = Vector3(u.pos.x, lerpf(u.node.position.y, gy, 1.0 - exp(-delta * 12.0)), u.pos.y)
 		u.node.rotation.y = -u.facing
+		if u.id == "binder":
+			_update_binder_visual(u)
 		if u.act == null and u.anim == null and not BAKED.has(u.id):
 			u.mi.position.y = absf(sin(time * 9.0 + u.think_t * 20.0)) * 0.06 * u.walk
 		if u.visual_walk != u.walk and u.anim == null:
@@ -2770,6 +2920,25 @@ func _update_visuals(delta: float) -> void:
 	else:
 		rig.cam.h_offset = 0.0
 		rig.cam.v_offset = 0.0
+
+
+# Wall segments use one shared mesh and rise as the simulation's linear tip advances.
+func _update_binder_visual(u: Ent) -> void:
+	if not is_instance_valid(u.wall_node):
+		return
+	u.mi.visible = u.f == player or fog.visible(player, u.pos)
+	var mm := u.wall_node.multimesh
+	mm.visible_instance_count = mini(ceili(u.wall_length / 1.05), mm.instance_count)
+	for i in mm.visible_instance_count:
+		var along := (float(i) + 0.5) * 1.05
+		var growth := clampf((u.wall_length - float(i) * 1.05) / 1.05, 0.0, 1.0)
+		var pos := u.pos + u.wall_dir * minf(along, u.wall_length)
+		if u.f != player and not fog.visible(player, pos):
+			growth = 0.0
+		var h: float = board.ground_y(pos) - board.ground_y(u.pos)
+		var scale := Vector3(1.0, maxf(growth, 0.001), 1.0) if growth > 0.0 else Vector3.ONE * 0.001
+		var basis := Basis(Vector3.UP, float(i) * 2.39996) * Basis.from_scale(scale)
+		mm.set_instance_transform(i, Transform3D(basis, Vector3(along, h, 0)))
 
 
 # The Angel's skinned clips, detail level and cloak, as its owner sees it.

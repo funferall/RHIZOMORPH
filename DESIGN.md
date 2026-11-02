@@ -192,6 +192,14 @@ it is digesting.
 **Units:** Morel Bruiser (regen tank), Elf-Cup Slinger (ranged), Puffball Bomber (arcing splash,
 moved from the Choir), and Pilobolus Sniper (elite; costs nitrogen).
 
+**Coral Binder:** A connected Morel Patch can plant a stationary Binder on owned
+mycelium. Click the root, then a direction and endpoint; cancel before the second
+click without paying. Its spiked wall grows at 0.25 m/s up to 12 m, stops before
+terrain obstacles, slows enemy ground units crossing the grown portion by 70%,
+and deals 5 retaliation damage to direct melee attackers. All segments share
+the root's health; destroying it removes the wall. Current cost 65 cellulose and
+12 nitrogen and 180 health are initial tuning values.
+
 **Spore actions:** Ascus Volley, Wildfire, Giant Puffball (moved from the Choir).
 
 - **Wildfire** kills everything in the area and leaves Ash, where morels fruit.

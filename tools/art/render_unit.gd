@@ -4,6 +4,7 @@ extends SceneTree
 ##   godot --path . --script tools/art/render_unit.gd -- --unit=bruiser [--out=res://art/bruiser] [--frames=24]
 
 const UNITS := {
+	"binder": ["res://scripts/coral_binder.gd", "CORAL BINDER", "Morel Hollow / growing barricade", Color(0.98, 0.8, 0.22, 0.25)],
 	"bracket": ["res://scripts/rot_bracket.gd", "ROT BRACKET", "Morel Hollow / cellulose digester", Color(0.98, 0.8, 0.22, 0.08)],
 	"t_beetle": ["res://scripts/whitecoat_beetle.gd", "WHITECOAT BULWARK", "Veiled Choir / armoured frontline", Color(0.74, 0.46, 1.0, 0.18)],
 	"beetle": ["res://scripts/whitecoat_beetle.gd", "LEPTINOTARSA", "Wild host, before the Choir takes it", Color(1.0, 1.0, 1.0, 0.0)],

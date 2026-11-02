@@ -6,7 +6,7 @@ extends SceneTree
 # interleaved over rounds and each is compared with "none" in its own round.
 
 const FungusLib = preload("res://scripts/fungus_lib.gd")
-const ART := {"runner": ["res://scripts/candlesnuff_runner.gd", "u_runner"], "slinger": ["res://scripts/elf_cup_slinger.gd", "u_slinger"], "bomber": ["res://scripts/puffball_bomber.gd", "u_bomber"], "webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
+const ART := {"binder": ["res://scripts/coral_binder.gd", "u_binder"], "runner": ["res://scripts/candlesnuff_runner.gd", "u_runner"], "slinger": ["res://scripts/elf_cup_slinger.gd", "u_slinger"], "bomber": ["res://scripts/puffball_bomber.gd", "u_bomber"], "webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
 	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"], "t_beetle": ["res://scripts/whitecoat_beetle.gd", "t_beetle"]}
 
 
@@ -42,6 +42,10 @@ func run() -> void:
 	for i in count:
 		var u = g._spawn_unit(1, unit, at + Vector2((i % side) - side * 0.5, (i / side) - side * 0.5) * 1.9)
 		u.goal = u.pos
+		if unit == "binder" and opt("wall", "0") == "1":
+			u.wall_limit = 12.0
+			u.wall_length = 12.0
+			g._update_binder_visual(u)
 		units.append(u)
 	main.rig.set_view(0.6, 26.0, Vector3(at.x, 0, at.y))
 	main.rig.snap()
@@ -49,11 +53,12 @@ func run() -> void:
 	Engine.max_fps = 0
 	var variants := [
 		["none", null],
-		["old procedural model", FungusLib.legacy_mesh(ART[unit][1])],
 		["new, battle detail", art.mesh(1)],
 		["new, close detail", art.mesh(0)],
 		["new, distant detail", art.mesh(2)],
 	]
+	if unit != "binder":
+		variants.insert(1, ["old procedural model", FungusLib.legacy_mesh(ART[unit][1])])
 	if unit == "t_beetle":
 		variants.append(["new, battle, healthy", art.mesh(1, false)])
 	var samples := {}

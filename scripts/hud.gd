@@ -49,7 +49,8 @@ var _paused_before := false
 const SETTINGS_PATH := "user://settings.cfg"
 var help := Label.new()
 
-var mode := ""            # "", "build", "cast", "amove", "rally"
+var mode := ""            # build, cast, binder_origin, binder_aim, amove
+var _binder_origin := Vector2.INF
 var mode_arg := ""
 var place_err := ""
 var _drag_from := Vector2.INF
@@ -587,6 +588,8 @@ func _refresh_ctx() -> void:
 	var d: Dictionary = e.d
 	if e.kind == game.UNIT:
 		_ctx_status.text = "%s   dmg %d  range %.1f  speed %.1f" % [d["desc"], d["dmg"], d["range"], d["speed"]]
+		if e.id == "binder":
+			_ctx_status.text = "%s\nWall: %.1f / %.1f m" % [d["desc"], e.wall_length, e.wall_limit]
 		if e.act and e.f == game.player:
 			_ctx_status.text = "%s
 %s" % [_brace_state(e), _ctx_status.text]
@@ -659,6 +662,14 @@ that flies within 3 m bends into its cap for 25% damage. A move order pulls the 
 		b.pressed.connect(func(): _train(uid))
 		_ctx_train_buttons.append([b, uid])
 		row.add_child(b)
+	if e.id == "morel_patch":
+		var binder_data: Dictionary = Data.UNITS["binder"]
+		var bind := _tile(icon(binder_data["species"]), "5", _cost_str(binder_data["cost"]))
+		bind.custom_minimum_size = Vector2(64, 70)
+		bind.tooltip_text = "%s [5]\n%s\nClick the root position, then the wall endpoint.\nCost: %s" % [binder_data["name"], binder_data["desc"], _cost_text(binder_data["cost"])]
+		bind.pressed.connect(_enter_binder)
+		_ctx_train_buttons.append([bind, "binder"])
+		row.add_child(bind)
 	_ctx_queue = HBoxContainer.new()
 	_ctx_queue.add_theme_constant_override("separation", 3)
 	_ctx_queue.visible = false
@@ -1466,7 +1477,7 @@ func _build_settings() -> void:
 			settings[key] = on
 			_apply_settings())
 		vb.add_child(cb)
-	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir) / brace (Cep Bulwark)   1-4 train   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
+	var ctl := _label("Left click: select your units and buildings, click the ground to move, click an enemy to attack, drag to box-select, double-click to select all of a kind. Ctrl+click: attack-move. With a trainer selected, click the ground to set its rally point.\nRight click: cancel, or drop the selection.   WASD / arrows: pan   Q / E: rotate   Wheel: zoom\nY stop   F sporulate (Choir) / brace (Cep Bulwark)   1-4 train   5 Coral Binder (Morel Patch)   Z X C V R spore actions   Tab lineages   Space your Heart   P pause   +/- speed", 13, DIM)
 	ctl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ctl.custom_minimum_size = Vector2(520, 0)
 	vb.add_child(ctl)
@@ -1598,7 +1609,7 @@ func _camera_keys(delta: float) -> void:
 func _update_ghost() -> void:
 	var tm: ShaderMaterial = game.board.terrain_mat
 	var mp := root.get_viewport().get_mouse_position()
-	if mode == "build" or mode == "cast":
+	if mode in ["build", "cast", "binder_origin", "binder_aim"]:
 		var g: Vector3 = game.ground_hit(mp)
 		if g != Vector3.INF:
 			var p := Vector2(g.x, g.z)
@@ -1606,9 +1617,16 @@ func _update_ghost() -> void:
 			if mode == "build":
 				r = Data.STRUCTURES[mode_arg]["radius"]
 				place_err = game.place_error(game.player, mode_arg, p)
-			else:
+			elif mode == "cast":
 				r = Data.ABILITIES[mode_arg]["radius"]
 				place_err = game.cast_error(game.player, mode_arg, p)
+			else:
+				r = 0.8
+				if mode == "binder_aim":
+					place_err = "Choose at least 1 m of clear ground" if game.binder_line_limit(_binder_origin, p) < 1.0 else game.binder_place_error(game.player, _binder_origin)
+					p = _binder_origin
+				else:
+					place_err = game.binder_place_error(game.player, p)
 			tm.set_shader_parameter("ghost_pos", p)
 			tm.set_shader_parameter("ghost_r", r)
 			tm.set_shader_parameter("ghost_col", Color(0.6, 1.0, 0.5) if place_err == "" else Color(1.0, 0.35, 0.3))
@@ -1721,7 +1739,21 @@ func _draw_overlay() -> void:
 				var b: Vector3 = game._v3(par.pos, 0.3)
 				if not cam.is_position_behind(a) and not cam.is_position_behind(b):
 					overlay.draw_dashed_line(cam.unproject_position(a), cam.unproject_position(b), Color(1.0, 0.85, 0.4, 0.9), 2.0, 8.0)
-	if (mode == "build" or mode == "cast") and place_err != "":
+	if mode == "binder_origin" or mode == "binder_aim":
+		var mouse := root.get_viewport().get_mouse_position()
+		var text := "Click the root location" if mode == "binder_origin" else "Click the wall endpoint (maximum 12 m)"
+		overlay.draw_string(_font, mouse + Vector2(18, -12), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, TEXT)
+		if mode == "binder_aim":
+			var hit: Vector3 = game.ground_hit(mouse)
+			if hit != Vector3.INF:
+				var q := Vector2(hit.x, hit.z)
+				var length: float = game.binder_line_limit(_binder_origin, q)
+				var end := _binder_origin + (_binder_origin.direction_to(q) * length)
+				var a: Vector3 = game._v3(_binder_origin, 0.25)
+				var b: Vector3 = game._v3(end, 0.25)
+				if not cam.is_position_behind(a) and not cam.is_position_behind(b):
+					overlay.draw_dashed_line(cam.unproject_position(a), cam.unproject_position(b), Color(1.0, 0.82, 0.32, 0.95), 3.0, 8.0)
+	if mode in ["build", "cast", "binder_origin", "binder_aim"] and place_err != "":
 		var mp := root.get_viewport().get_mouse_position()
 		overlay.draw_string(_font, mp + Vector2(18, 28), place_err, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.6, 0.5))
 	if mode == "amove":
@@ -1767,6 +1799,12 @@ func _enter_build(sid: String) -> void:
 	mode_arg = sid
 
 
+func _enter_binder() -> void:
+	_binder_origin = Vector2.INF
+	mode = "binder_origin"
+	_on_message("Choose a root location, then a wall endpoint.", TEXT)
+
+
 func _enter_cast(ab: String) -> void:
 	var err: String = game.ability_ready(game.player, ab)
 	if err != "":
@@ -1804,6 +1842,25 @@ func _mouse_button(ev: InputEventMouseButton) -> void:
 			_mmb_from = ev.position if ev.pressed else Vector2.INF
 		MOUSE_BUTTON_LEFT:
 			if ev.pressed:
+				if mode == "binder_origin" or mode == "binder_aim":
+					var hit: Vector3 = game.ground_hit(ev.position)
+					if hit != Vector3.INF:
+						var point := Vector2(hit.x, hit.z)
+						if mode == "binder_origin":
+							var err: String = game.binder_place_error(f, point)
+							if err != "":
+								_on_message(err, Color(1, 0.6, 0.5))
+							else:
+								_binder_origin = point
+								mode = "binder_aim"
+						else:
+							var err: String = game.try_plant_binder(f, _binder_origin, point)
+							if err != "":
+								_on_message(err, Color(1, 0.6, 0.5))
+							else:
+								mode = ""
+								_binder_origin = Vector2.INF
+					return
 				if mode == "build":
 					var g: Vector3 = game.ground_hit(ev.position)
 					if g != Vector3.INF:
@@ -1942,6 +1999,11 @@ func _key(ev: InputEventKey) -> void:
 		game.order_sporulate(_own_selected(game.UNIT))
 		game.order_brace(_own_selected(game.UNIT))
 		return
+	if k == KEY_5:
+		for patch in _own_selected(game.STRUCT):
+			if patch.id == "morel_patch" and patch.alive and patch.built >= 1.0 and patch.connected:
+				_enter_binder()
+				return
 	if k >= KEY_1 and k <= KEY_4:
 		var i := k - KEY_1
 		for s in _own_selected(game.STRUCT):
