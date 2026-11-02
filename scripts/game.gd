@@ -109,7 +109,8 @@ class Ent:
 	var summit := Vector2.INF
 	var burst := -1.0      # sporulation countdown
 	var nest := 0          # insects: the nest that bred it
-	var infect := 0.0      # insects: how sick they are
+	var infect := 0.0      # host insects and ordinary units: how infected by the Choir (turns at 1)
+	var dosed := 99.0      # seconds since its last dose of infection
 	var infect_t := 0.0    # insects: time until they next sniff for lures
 	var life := INF        # short-lived insects (borers) count down
 	var grove := false     # Court units: standing in the roots of a tree their court feeds
@@ -970,6 +971,9 @@ func _sporulate(u: Ent) -> void:
 	for o in _near_units(u.pos, 6.0):
 		if o.alive and o.f == Data.NEUTRAL and o.d.get("host", "") != "" and thralls(f) < pop_cap(f):
 			_raise_thrall(o, f)
+	for o in _near_units(u.pos, 6.0):
+		if o.f != Data.NEUTRAL:
+			_dose(o, Data.INFECT_SPORES * big, f)
 	for e in _enemies_in(f, u.pos, 4.0, true, true):
 		_damage(e, 70.0 if big > 1.0 else 40.0, f, u)
 	fog.reveal(f, u.pos, 16.0, 40.0 if big > 1.0 else 20.0)
@@ -1791,6 +1795,10 @@ func _update_unit(u: Ent, dt: float) -> void:
 	_tick_status(u, dt)
 	if not u.alive:
 		return
+	if u.infect > 0.0:
+		u.dosed += dt
+		if u.dosed > 5.0:
+			u.infect = maxf(u.infect - Data.INFECT_FADE * dt, 0.0)
 	if u.id == "binder":
 		u.wall_length = minf(u.wall_length + float(d["wall_growth"]) * dt, u.wall_limit)
 		u.vel = Vector2.ZERO
@@ -2304,6 +2312,13 @@ func _damage(e: Ent, amt: float, src_f: int, src: Ent, quiet := false, d := {}) 
 		return
 	if e.d.has("armor") and d.get("shot", "") != "":
 		amt *= 1.0 - e.d["armor"]
+	# a Choir hit may infect: host insects always, the other courts' ordinary units sometimes
+	var ch := choir()
+	if ch >= 0 and src_f == ch and not quiet and _hostable(e, ch):
+		var insect: bool = e.f == Data.NEUTRAL
+		var chance: float = 1.0 if insect else (Data.INFECT_STALKER if src and src.d.get("infects", false) else Data.INFECT_CHANCE)
+		if _rng.randf() < chance and _dose(e, 1.0 if insect else Data.INFECT_DOSE, ch):
+			return
 	if e.d.has("latex") and src and src.alive and src.kind == UNIT and src.pos.distance_to(e.pos) < 2.5:
 		# a milkcap bleeds sticky latex over whoever bit it
 		var lx: Dictionary = e.d["latex"]
@@ -2368,18 +2383,22 @@ func _kill(e: Ent, killer: Ent) -> void:
 		if e.f != Data.NEUTRAL and econ(e.f) == "saprotroph" and forest.owns(e.f, e.pos):
 			# the colony reabsorbs its own dead
 			res(e.f)[1] += e.d["cost"][1] * Data.RECLAIM
-		var ch := -1 if hollow_meal else _infector(e, killer)
+		var ch := choir()
 		if hollow_meal:
 			res(killer.f)[1] += Data.INSECT_MEAL   # eaten where it fell: no corpse, nothing for the Choir
-		elif ch >= 0 and e.d.get("host", "x") == "":
+		elif ch >= 0 and e.f == Data.NEUTRAL and e.d.get("host", "x") == "" and killer and killer.f == ch:
 			res(ch)[2] = minf(res(ch)[2] + 4.0, spore_cap(ch))   # too small to ride: just spores
-		elif ch >= 0 and thralls(ch) < pop_cap(ch):
-			_raise_thrall(e, ch)
-		elif ch >= 0:
-			res(ch)[0] += 6.0
 		else:
+			# the dead belong to the rotters; a badly infected host bursts first
+			var share := 1.0
+			if ch >= 0 and e.f != ch and e.infect >= Data.HUSK_MIN:
+				res(ch)[2] = minf(res(ch)[2] + 4.0 + 6.0 * e.infect, spore_cap(ch))
+				share = Data.HUSK_SHARE
+				_burst(_v3(e.pos, 0.6), Color(1.0, 0.6, 0.15), 30, 2.5, 0.9)
+				if _log:
+					_stats["eco_husks"] = _stats.get("eco_husks", 0) + 1
 			e.corpse = true
-			forest.add_corpse(e)
+			forest.add_corpse(e, share)
 	else:
 		_burst(_v3(e.pos, 1.0), col.lerp(Color(0.8, 0.75, 0.6), 0.5), 120, 5.0, 1.4, e.radius)
 		emit_signal("sound", "heart_death" if e.d.has("research") else "struct_death", _v3(e.pos))
@@ -2398,31 +2417,41 @@ func _kill(e: Ent, killer: Ent) -> void:
 		selected.erase(e)
 
 
-# The Choir claims a body when it killed it, when the body fell near Choir flesh,
-# or inside a Pandemic. Returns the Choir's faction, or -1.
-func _infector(e: Ent, killer: Ent) -> int:
-	var ch := choir()
-	if ch < 0 or e.f == ch or e.d.get("elite", false) or (e.d.get("thrall", false) and e.f != Data.NEUTRAL):
-		return -1
-	for z in zones:
-		if z["kind"] == "pandemic" and z["f"] == ch and e.pos.distance_to(z["p"]) < z["r"]:
-			return ch
-	# the other courts' sporelings rise when a Stalker brings them down, and
-	# sometimes when any Choir body does
-	if e.f != Data.NEUTRAL:
-		if killer and killer.f == ch and (killer.d.get("infects", false) and _rng.randf() < 0.4 or _rng.randf() < 0.2):
-			return ch
-		return -1
-	if killer and killer.f == ch:
-		return ch
-	for s in structs:
-		if s.f == ch and s.alive and s.pos.distance_to(e.pos) < Data.INFECT_RANGE:
-			return ch
-	if e.f == Data.NEUTRAL:
-		for u in _near_units(e.pos, Data.INFECT_RANGE):
-			if u.f == ch and u.alive:
-				return ch
-	return -1
+# Can the Choir (ch) infect e? Host insects and the other courts' ordinary, mobile units.
+func _hostable(e: Ent, ch: int) -> bool:
+	if ch < 0 or not e.alive or e.kind != UNIT or e.f == ch:
+		return false
+	return not (e.d.get("elite", false) or e.d.get("thrall", false) or e.d.get("host", "x") == "" or float(e.d.get("speed", 1.0)) <= 0.0)
+
+
+# A dose of infection. At 1.0 the host turns, alive. True when it turned.
+func _dose(e: Ent, amt: float, ch: int) -> bool:
+	if amt <= 0.0 or not _hostable(e, ch):
+		return false
+	e.infect = minf(e.infect + amt, 1.0)
+	e.dosed = 0.0
+	if e.infect < 1.0:
+		return false
+	_turn(e, ch)
+	return true
+
+
+# A fully infected host walks over to the Choir, keeping its wounds.
+func _turn(e: Ent, ch: int) -> void:
+	if _log:
+		var key := "eco_turned_insects" if e.f == Data.NEUTRAL else "eco_turned_units"
+		_stats[key] = _stats.get(key, 0) + 1
+	if e in selected:
+		selected.erase(e)
+	if thralls(ch) < pop_cap(ch):
+		var share := clampf(e.hp / e.max_hp, 0.25, 1.0)
+		var z := _raise_thrall(e, ch)
+		if z:
+			z.hp = z.max_hp * share
+	else:
+		e.alive = false
+		e.dying = 0.001
+		res(ch)[0] += 6.0
 
 
 # The fed tree (one with this court's mantles) nearest p, within the spell's reach.
@@ -2468,17 +2497,18 @@ func _swarm_tree(p: Vector2) -> int:
 	return best
 
 
-func _raise_thrall(e: Ent, f: int) -> void:
+func _raise_thrall(e: Ent, f: int) -> Ent:
 	if e.alive:
 		e.alive = false
 		e.dying = 0.001
 	var uid: String = e.d.get("host", "zombie") if e.f == Data.NEUTRAL else "zombie"
 	if uid == "":
-		return
+		return null
 	var z := _spawn_unit(f, uid, e.pos)
 	z.home = e.pos
 	_burst(_v3(e.pos, 0.6), Color(1.0, 0.55, 0.1), 24, 2.0, 0.8)
 	emit_signal("sound", "thrall_rise", _v3(e.pos))
+	return z
 
 
 func _thrall_decay(u: Ent, dt: float) -> void:
@@ -2544,6 +2574,7 @@ func _insect_think(u: Ent, dt: float) -> void:
 					break
 		if sick > 0.0:
 			u.infect += sick * step
+			u.dosed = 0.0
 			if u.infect >= 1.0:
 				if thralls(ch) < pop_cap(ch):
 					_raise_thrall(u, ch)
@@ -2711,6 +2742,9 @@ func _update_zones(dt: float) -> void:
 					_damage(e, 8.0 * dt, f, null, true)
 					e.slow = maxf(e.slow, 0.4)
 					e.slow_t = maxf(e.slow_t, 0.3)
+			"pandemic":
+				for e in _near_units(p, r):
+					_dose(e, Data.INFECT_PANDEMIC * dt, f)
 			"lure":
 				for e in _enemies_in(f, p, r * 1.3, true, false):
 					if z["t"] < 1.2:

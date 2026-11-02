@@ -321,14 +321,13 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
 - **Infection meter.** Every host insect and every non-elite enemy unit carries an infection
   value from 0 to 1. Insects already have one; enemy units get one too.
 - **Sources of infection:**
-  - **Choir attacks on enemy units** add damage ÷ max hp × 0.5 for thralls, and × 1.5 for
-    Stalkers. A Stalker turns a unit after taking about two thirds of its health; ordinary
-    thralls rarely turn anything before it dies.
-  - **Choir attacks on host insects** add infection *instead of* damage: damage ÷ max hp × 1.5.
-    Hunting insects means infecting them, never killing them.
+  - **Choir hits do their normal damage and roll to infect** (the user's rule, 2026-11-02):
+    - **Host insects:** every Choir hit infects, so an insect turns on the first hit.
+    - **The other courts' ordinary units:** each hit infects 20% of the time (60% for a
+      Stalker's spit). Each success adds 0.34, so three successes turn the unit.
   - **Lures, the Heart and Ophiocordyceps** work as they do now.
-  - **A sporulation burst** adds 0.5 to everything living within 6 m, enemy units included, on
-    top of its damage.
+  - **A sporulation burst** still turns host insects within 6 m outright, as before. It adds 0.5
+    to enemy units within 6 m (0.75 with Summit Disease), on top of its damage.
   - **Pandemic** adds 0.15 a second to every living non-elite unit and insect in its 10 m area for
     15 s.
   - **Zombify** is unchanged: it turns up to four non-elite units at once.
@@ -342,7 +341,8 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
 - **Removed rules:**
   - Ordinary kills no longer rise. The 20% chance to raise a killed enemy unit is gone, along
     with the "dies within 8 m of Choir flesh" rule.
-  - Stalker kills no longer always rise either: Stalkers turn their targets through infection.
+  - Stalker kills no longer always rise either: Stalkers turn their targets through their higher
+    infection chance.
 
 **Hollow: everything dead is food**
 
@@ -351,7 +351,8 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
   are.
 - **The mycelium grows toward the dead.** A corpse or rubble within 14 m of any connected Hollow
   structure, cord or Hollow unit becomes a mycelium source for the Hollow:
-  - It is a disc 3 m across at strength 0.9, which grows in over about 8 s.
+  - It is a disc of 3 m radius at strength 0.9, which grows in over 8 s. Once it has started, it
+    keeps growing even if the Hollow pulls back.
   - Hollow territory then reaches into the battlefield on its own, the way real saprotroph
     mycelium grows toward food. The feast stays on Hollow ground, and the ground goes to the
     feast.

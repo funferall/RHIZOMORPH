@@ -193,7 +193,7 @@ func holder(p: Vector2) -> int:
 
 # --- the dead ------------------------------------------------------------------
 
-func add_corpse(e) -> void:
+func add_corpse(e, share := 1.0) -> void:
 	var n := 11.0
 	if e.d.get("insect", false):
 		n = 4.0
@@ -201,6 +201,7 @@ func add_corpse(e) -> void:
 		n = 30.0
 	elif e.d.get("thrall", false):
 		n = 8.0
+	n *= share   # a host the Choir burst leaves only a dry husk
 	var d := _deposit("corpse", e.pos, 0.0, n)
 	g._stats["eco_corpses"] = g._stats.get("eco_corpses", 0) + 1
 	d["life"] = Data.CORPSE_LIFE * (2.0 if _hollow_has("necrophagy") else 1.0)

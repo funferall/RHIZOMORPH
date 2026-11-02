@@ -17,6 +17,7 @@ import argparse
 import json
 import math
 import os
+import os
 import statistics
 import subprocess
 import sys
@@ -25,7 +26,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-GODOT = ROOT.parent / "USNEA" / "engine" / "godot-4.7.2" / "Godot_v4.7.2-stable_win64_console.exe"
+# RHIZO_GODOT overrides the engine path, e.g. when running from a git worktree elsewhere
+GODOT = Path(os.environ.get("RHIZO_GODOT", ROOT.parent / "USNEA" / "engine" / "godot-4.7.2" / "Godot_v4.7.2-stable_win64_console.exe"))
 RUNS = ROOT / "sim_runs"
 COURTS = ["amanita", "morel", "veiled"]
 NAMES = {"amanita": "Amanita Court", "morel": "Morel Hollow", "veiled": "Veiled Choir"}

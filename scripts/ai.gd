@@ -703,9 +703,9 @@ func _brace() -> void:
 		for o in g.units:
 			if o.alive and o.f != f and o.f != Data.NEUTRAL and _spots(o):
 				var dd: float = o.pos.distance_to(u.pos)
-				if o.d["shot"] != "" and dd < 13.0:
+				if o.d.get("shot", "") != "" and dd < 13.0:
 					shooters += 1
-				elif o.d["shot"] == "" and dd < 3.5:
+				elif o.d.get("shot", "") == "" and dd < 3.5:
 					biters += 1
 		var bracing: bool = u.act.state in [CepActions.State.ROOTING, CepActions.State.BRACED]
 		if not bracing and shooters >= 2 and biters == 0:

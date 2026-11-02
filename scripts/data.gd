@@ -56,7 +56,15 @@ const CREEP_TIME := 8.0       # seconds for that patch to grow in
 
 # --- the Choir's hosts ---
 const THRALL_DECAY := 0.0055  # fraction of max hp lost per second
-const INFECT_RANGE := 8.0     # kills this close to a Choir body rise as thralls
+# Infection of the living (DESIGN 4.4): hosts carry an infection meter and turn, alive, at 1.0.
+const INFECT_CHANCE := 0.2    # chance that a Choir hit on another court's ordinary unit infects it
+const INFECT_STALKER := 0.6   # the same chance for a Stalker's spit
+const INFECT_DOSE := 0.34     # infection each infecting hit adds: three turn the unit (host insects turn on the first)
+const INFECT_SPORES := 0.5    # a sporulation burst doses enemy units within 6 m this much
+const INFECT_PANDEMIC := 0.15 # per second inside a Pandemic
+const INFECT_FADE := 0.03     # per second, once 5 s have passed without a dose
+const HUSK_MIN := 0.5         # a host this infected bursts into spores as it dies
+const HUSK_SHARE := 0.3       # the share of nitrogen a burst host's dry husk keeps
 const HOST_RANGE := 6.0       # a Choir structure grows from a thrall this close to the spot
 const INSECT_CAP := 70
 
@@ -303,7 +311,7 @@ const UNITS := {
 	"zombie": {"name": "Cordyceps Thrall", "species": "u_zombie", "cost": [0, 0], "hp": 64, "dmg": 7.6, "range": 1.3, "cd": 0.9, "speed": 5.4, "train": 0.0, "shot": "", "thrall": true,
 		"desc": "A converted enemy, sprouting orange clubs. Decays."},
 	"stalker": {"name": "Cordyceps Stalker", "species": "u_stalker", "cost": [0, 0], "spores": 85, "hp": 96, "dmg": 13.6, "range": 8.5, "cd": 1.35, "speed": 6.0, "train": 8.0, "regen": 1.0, "shot": "spit", "elite": true, "infects": true,
-		"desc": "Parasite grown from spores. Everything it kills rises as your thrall."},
+		"desc": "Parasite grown from spores. Its spit infects 60% of the time (other Choir hits: 20%). Three infecting hits turn a unit, alive, as your thrall."},
 
 	"ant": {"name": "Wood Ant", "species": "i_ant", "cost": [0, 0], "hp": 25, "dmg": 4, "range": 1.0, "cd": 0.8, "speed": 6.0, "train": 0.0, "shot": "", "insect": true, "host": "t_ant",
 		"desc": "Forages in columns. Carries off the dead."},
@@ -397,7 +405,7 @@ const ABILITIES := {
 	"borer_swarm": {"name": "Agrilus Swarm", "cost": 70, "cd": 45.0, "radius": 8.0, "tech": "agrilus",
 		"desc": "Cast on a tree: 7 jewel-beetle borers girdle it for 45 s, draining its vigor fast (oak, birch, ash; conifers resist). Kill the borers to save it. A tree that dies stands as a snag that breeds bark beetles."},
 	"pandemic": {"name": "Pandemic", "cost": 90, "cd": 55.0, "radius": 10.0, "tech": "pandemic",
-		"desc": "For 15 s, anything that dies in the area rises as your thrall."},
+		"desc": "For 15 s, everything living in the area grows steadily more infected. Ordinary units and insects that reach full infection turn as your thralls."},
 }
 
 
