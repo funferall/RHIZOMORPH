@@ -10,6 +10,7 @@ const Wartling := preload("res://scripts/wartling.gd")
 const Angel := preload("res://scripts/destroying_angel.gd")
 const Webcap := preload("res://scripts/webcap.gd")
 const InkcapBed := preload("res://scripts/inkcap_bed.gd")
+const RotBracket := preload("res://scripts/rot_bracket.gd")
 const Runner := preload("res://scripts/candlesnuff_runner.gd")
 const Sniper := preload("res://scripts/pilobolus_sniper.gd")
 const Bomber := preload("res://scripts/puffball_bomber.gd")
@@ -260,6 +261,11 @@ static func mesh(id: String) -> ArrayMesh:
 		_meshes[id] = cep
 		_heights[id] = cep.get_aabb().end.y
 		return cep
+	if id == "bracket":
+		var bracket := RotBracket.mesh()
+		_meshes[id] = bracket
+		_heights[id] = RotBracket.HEIGHT
+		return bracket
 	if id == "inkcap_bed":
 		var inkbed := InkcapBed.mesh()
 		_meshes[id] = inkbed
@@ -559,17 +565,6 @@ static func _build(b: B, id: String) -> void:
 				var h := r.randf_range(0.25, 0.5)
 				b.lathe("mycena_white", stem_prof(h, 0.018, 0.015), 5, Transform3D(Basis(), at))
 				b.lathe("mycena_white", bell_prof(0.08, 0.1), 8, Transform3D(Basis(), at + Vector3(0, h, 0)))
-		"bracket":
-			# a rotting log stub with tiers of artist's-conk shelves
-			b.lathe("wood", stem_prof(1.5, 0.95, 0.75), 12, Transform3D(Basis(), O))
-			for i in 5:
-				var y := 0.3 + i * 0.3
-				var R := 1.75 - i * 0.22
-				var a := r.randf() * TAU
-				var top := PackedVector2Array([Vector2(R, y + 0.02), Vector2(R * 0.85, y + 0.12), Vector2(R * 0.6, y + 0.19), Vector2(0.55, y + 0.22)])
-				var under := PackedVector2Array([Vector2(0.55, y - 0.12), Vector2(R * 0.7, y - 0.06), Vector2(R, y + 0.0)])
-				b.lathe("bracket", top, 16, Transform3D(Basis(), O), a, a + PI * 0.95)
-				b.lathe("bracket_pore", under, 16, Transform3D(Basis(), O), a, a + PI * 0.95)
 		"inkcap":
 			for i in 3:
 				var at := Vector3(r.randf_range(-0.3, 0.3), 0, r.randf_range(-0.3, 0.3))

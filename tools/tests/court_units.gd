@@ -319,6 +319,12 @@ func run() -> void:
 	g._update_swings(0.33)
 	check(missed_target.immobilize_t == 0.0, "A missed spike strike does not immobilize")
 
+	# The selectable Rot Bracket uses its static baked mesh.
+	var rot_art = load("res://scripts/rot_bracket.gd")
+	var rot = g._spawn_struct(1, "rot_bracket", at + Vector2(23, -18), true)
+	check(rot.mi.mesh == rot_art.mesh() and FungusLib.mesh("bracket") == rot_art.mesh(), "Rot Bracket uses its baked mesh in matches and portraits")
+	check(rot_art.stats()["surfaces"] == 1 and rot_art.stats()["triangles"] <= 20000 and rot_art.mesh().surface_get_material(0).get_shader_parameter("orm_map") != null, "Rot Bracket has one budgeted surface and ORM atlas")
+
 	# Inkcap Bed art and unchanged corpse-gathering behavior.
 	var inkbed = g._spawn_struct(1, "inkcap_bed", at + Vector2(20, -18), true)
 	inkbed.connected = true
