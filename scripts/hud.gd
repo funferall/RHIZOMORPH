@@ -918,6 +918,7 @@ func _on_message(text: String, col: Color) -> void:
 
 const TECH_SIZE := Vector2(1120, 620)
 const TECH_SPEED := 560.0          # how fast the strands grow, px/s
+const TECH_ANIM := 3.0            # playback speed of the whole grow-in (strands and knots)
 const GOLD := Color(1.0, 0.72, 0.28)
 
 func _build_tech() -> void:
@@ -1091,7 +1092,7 @@ func _draw_tech() -> void:
 		return
 	var f: int = game.player
 	var now := Time.get_ticks_msec() / 1000.0
-	var t := now - _tech_open_t
+	var t := (now - _tech_open_t) * TECH_ANIM   # the grow-in plays 3x faster than first built
 	var gold := GOLD.lerp(Data.faction_color(f), 0.25)
 	tech_canvas.draw_string(_font_b, Vector2(24, 46), "Lineages", HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Color(0.97, 0.88, 0.62))
 	tech_canvas.draw_string(_font, Vector2(26, 72), "Grown at your Heart, one at a time. Click a knot to research it. Tab or click outside to close.", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, DIM)

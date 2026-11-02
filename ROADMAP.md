@@ -1,5 +1,32 @@
 # RHIZOMORPH — roadmap & handoff
 
+## First human win, and polish from it (2026-11-02)
+
+**The game.** The user won as the Morel Hollow on Gentle, a 26-minute free-for-all
+(`playtests/20261102_144105_morel.json`). Notes from it:
+- **A tower turtle won it.** The user built about 45 Bird's Nests and 11 Earthstars, and ended
+  with 107 structures.
+- **The corpse creep fed the turtle.** It produced 6,144 nitrogen from 1,178 corpses as enemy
+  waves died at the towers. That contradicts "a Hollow that turtles starves". One possible fix:
+  only kills made by units grow mycelium toward corpses.
+- **Nitrogen famine between fights.** Nitrogen sat at 0–0.1/s for about 5 minutes in total, with
+  only 6 Rot Brackets and 4 Oyster Shelves. A small Heart nitrogen trickle would help.
+- **The Choir still snowballs on Gentle.** It had 76 units at minute 7. Gentle should also scale
+  its infection, not just income.
+- **The playtest save mixes all courts' stats.** `built_*` and `cast_*` are global, and kills
+  aren't saved. Add per-court keys.
+
+**Done from the user's feedback:**
+- **Tech tree:** the grow-in animation plays 3x faster (`TECH_ANIM` in `hud.gd`).
+- **Cords:** half as many travelling beads (`cord.gdshader`).
+- **Mycelium:** each court's ground now looks different (`terrain.gdshader`, blended by share):
+  - Court: dark soil under silky rose-white mycorrhizal fans, with red root tips.
+  - Hollow: white rot, bleached cream with black spalting zone lines and amber stain.
+  - Choir: mauve ground with clustered, powdery violet-white spore colonies.
+
+  The hyphal front takes the advancing court's colour. GPU cost after reusing the shared domain
+  warp is about +0.3 to +1 ms in noisy A/B runs at `--fpstest=60`.
+
 ## Match setup: duel or free-for-all (2026-11-02)
 
 The start menu now walks through three steps:
@@ -457,7 +484,7 @@ Factions and gameplay
 Interface
 - Improve the UI generally.
 - A tech-tree button that shows a notification when a research completes.
-- Make the tech-tree menu 50% faster to draw.
+- ~~Make the tech-tree menu 50% faster to draw.~~ The grow-in now plays 3x faster (2026-11-02).
 - A simple tutorial for each faction.
 
 Release

@@ -28,9 +28,9 @@ void fragment() {
 	float tipglow = smoothstep(progress - 0.04, progress, u) * step(progress, 0.999);
 	float bead = 0.0;
 	if (severed < 0.5) {
-		// busier cords carry more, faster beads
+		// busier cords carry more, faster beads (half as many as at first: the board was too busy)
 		float busy = clamp(load, 0.0, 1.0);
-		float s = fract(u * length_m * mix(0.25, 0.8, busy) - TIME * mix(0.4, 1.3, busy));
+		float s = fract(u * length_m * mix(0.125, 0.4, busy) - TIME * mix(0.2, 0.65, busy));
 		bead = smoothstep(0.9, 0.95, s) * (1.0 - smoothstep(0.96, 1.0, s));
 	}
 	vec3 gold = mix(vec3(1.0, 0.62, 0.15), team.rgb, 0.3);
