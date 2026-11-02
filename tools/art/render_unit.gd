@@ -4,6 +4,8 @@ extends SceneTree
 ##   godot --path . --script tools/art/render_unit.gd -- --unit=bruiser [--out=res://art/bruiser] [--frames=24]
 
 const UNITS := {
+	"t_beetle": ["res://scripts/whitecoat_beetle.gd", "WHITECOAT BULWARK", "Veiled Choir / armoured frontline", Color(0.74, 0.46, 1.0, 0.18)],
+	"beetle": ["res://scripts/whitecoat_beetle.gd", "LEPTINOTARSA", "Wild host, before the Choir takes it", Color(1.0, 1.0, 1.0, 0.0)],
 	"spitter": ["res://scripts/muscarine_spitter.gd", "MUSCARINE SPITTER", "Amanita Court / ranged poison", Color(0.92, 0.18, 0.12, 0.25)],
 	"inkcap_bed": ["res://scripts/inkcap_bed.gd", "INKCAP BED", "Morel Hollow / salvage", Color(0.98, 0.8, 0.22, 0.25)],
 	"runner": ["res://scripts/candlesnuff_runner.gd", "CANDLESNUFF RUNNER", "Morel Hollow / scout", Color(0.98, 0.8, 0.22, 0.25)],
@@ -36,13 +38,13 @@ func _initialize() -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(output))
 	for lod in 3:
-		print("ASSET " + JSON.stringify(art.stats(lod)))
-	var hero := _view(art.mesh(0), Vector2i(1400, 1050), 0.0)
+		print("ASSET " + JSON.stringify(_stats(lod)))
+	var hero := _view(_mesh(0), Vector2i(1400, 1050), 0.0)
 	_caption(hero, UNITS[unit][1], UNITS[unit][2], 38)
 	await _settle(24)
 	_save(hero, unit + "_hero.png")
 	hero.queue_free()
-	var close := _view(art.mesh(0), Vector2i(1000, 1000), 0.0, 0.42)
+	var close := _view(_mesh(0), Vector2i(1000, 1000), 0.0, 0.42)
 	await _settle(24)
 	_save(close, unit + "_detail.png")
 	close.queue_free()
@@ -50,8 +52,8 @@ func _run() -> void:
 	var sheet := Image.create(1500, 540, false, Image.FORMAT_RGBA8)
 	sheet.fill(Color(0.86, 0.85, 0.82))
 	for lod in 3:
-		var vp := _view(art.mesh(lod), Vector2i(500, 540), 0.0)
-		var st: Dictionary = art.stats(lod)
+		var vp := _view(_mesh(lod), Vector2i(500, 540), 0.0)
+		var st: Dictionary = _stats(lod)
 		_caption(vp, str(st["lod"]).to_upper(), "%d triangles / %d vertices / %d surface(s)" % [st["triangles"], st["vertices"], st["surfaces"]], 27)
 		await _settle(16)
 		var shot := vp.get_texture().get_image()
@@ -61,25 +63,36 @@ func _run() -> void:
 		await process_frame
 	sheet.save_png(ProjectSettings.globalize_path(output.path_join(unit + "_lods.png")))
 	if frames > 0:
-		for clip in ["walk", "attack"]:
+		for clip in (["infect"] if unit == "beetle" else ["walk", "attack"]):
 			var dir := output.path_join("frames_" + clip)
 			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-			var vp := _view(art.mesh(0), Vector2i(640, 560), 0.0)
+			var vp := _view(_mesh(0) if clip != "infect" else art.mesh(0, true), Vector2i(640, 560), 0.0)
 			var mi: MeshInstance3D = vp.get_node("Stage/Unit")
 			mi.set_instance_shader_parameter("walk", 1.0 if clip == "walk" else 0.0)
-			var gait: float = 6.6 if unit == "spitter" else (5.6 if unit == "bruiser" else (9.2 if unit == "runner" else 7.0))
+			var gait: float = 13.0 if unit == "t_beetle" else 6.6 if unit == "spitter" else (5.6 if unit == "bruiser" else (9.2 if unit == "runner" else 7.0))
 			mi.set_instance_shader_parameter("gait", gait)
 			await _settle(8)
 			for i in frames:
 				var t := float(i) / frames
-				mi.set_instance_shader_parameter("motion_time", t * TAU * (2.0 if unit == "runner" else 1.0) / gait if clip == "walk" else 1.0 + t * (art.SWING_SECONDS if unit == "spitter" else 0.72 if unit == "slinger" else (0.8 if unit == "runner" else 0.6)))
-				mi.set_instance_shader_parameter("strike", 0.0 if clip == "walk" else 1.0 - t)
+				if clip == "infect":
+					mi.set_instance_shader_parameter("infect", t * 1.15)
+				mi.set_instance_shader_parameter("motion_time", t * 3.0 if clip == "infect" else t * TAU * (2.0 if unit == "runner" else 1.0) / gait if clip == "walk" else 1.0 + t * (art.SWING_SECONDS if unit in ["spitter", "t_beetle"] else 0.72 if unit == "slinger" else (0.8 if unit == "runner" else 0.6)))
+				mi.set_instance_shader_parameter("strike", 1.0 - t if clip == "attack" else 0.0)
 				await _settle(3)
 				vp.get_texture().get_image().save_png(ProjectSettings.globalize_path(dir.path_join("%03d.png" % i)))
 			vp.queue_free()
 			await process_frame
 	print("RENDERS SAVED " + ProjectSettings.globalize_path(output))
 	quit()
+
+
+# The beetle art carries both forms: "beetle" renders it healthy.
+func _mesh(lod: int) -> Mesh:
+	return art.mesh(lod, false) if unit == "beetle" else art.mesh(lod)
+
+
+func _stats(lod: int) -> Dictionary:
+	return art.stats(lod, false) if unit == "beetle" else art.stats(lod)
 
 
 func _save(vp: SubViewport, name: String) -> void:
@@ -109,6 +122,7 @@ func _view(mesh: Mesh, size: Vector2i, yaw_offset: float, zoom := 1.0) -> SubVie
 	mi.mesh = mesh
 	mi.set_instance_shader_parameter("motion_time", 0.4)
 	mi.set_instance_shader_parameter("team", UNITS[unit][3])
+	mi.set_instance_shader_parameter("infect", 0.0 if unit == "beetle" else 1.0)
 	stage.add_child(mi)
 	var floor := MeshInstance3D.new()
 	var plane := PlaneMesh.new()

@@ -16,6 +16,7 @@ const Bomber := preload("res://scripts/puffball_bomber.gd")
 const Slinger := preload("res://scripts/elf_cup_slinger.gd")
 const Bruiser := preload("res://scripts/morel_bruiser.gd")
 const Spitter := preload("res://scripts/muscarine_spitter.gd")
+const Beetle := preload("res://scripts/whitecoat_beetle.gd")
 
 static var _meshes := {}
 static var _mats := {}
@@ -289,6 +290,11 @@ static func mesh(id: String) -> ArrayMesh:
 		_meshes[id] = bruiser
 		_heights[id] = Bruiser.HEIGHT
 		return bruiser
+	if id == "i_beetle" or id == "t_beetle":
+		var beetle := Beetle.mesh(0, id == "t_beetle")
+		_meshes[id] = beetle
+		_heights[id] = Beetle.HEIGHT
+		return beetle
 	if id == "u_spitter":
 		var spitter := Spitter.mesh(0)
 		_meshes[id] = spitter

@@ -288,7 +288,7 @@ const UNITS := {
 
 	"t_ant": {"name": "Ant Thrall", "species": "t_ant", "cost": [0, 0], "hp": 44, "dmg": 6.8, "range": 1.2, "cd": 0.6, "speed": 7.4, "train": 0.0, "shot": "", "thrall": true, "cutter": true,
 		"desc": "An infected ant. Fast, cheap, a good cord cutter. Decays."},
-	"t_beetle": {"name": "Beetle Thrall", "species": "t_beetle", "cost": [0, 0], "hp": 144, "dmg": 11, "range": 1.3, "cd": 1.1, "speed": 4.6, "train": 0.0, "shot": "", "thrall": true, "armor": 0.3, "bores": true,
+	"t_beetle": {"name": "Beetle Thrall", "species": "t_beetle", "cost": [0, 0], "hp": 144, "dmg": 11, "range": 1.3, "cd": 1.1, "speed": 4.6, "train": 0.0, "shot": "", "thrall": true, "armor": 0.3, "bores": true, "windup": 0.3,
 		"desc": "An infected bark beetle. Armoured against spit and spores; bores into trees. Decays."},
 	"t_stag": {"name": "Stag Thrall", "species": "t_stag", "cost": [0, 0], "hp": 176, "dmg": 12.8, "range": 1.6, "cd": 1.3, "speed": 4.2, "train": 0.0, "shot": "", "thrall": true, "armor": 0.4,
 		"desc": "An infected stag beetle. The Choir's heaviest body: armoured, slow, crushing. Decays."},
@@ -301,7 +301,7 @@ const UNITS := {
 
 	"ant": {"name": "Wood Ant", "species": "i_ant", "cost": [0, 0], "hp": 25, "dmg": 4, "range": 1.0, "cd": 0.8, "speed": 6.0, "train": 0.0, "shot": "", "insect": true, "host": "t_ant",
 		"desc": "Forages in columns. Carries off the dead."},
-	"beetle": {"name": "Bark Beetle", "species": "i_beetle", "cost": [0, 0], "hp": 60, "dmg": 7, "range": 1.1, "cd": 1.2, "speed": 3.0, "train": 0.0, "shot": "", "insect": true, "host": "t_beetle", "armor": 0.3, "bores": true,
+	"beetle": {"name": "Bark Beetle", "species": "i_beetle", "cost": [0, 0], "hp": 60, "dmg": 7, "range": 1.1, "cd": 1.2, "speed": 3.0, "train": 0.0, "shot": "", "insect": true, "host": "t_beetle", "armor": 0.3, "bores": true, "windup": 0.3,
 		"desc": "Bores into living trees and weakens them."},
 	"fly": {"name": "Carrion Fly", "species": "i_fly", "cost": [0, 0], "hp": 15, "dmg": 2, "range": 1.0, "cd": 1.0, "speed": 7.5, "train": 0.0, "shot": "", "insect": true, "host": "t_fly", "flies": true,
 		"desc": "Drawn to the dead and to stinkhorns."},

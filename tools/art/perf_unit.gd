@@ -7,7 +7,7 @@ extends SceneTree
 
 const FungusLib = preload("res://scripts/fungus_lib.gd")
 const ART := {"webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
-	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"]}
+	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"], "t_beetle": ["res://scripts/whitecoat_beetle.gd", "t_beetle"]}
 
 
 func _initialize() -> void:
@@ -54,6 +54,8 @@ func run() -> void:
 		["new, close detail", art.mesh(0)],
 		["new, distant detail", art.mesh(2)],
 	]
+	if unit == "t_beetle":
+		variants.append(["new, battle, healthy", art.mesh(1, false)])
 	var samples := {}
 	for v in variants:
 		samples[v[0]] = []

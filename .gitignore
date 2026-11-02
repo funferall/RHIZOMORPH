@@ -45,3 +45,6 @@ art/runner/frames_*/
 
 # Reproducible Inkcap Bed review frames
 art/inkcap_bed/frames_*/
+
+# Reproducible beetle / Whitecoat Bulwark walk, attack and infection frames
+art/beetle/frames_*/

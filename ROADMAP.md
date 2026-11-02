@@ -164,6 +164,16 @@ glows, then it lashes forward; the glob leaves at 35% of a 0.85 s clip. Ranged u
 Gold muscarine glob with a droplet spray (`_shot_node("muscarine")`). In-game capture: `tools/art/spitter_attack.gd`.
 60 Spitters at battle detail add +0.07 ms per frame against +0.21 ms for the old procedural model (`perf_unit.gd`).
 
+**Beetle / Whitecoat Bulwark (2026-11-02), Blender-built after the Veiled Choir roster sheet.**
+`tools/blender/beetle_build.py` builds a Colorado potato beetle (*Leptinotarsa*) with *Beauveria* tufts as their
+own data kinds: one set of GLBs serves the wild `beetle` (tufts dropped at load by `scripts/whitecoat_beetle.gd`)
+and the `t_beetle` thrall. The shader's `infect` swells the tufts out of the seams and dusts the shell white, so
+a wild beetle sickening near a lure (`Ent.infect`) visibly whitens before it rises. Tripod walk; the attack rears
+it onto its hind legs with mandibles spread, then slams and bites at 40% of 0.75 s (`windup` 0.3 added to
+both beetles, so their blows now land 0.3 s after the swing starts, and miss if the target has left reach).
+A thrall's bite shakes off a puff of white conidia. Tuft edges fray with a per-texel discard. The display names
+are still "Bark Beetle" / "Beetle Thrall". Details and commands: `art/beetle/README.md`.
+
 **Balance (2026-11-01).** Population cap 40 -> 100 for every court (Brood Chamber now +10). Every Choir
 unit at 80% hp and 85% damage. Bot batches (24 seeds each, Court / Hollow / Choir wins): cap 40 at full
 stats 3 / 2 / 17; cap 100 at full stats 0 / 3 / 20 (a higher cap alone helps the Choir, whose army is free

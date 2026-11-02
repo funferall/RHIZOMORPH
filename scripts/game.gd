@@ -26,7 +26,9 @@ const Bomber = preload("res://scripts/puffball_bomber.gd")
 const Sniper = preload("res://scripts/pilobolus_sniper.gd")
 const Runner = preload("res://scripts/candlesnuff_runner.gd")
 const RunnerSpikes = preload("res://scripts/runner_spikes.gd")
-const BAKED := {"webcap": Webcap, "bruiser": Bruiser, "spitter": Spitter, "slinger": Slinger, "bomber": Bomber, "sniper": Sniper, "runner": Runner}
+const Beetle = preload("res://scripts/whitecoat_beetle.gd")
+const BAKED := {"webcap": Webcap, "bruiser": Bruiser, "spitter": Spitter, "slinger": Slinger, "bomber": Bomber, "sniper": Sniper, "runner": Runner,
+	"beetle": Beetle, "t_beetle": Beetle}
 const AI = preload("res://scripts/ai.gd")
 const Forest = preload("res://scripts/forest.gd")
 const Fog = preload("res://scripts/fog.gd")
@@ -94,6 +96,7 @@ class Ent:
 	var detected := 0       # Angel: bit per faction with something within its cloak radius
 	var strike := 0.0       # Bruiser: 1 when a swing starts, falling to 0 over the swing
 	var visual_strike := 0.0
+	var visual_infect := -1.0   # beetles: how white with Beauveria the art shows
 	var think_t := 0.0
 	var home := Vector2.INF
 	var squad := ""
@@ -368,6 +371,7 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 			"wartling": e.mi.mesh = Wartling.mesh(e.visual_lod)
 			"cep": e.mi.mesh = CepBulwark.mesh(e.visual_lod)
 			"webcap", "bruiser", "spitter", "slinger", "bomber", "sniper", "runner": e.mi.mesh = BAKED[uid].mesh(e.visual_lod)
+			"beetle", "t_beetle": e.mi.mesh = Beetle.mesh(e.visual_lod, uid == "t_beetle")
 			_: e.mi.mesh = FungusLib.mesh(d["species"])
 		e.node.add_child(e.mi)
 	e.mi.set_instance_shader_parameter("team", Color(c.r, c.g, c.b, tint))
@@ -384,6 +388,10 @@ func _spawn_unit(f: int, uid: String, p: Vector2) -> Ent:
 		e.mi.set_instance_shader_parameter("gait", 6.0 + _rng.randf() * 0.7)   # measured stilt steps
 	elif uid == "runner":
 		e.mi.set_instance_shader_parameter("gait", 9.0 + _rng.randf())   # fast alternating tripods
+	elif uid == "beetle" or uid == "t_beetle":
+		e.mi.set_instance_shader_parameter("gait", 12.0 + _rng.randf() * 2.0)   # a trundling tripod gait
+		e.visual_infect = 1.0 if uid == "t_beetle" else 0.0
+		e.mi.set_instance_shader_parameter("infect", e.visual_infect)
 	elif e.anim == null:
 		e.mi.set_instance_shader_parameter("gait", (16.0 if insect else 10.0) + _rng.randf() * 3.0)
 	units.append(e)
@@ -1904,7 +1912,7 @@ func _fire(src: Ent, t: Ent, d: Dictionary, release := false) -> void:
 				src.act.attack()
 			if src.anim:
 				_angel_attack(src, d)
-			if src.id in ["bruiser", "runner"]:
+			if src.id in ["bruiser", "runner", "beetle", "t_beetle"]:
 				src.strike = 1.0   # animation begins at the windup
 			_swings.append({"src": src, "target": t, "t": d["windup"], "dmg": dmg, "d": d})
 			return
@@ -1946,6 +1954,9 @@ func _fire(src: Ent, t: Ent, d: Dictionary, release := false) -> void:
 func _melee_hit(src: Ent, t: Ent, dmg: float, d: Dictionary) -> void:
 	if src.id == "runner":
 		_spawn_runner_spikes(_aim_point(src, t), src.f)
+	if src.id == "t_beetle" and src.node.visible:
+		# the bite shakes a puff of white conidia off its tufts
+		_burst(src.node.global_position + Vector3(0, 0.6, 0), Color(0.95, 0.94, 0.88), 18, 1.4, 0.9, 0.35, 0.9)
 	_damage(t, dmg, src.f, src, false, d)
 	var hp3 := _v3(_aim_point(src, t), 0.5)
 	emit_signal("sound", "hit_" + src.id if src.kind == UNIT else "hit_melee", hp3)
@@ -2683,7 +2694,13 @@ func _update_visuals(delta: float) -> void:
 				var level: int = art.choose_lod(art.LOD_SIZE * px_scale / distance, u.visual_lod)
 				if level != u.visual_lod:
 					u.visual_lod = level
-					u.mi.mesh = art.mesh(level)
+					u.mi.mesh = Beetle.mesh(level, u.visual_infect > 0.0) if art == Beetle else art.mesh(level)
+			if u.id == "beetle" and absf(u.infect - u.visual_infect) > 0.01:
+				# a wild beetle sickening near the Choir: Beauveria swells out of its seams
+				if u.visual_infect <= 0.0:
+					u.mi.mesh = Beetle.mesh(u.visual_lod, true)
+				u.visual_infect = clampf(u.infect, 0.001, 1.0)
+				u.mi.set_instance_shader_parameter("infect", u.visual_infect)
 			u.mi.set_instance_shader_parameter("motion_time", time)
 			if u.strike > 0.0 or u.visual_strike != 0.0:
 				u.strike = maxf(u.strike - game_dt / art.SWING_SECONDS, 0.0)

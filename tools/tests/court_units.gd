@@ -335,6 +335,43 @@ func run() -> void:
 	g._update_visuals(0.1)
 	check(is_equal_approx(float(inkbed.mi.get_instance_shader_parameter("motion_time")), drip_clock), "Inkcap droplets remain paused when game time stops")
 
+	# --- the beetle: wild, sickening, and as the Choir's Whitecoat Bulwark ---
+	var bt_art = load("res://scripts/whitecoat_beetle.gd")
+	var bt = g._spawn_unit(2, "t_beetle", at + Vector2(-16, -14))
+	bt.goal = bt.pos
+	check(bt.mi.mesh == bt_art.mesh(bt.visual_lod, true) and FungusLib.mesh("t_beetle") == bt_art.mesh(0, true)
+		and FungusLib.mesh("i_beetle") == bt_art.mesh(0, false), "Beetles use the Blender-built meshes in matches and portraits")
+	for infected in [true, false]:
+		check(bt_art.stats(0, infected)["triangles"] > bt_art.stats(1, infected)["triangles"]
+			and bt_art.stats(1, infected)["triangles"] > bt_art.stats(2, infected)["triangles"], "Beetle has three decreasing LODs (infected %s)" % infected)
+	var clean_uv2: PackedVector2Array = bt_art.mesh(1, false).surface_get_arrays(0)[Mesh.ARRAY_TEX_UV2]
+	var tufted := 0
+	for v in clean_uv2:
+		if v.x > bt_art.TUFT_KIND:
+			tufted += 1
+	check(tufted == 0 and bt_art.stats(1, false)["triangles"] < bt_art.stats(1, true)["triangles"], "A healthy beetle has no Beauveria tufts")
+	check(float(bt.mi.get_instance_shader_parameter("infect")) == 1.0, "A thrall is fully white")
+	var bt_target = g._spawn_unit(0, "wartling", bt.pos + Vector2(1.5, 0))
+	bt_target.goal = bt_target.pos
+	var bt_hp: float = bt_target.hp
+	g._fire(bt, bt_target, bt.d)
+	check(bt.strike == 1.0 and bt_target.hp == bt_hp, "The thrall rears before it bites")
+	check(is_equal_approx(Data.UNITS["t_beetle"]["windup"], bt_art.WINDUP_SECONDS)
+		and is_equal_approx(bt_art.WINDUP_SECONDS, bt_art.IMPACT * bt_art.SWING_SECONDS), "Its windup matches the animation's impact frame")
+	g._update_swings(bt_art.WINDUP_SECONDS + 0.01)
+	check(bt_target.hp < bt_hp, "The bite lands on the slam")
+	var wild = g._spawn_unit(Data.NEUTRAL, "beetle", bt.pos + Vector2(0, 3))
+	check(wild.mi.mesh == bt_art.mesh(wild.visual_lod, false), "A wild beetle starts healthy")
+	wild.infect = 0.5
+	g.fog.reveal(0, wild.pos, 6.0, 60.0)   # fogged units skip their art updates until seen
+	g.fog.update()
+	g._update_visuals(0.05)
+	check(wild.mi.mesh == bt_art.mesh(wild.visual_lod, true) and is_equal_approx(float(wild.mi.get_instance_shader_parameter("infect")), 0.5),
+		"A sickening wild beetle grows tufts as its infection rises")
+	for u in [bt, bt_target, wild]:
+		u.alive = false
+		u.node.visible = false
+
 	# --- pictures ---
 	var dir: String = ""
 	for a in OS.get_cmdline_user_args():
