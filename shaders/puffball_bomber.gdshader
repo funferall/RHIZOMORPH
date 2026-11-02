@@ -10,10 +10,11 @@ instance uniform float motion_time = -1.0;
 instance uniform float strike = 0.0;
 uniform sampler2D albedo_map : source_color, filter_linear_mipmap_anisotropic;
 uniform sampler2D normal_map : hint_normal, filter_linear_mipmap_anisotropic;
+uniform sampler2D orm_map : filter_linear_mipmap_anisotropic;
 void vertex() {
  float kind=floor(UV2.x+0.001);
  float weight=clamp((UV2.x-kind)/0.98,0.0,1.0);
- float clock=motion_time>=0.0?motion_time:TIME;
+ float clock=max(motion_time,0.0);
  float phase=clock*gait+(1.0-UV2.y)*PI;
  float t=1.0-strike;
  float kick=step(0.001,strike)*smoothstep(0.0,0.08,t)*(1.0-smoothstep(0.12,0.82,t));
@@ -41,7 +42,10 @@ void fragment() {
  ALBEDO=col*mix(1.0,.55,growing);
  NORMAL_MAP=texture(normal_map,UV).rgb;
  NORMAL_MAP_DEPTH=.7;
- ROUGHNESS=.87;
+ vec3 orm=texture(orm_map,UV).rgb;
+ ROUGHNESS=orm.g;
+ AO=orm.r;
+ AO_LIGHT_AFFECT=.4;
  BACKLIGHT=col*.08;
  EMISSION=vec3(1.0,.95,.85)*flash*.7;
 }

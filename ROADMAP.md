@@ -1,5 +1,10 @@
 # RHIZOMORPH — roadmap & handoff
 
+## Puffball Bomber art (2026-11-02)
+
+Rebuilt the Bomber with a sculpt-baked warted puffball, segmented supports and vent, a painted 1024 albedo, normal and ORM atlas and one surface per LOD. Two studio critiques softened mechanical leg rings, replaced striped toe paint, reduced the vent, softened seams and enlarged the feet. LOD triangles: 6,080 / 2,204 / 808. Atlas lint: 0 failures, 0 warnings. Court suite: 0 failures. RTX 4060 laptop, 16 interleaved rounds: 60 battle units median -0.00 ms over empty baseline, below measurement resolution. See `art/bomber/` for captures and motion GIFs. Existing attack numbers and muzzle timing are unchanged.
+
+
 ## Candlesnuff Runner art (2026-11-02)
 
 Rebuilt the Runner from a parametric Xylaria sculpt with a painted 1024 albedo, baked normal and ORM atlas, one surface per LOD, and game-time alternating supports and retained strike timing. Shape review addressed pointed tips, branching, oversized body, symmetry and the old gait lifting the whole model. LOD triangles: 5,088 / 1,904 / 696. Atlas lint: 0 failures, 0 warnings. Court suite: 0 failures. RTX 4060 laptop, 16 interleaved rounds: 60 battle units median +0.07 ms over empty baseline. See `art/runner/` for hero, match captures and motion GIFs.

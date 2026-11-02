@@ -197,6 +197,7 @@ func run() -> void:
 	var bomb_art = load("res://scripts/puffball_bomber.gd")
 	check(bomber_test.mi.mesh.resource_name == "Bomber_battle" and FungusLib.mesh("u_bomber") == bomb_art.mesh(0), "Bomber uses its new match and portrait meshes")
 	check(bomb_art.stats(0)["triangles"] > bomb_art.stats(1)["triangles"] and bomb_art.stats(1)["triangles"] > bomb_art.stats(2)["triangles"], "Bomber has three decreasing LODs")
+	check(bomb_art.stats(1)["surfaces"] == 1 and bomb_art.stats(1)["triangles"] <= 4000 and bomb_art.material().get_shader_parameter("orm_map") != null, "Bomber has a single budgeted surface and ORM atlas")
 	bomber_test.facing = 0.7
 	g._rebuild_grid()
 	var hp_target: float = bomb_target.hp
