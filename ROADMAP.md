@@ -20,6 +20,15 @@ Rebuilt the Bomber with a sculpt-baked warted puffball, segmented supports and v
 Rebuilt the Runner from a parametric Xylaria sculpt with a painted 1024 albedo, baked normal and ORM atlas, one surface per LOD, and game-time alternating supports and retained strike timing. Shape review addressed pointed tips, branching, oversized body, symmetry and the old gait lifting the whole model. LOD triangles: 5,088 / 1,904 / 696. Atlas lint: 0 failures, 0 warnings. Court suite: 0 failures. RTX 4060 laptop, 16 interleaved rounds: 60 battle units median +0.07 ms over empty baseline. See `art/runner/` for hero, match captures and motion GIFs.
 
 
+## Remaining Morel Hollow close-up art polish (2026-11-02)
+
+The four rebuilds pass the numerical atlas, mesh-budget and integration checks, but
+the close-up visual bar is not fully met: the Slinger and Bomber supports still show
+longitudinal UV seams and simplified joints; the Runner's branching is more regular
+than the roster; and the Bracket shelves reuse a visibly similar band pattern.
+Further sculpt and UV iteration against the roster and `beetle_build.py` is needed
+before treating those close-view differences as resolved.
+
 > **Resume here (2026-10-31):** graphics plan step 2 (shadow-only tree crowns) is built and waiting for
 > the user's sign-off; step 3 is next. See "Graphics plan" and "Performance" below. Show the user each
 > step before starting the next. The user's wider wishlist is under "Wishlist".
