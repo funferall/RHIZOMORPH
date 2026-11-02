@@ -9,6 +9,7 @@ const SCENES := [
 ]
 const ALBEDO := preload("res://art/runner/runner_albedo.png")
 const NORMAL := preload("res://art/runner/runner_normal.png")
+const ORM := preload("res://art/runner/runner_orm.png")
 const LOD_NAMES := ["close", "battle", "distant"]
 const LOD_SIZE := 1.8     # projected width (m), for detail choice
 const HEIGHT := 1.32
@@ -23,6 +24,7 @@ static func material() -> ShaderMaterial:
 		_material.shader = SHADER
 		_material.set_shader_parameter("albedo_map", ALBEDO)
 		_material.set_shader_parameter("normal_map", NORMAL)
+		_material.set_shader_parameter("orm_map", ORM)
 	return _material
 
 

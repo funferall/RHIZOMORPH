@@ -255,6 +255,8 @@ func run() -> void:
 		g.cancel_train(runner_patch)
 	check(runner_unit.mi.mesh.resource_name == "Runner_battle" and FungusLib.mesh("u_runner") == runner_art.mesh(0), "Runner uses its match and portrait meshes")
 	check(runner_art.stats(0)["triangles"] > runner_art.stats(1)["triangles"] and runner_art.stats(1)["triangles"] > runner_art.stats(2)["triangles"], "Runner has three decreasing LODs")
+	check(runner_art.stats(1)["surfaces"] == 1 and runner_art.stats(1)["triangles"] <= 4000 and runner_art.material().get_shader_parameter("orm_map") != null, "Runner has a single budgeted surface and ORM atlas")
+	check(is_equal_approx(float(runner_unit.d["windup"]), runner_art.SWING_SECONDS * 0.4), "Runner impact matches the retained windup")
 	check(g.fog.sight(runner_unit) == 16.0 and runner_unit.d["speed"] == 8.6, "Runner has extended sight and scout speed")
 	runner_unit.f = g.player  # Make the impact visible to the test player.
 	runner_target.slow = 0.4

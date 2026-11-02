@@ -1,5 +1,10 @@
 # RHIZOMORPH — roadmap & handoff
 
+## Candlesnuff Runner art (2026-11-02)
+
+Rebuilt the Runner from a parametric Xylaria sculpt with a painted 1024 albedo, baked normal and ORM atlas, one surface per LOD, and game-time alternating supports and retained strike timing. Shape review addressed pointed tips, branching, oversized body, symmetry and the old gait lifting the whole model. LOD triangles: 5,088 / 1,904 / 696. Atlas lint: 0 failures, 0 warnings. Court suite: 0 failures. RTX 4060 laptop, 16 interleaved rounds: 60 battle units median +0.07 ms over empty baseline. See `art/runner/` for hero, match captures and motion GIFs.
+
+
 > **Resume here (2026-10-31):** graphics plan step 2 (shadow-only tree crowns) is built and waiting for
 > the user's sign-off; step 3 is next. See "Graphics plan" and "Performance" below. Show the user each
 > step before starting the next. The user's wider wishlist is under "Wishlist".

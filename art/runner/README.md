@@ -1,20 +1,19 @@
 # Candlesnuff Runner
 
-Morel Hollow scout based on the unit roster and the supplied candlesnuff photograph: charcoal-black branching fungal tissue with powdery white tips. The model has two opposite weight-bearing arms and three LODs (14,400 / 4,800 / 1,600 triangles, one surface each).
+Morel Hollow scout based on the Xylaria hypoxylon Runner in `reference_images/morel_hollow_roster.jpg`: branching charcoal tissue with powder-white conidial tips. The shared 1024 albedo, sculpt-baked normal and ORM atlas serves one surface per LOD: 5,088 / 1,904 / 696 triangles (close / battle / distant).
 
-Walking is a shader-driven two-step rocking cycle: the body rotates over one arm, stands, then shifts onto the other. The shader follows game time. On attack, both arms press into the ground; after 0.32 seconds, a cluster of nine sharp, pale-tipped Xylaria spikes rises around the target and retreats. A successful hit holds a unit in place for one second, refreshing the duration on another hit; the victim may still attack. The cluster is a single MultiMesh, uses game-time animation, is limited by visibility, and has no effect in simulation-only mode. The attack applies a single target hit; the extra spikes are visual.
+UV2 stores branch class, motion weight and alternating support groups. The shader uses game time for the walk and keeps the 0.80-second ground strike and 0.32-second impact. The existing spike, immobilization and training behavior is unchanged. On the RTX 4060 laptop GPU, 16 interleaved rounds measured a median +0.07 ms for 60 battle-detail units over the empty baseline.
 
-The Morel Patch trains Runners as its fourth option (keyboard 4). The scout's initial balance is provisional: 55 HP, 6 damage, 4 range, 2-second cooldown, 8.6 speed, 16 sight, 4-second training and cost 20 cellulose / 4 nitrogen. These values are intended for playtesting.
-
-Rebuild and review with Blender 4.2 and Godot 4.7.2:
+Review: `runner_hero.png`, `runner_detail.png`, `runner_lods.png`, `runner_ingame_close.png`, `walk.gif`, `attack.gif` and `combat.gif`. Frame directories are reproducible and ignored.
 
 ```powershell
+blender -b --factory-startup -P tools/blender/runner_build.py -- --preview=C:/tmp/runner.png
 blender -b --factory-startup -P tools/blender/runner_build.py
+python tools/art/atlas_lint.py art/runner/runner
 godot --headless --path . --editor --import --quit
 godot --path . --script tools/art/render_unit.gd -- --unit=runner --frames=36
 godot --path . --script tools/art/ingame_unit.gd -- --unit=runner
 godot --path . --script tools/art/runner_attack.gd
+godot --path . --script tools/art/perf_unit.gd -- --unit=runner --rounds=16
 godot --headless --path . --script tools/tests/court_units.gd
 ```
-
-The GLBs use UV2 for part and motion weight; movement and attack are shader-driven rather than embedded skeletal clips. See `runner_hero.png`, `runner_ingame_close.png`, `walk.gif`, `attack.gif`, and `combat.gif`. Review frame directories are ignored. Integration checks cover training, sight, LODs, delayed damage, one-second immobilization, ground-level placement, pause, growth and cleanup. The Court test reports ObjectDB cleanup warnings on exit.
