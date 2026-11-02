@@ -179,6 +179,7 @@ func run() -> void:
 	var art = load("res://scripts/elf_cup_slinger.gd")
 	check(sl.mi.mesh.resource_name == "Slinger_battle" and FungusLib.mesh("u_slinger") == art.mesh(0), "Slinger mesh is used in matches and portraits")
 	check(art.stats(0)["triangles"] > art.stats(1)["triangles"] and art.stats(1)["triangles"] > art.stats(2)["triangles"], "Slinger has three decreasing LODs")
+	check(art.stats(1)["surfaces"] == 1 and art.stats(1)["triangles"] <= 4000 and art.material().get_shader_parameter("orm_map") != null, "Slinger has a single budgeted surface and ORM atlas")
 	sl.facing = 0.7
 	var hp_before: float = target.hp
 	g._fire(sl, target, sl.d)

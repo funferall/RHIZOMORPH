@@ -6,7 +6,7 @@ extends SceneTree
 # interleaved over rounds and each is compared with "none" in its own round.
 
 const FungusLib = preload("res://scripts/fungus_lib.gd")
-const ART := {"bomber": ["res://scripts/puffball_bomber.gd", "u_bomber"], "runner": ["res://scripts/candlesnuff_runner.gd", "u_runner"], "webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
+const ART := {"runner": ["res://scripts/candlesnuff_runner.gd", "u_runner"], "slinger": ["res://scripts/elf_cup_slinger.gd", "u_slinger"], "bomber": ["res://scripts/puffball_bomber.gd", "u_bomber"], "webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
 	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"], "t_beetle": ["res://scripts/whitecoat_beetle.gd", "t_beetle"]}
 
 

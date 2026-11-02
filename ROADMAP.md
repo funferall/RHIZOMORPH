@@ -1,5 +1,10 @@
 # RHIZOMORPH — roadmap & handoff
 
+## Elf-cup Slinger art (2026-11-02)
+
+Rebuilt the Slinger with a sculpted scarlet cup and curled supports, painted 1024 albedo, normal and ORM atlas and one surface per LOD. Two critiques opened the bowl to the camera, shortened supports, softened ribs, adjusted rim and flecks and corrected projection artifacts on the rim and support bends. LOD triangles: 4,416 / 1,568 / 480. Atlas lint: 0 failures, 0 warnings. Court suite: 0 failures. RTX 4060 laptop, 16 interleaved rounds: 60 battle units median +0.05 ms over empty baseline. See `art/slinger/` for studio, match and motion captures. Existing firing timing and muzzle remain unchanged.
+
+
 ## Rot Bracket art (2026-11-02)
 
 Replaced the selectable bracket's procedural lathe with a static Blender-built turkey tail colony on a decayed stump. Two critiques reduced repetitive bands, increased overlapping shelves, varied margins and stump shape, and shortened normal bake reach at the thin rim. One surface, 15,696 triangles, a 1024 albedo/normal/ORM atlas; atlas lint 0 failures and 0 warnings; Court suite 0 failures. `art/bracket/` contains studio and match captures. It is static, so the unit LOD performance benchmark does not apply. The separate turkey-tail text and data changes remain uncommitted from another session.

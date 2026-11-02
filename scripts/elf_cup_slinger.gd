@@ -9,6 +9,7 @@ const SCENES := [
 ]
 const ALBEDO := preload("res://art/slinger/slinger_albedo.png")
 const NORMAL := preload("res://art/slinger/slinger_normal.png")
+const ORM := preload("res://art/slinger/slinger_orm.png")
 const LOD_NAMES := ["close", "battle", "distant"]
 const LOD_SIZE := 1.7     # cap width (m), for on-screen detail choice
 const HEIGHT := 1.65
@@ -24,6 +25,7 @@ static func material() -> ShaderMaterial:
 		_material.shader = SHADER
 		_material.set_shader_parameter("albedo_map", ALBEDO)
 		_material.set_shader_parameter("normal_map", NORMAL)
+		_material.set_shader_parameter("orm_map", ORM)
 	return _material
 
 
