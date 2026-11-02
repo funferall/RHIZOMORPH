@@ -1,0 +1,544 @@
+[
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "giant_agaric",
+  "kind": "structure",
+  "used_by": [
+   "Sclerotium of the Court"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "armillaria",
+  "kind": "structure",
+  "used_by": [
+   "Armillaria Node"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "chanterelle",
+  "kind": "structure",
+  "used_by": [
+   "Hartig Mantle"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "panther_ring",
+  "kind": "structure",
+  "used_by": [
+   "Panther Cap Ring"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "u_wartling",
+  "kind": "unit",
+  "used_by": [
+   "Wartling"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "u_spitter",
+  "kind": "unit",
+  "used_by": [
+   "Muscarine Spitter"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "cortina_thicket",
+  "kind": "structure",
+  "used_by": [
+   "Cortina Thicket"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "u_milkcap",
+  "kind": "unit",
+  "used_by": [
+   "Saffron Milkcap"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "u_webcap",
+  "kind": "unit",
+  "used_by": [
+   "Violet Webcap"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "u_cep_bulwark",
+  "kind": "unit",
+  "used_by": [
+   "Cep Bulwark"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "root_snare",
+  "kind": "structure",
+  "used_by": [
+   "Root Snare"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "truffle",
+  "kind": "structure",
+  "used_by": [
+   "Truffle Mine"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "nursery",
+  "kind": "structure",
+  "used_by": [
+   "Mother Tree Nursery"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "death_cap",
+  "kind": "structure",
+  "used_by": [
+   "Death Cap Grove",
+   "Death Cap Bloom (spore action)"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "u_angel",
+  "kind": "unit",
+  "used_by": [
+   "Destroying Angel"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "agaric_button",
+  "kind": "decor",
+  "used_by": [
+   "Ground sprouts",
+   "Fairy Ring (spore action)"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 0,
+  "height_m": 0.0,
+  "id": "mycena_white",
+  "kind": "decor",
+  "used_by": [
+   "Ground sprouts"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "giant_morel",
+  "kind": "structure",
+  "used_by": [
+   "Sclerotium of the Hollow"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 1.82,
+  "id": "bracket",
+  "kind": "structure",
+  "used_by": [
+   "Rot Bracket"
+  ],
+  "width_m": 2.4
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "oyster_shelf",
+  "kind": "structure",
+  "used_by": [
+   "Oyster Shelf"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "inkcap_bed",
+  "kind": "structure",
+  "used_by": [
+   "Inkcap Bed"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "morel_blond",
+  "kind": "structure",
+  "used_by": [
+   "Morel Patch"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "u_bruiser",
+  "kind": "unit",
+  "used_by": [
+   "Morel Bruiser"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "u_slinger",
+  "kind": "unit",
+  "used_by": [
+   "Elf-Cup Slinger"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "u_bomber",
+  "kind": "unit",
+  "used_by": [
+   "Puffball Bomber"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "u_runner",
+  "kind": "unit",
+  "used_by": [
+   "Candlesnuff Runner"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "earthstar",
+  "kind": "structure",
+  "used_by": [
+   "Earthstar"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "birds_nest",
+  "kind": "structure",
+  "used_by": [
+   "Bird's Nest"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "honey_rot",
+  "kind": "structure",
+  "used_by": [
+   "Honey Rot"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "pilobolus",
+  "kind": "structure",
+  "used_by": [
+   "Pilobolus Bed"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "u_sniper",
+  "kind": "unit",
+  "used_by": [
+   "Pilobolus Sniper"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "morel_small",
+  "kind": "decor",
+  "used_by": [
+   "Ground sprouts"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "elf_cup_small",
+  "kind": "decor",
+  "used_by": [
+   "Ground sprouts"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "giant_veiled",
+  "kind": "structure",
+  "used_by": [
+   "Sclerotium of the Choir"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "common_stinkhorn",
+  "kind": "structure",
+  "used_by": [
+   "Stinkhorn Lure"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "clathrus",
+  "kind": "structure",
+  "used_by": [
+   "Clathrus Cage"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "cordyceps",
+  "kind": "structure",
+  "used_by": [
+   "Cordyceps Spire"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "u_stalker",
+  "kind": "unit",
+  "used_by": [
+   "Cordyceps Stalker"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "brood_chamber",
+  "kind": "structure",
+  "used_by": [
+   "Brood Chamber"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "t_ant",
+  "kind": "unit",
+  "used_by": [
+   "Ant Thrall"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "t_beetle",
+  "kind": "unit",
+  "used_by": [
+   "Beetle Thrall"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "puffball_small",
+  "kind": "decor",
+  "used_by": [
+   "Ground sprouts"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "inkcap",
+  "kind": "decor",
+  "used_by": [
+   "Ground sprouts"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "t_stag",
+  "kind": "unit",
+  "used_by": [
+   "Stag Thrall"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "t_fly",
+  "kind": "unit",
+  "used_by": [
+   "Fly Thrall"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 2,
+  "height_m": 0.0,
+  "id": "u_zombie",
+  "kind": "unit",
+  "used_by": [
+   "Cordyceps Thrall"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "i_ant",
+  "kind": "insect",
+  "used_by": [
+   "Wood Ant"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "i_beetle",
+  "kind": "insect",
+  "used_by": [
+   "Bark Beetle"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "i_fly",
+  "kind": "insect",
+  "used_by": [
+   "Carrion Fly"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "i_stag",
+  "kind": "insect",
+  "used_by": [
+   "Stag Beetle"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "i_borer",
+  "kind": "insect",
+  "used_by": [
+   "Agrilus Borer"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "i_springtail",
+  "kind": "insect",
+  "used_by": [
+   "Springtail Swarm"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 1,
+  "height_m": 0.0,
+  "id": "giant_puffball",
+  "kind": "prop",
+  "used_by": [
+   "Giant Puffball (spore action)"
+  ],
+  "width_m": 0.0
+ },
+ {
+  "faction": 3,
+  "height_m": 0.0,
+  "id": "anthill",
+  "kind": "prop",
+  "used_by": [
+   "Anthill (insect nest)"
+  ],
+  "width_m": 0.0
+ }
+]

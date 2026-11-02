@@ -225,8 +225,8 @@ const STRUCTURES := {
 		"desc": "Amanita phalloides colony. Trains Destroying Angels."},
 
 	# --- Morel Hollow ---
-	"rot_bracket": {"name": "Rot Bracket", "species": "bracket", "cost": [80, 0], "hp": 500, "build": 10.0, "radius": 1.8, "myc": 6.0, "on": "deposit",
-		"desc": "Ganoderma shelf on a log, snag or fallen branch. Digests it for 1.65 cellulose/s (and a little nitrogen) until nothing is left."},
+	"rot_bracket": {"name": "Rot Bracket", "species": "bracket", "tint": 0.08, "cost": [80, 0], "hp": 500, "build": 10.0, "radius": 1.8, "myc": 6.0, "on": "deposit",
+		"desc": "Turkey tail shelves (Trametes versicolor) on a log, snag or fallen branch. Digests it for 1.65 cellulose/s (and a little nitrogen) until nothing is left."},
 	"oyster_shelf": {"name": "Oyster Shelf", "species": "oyster_shelf", "cost": [70, 0], "hp": 420, "build": 9.0, "radius": 1.6, "myc": 5.0, "on": "deposit",
 		"desc": "Pleurotus on a log, snag or fallen branch. Its hyphae trap and digest the nematodes living in the wood: +0.4 nitrogen/s for as long as the wood lasts."},
 	"inkcap_bed": {"name": "Inkcap Bed", "species": "inkcap_bed", "cost": [90, 0], "hp": 420, "build": 9.0, "radius": 1.8, "myc": 7.0, "gather": 10.0,

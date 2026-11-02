@@ -59,6 +59,11 @@ const MATS := {
 	"mycena_white": {"base": Color(0.86, 0.84, 0.78), "rough": 0.5, "sss": 0.8, "glow": 0.25, "glow_col": Color(0.6, 1.0, 0.5)},
 	"bracket": {"base": Color(0.24, 0.1, 0.04), "accent": Color(0.62, 0.4, 0.17), "pattern": 10, "pscale": 9.0, "bump": 0.03, "rough": 0.35, "sss": 0.15},
 	"bracket_pore": {"base": Color(0.86, 0.8, 0.66), "rough": 0.9, "sss": 0.2},
+	"tail_dark": {"base": Color(0.16, 0.18, 0.21), "accent": Color(0.25, 0.25, 0.27), "pattern": 8, "pscale": 22.0, "rough": 0.88},
+	"tail_slate": {"base": Color(0.29, 0.32, 0.35), "accent": Color(0.38, 0.39, 0.39), "pattern": 8, "pscale": 23.0, "rough": 0.9},
+	"tail_rust": {"base": Color(0.48, 0.22, 0.16), "accent": Color(0.61, 0.33, 0.22), "pattern": 8, "pscale": 24.0, "rough": 0.86},
+	"tail_tan": {"base": Color(0.68, 0.48, 0.32), "accent": Color(0.76, 0.58, 0.4), "pattern": 8, "pscale": 22.0, "rough": 0.9},
+	"tail_cream": {"base": Color(0.92, 0.85, 0.7), "accent": Color(0.98, 0.92, 0.79), "pattern": 8, "pscale": 18.0, "rough": 0.86, "sss": 0.25},
 	"wood": {"base": Color(0.24, 0.16, 0.1), "accent": Color(0.14, 0.09, 0.06), "pattern": 8, "pscale": 10.0, "rough": 0.9},
 	"inkcap": {"base": Color(0.93, 0.91, 0.86), "accent": Color(0.4, 0.34, 0.28), "pattern": 6, "pscale": 11.0, "bump": 0.03, "rough": 0.7, "sss": 0.5},
 	"chitin": {"base": Color(0.09, 0.06, 0.05), "rough": 0.3, "accent": Color(0.2, 0.12, 0.08), "pattern": 8, "pscale": 20.0},
@@ -147,7 +152,7 @@ class B:
 		return tools[key]
 
 	# prof: (radius, y) points; lathed around Y, placed by xf.
-	func lathe(key: String, prof: PackedVector2Array, segs: int, xf: Transform3D, a0 := 0.0, a1 := TAU, col := Color(0, 0, 0, 1)) -> void:
+	func lathe(key: String, prof: PackedVector2Array, segs: int, xf: Transform3D, a0 := 0.0, a1 := TAU, col := Color(0, 0, 0, 1), wave := 0.0) -> void:
 		var s := st(key)
 		var n := prof.size()
 		var nb := xf.basis.inverse().transposed()
@@ -165,7 +170,8 @@ class B:
 					var ang: float = q[1]
 					var pr := prof[pi]
 					var nn := n2[pi]
-					var p3 := Vector3(cos(ang) * pr.x, pr.y, sin(ang) * pr.x)
+					var ripple := 1.0 + wave * (0.65 * sin(ang * 5.0 + 0.6) + 0.35 * sin(ang * 9.0 - 0.4))
+					var p3 := Vector3(cos(ang) * pr.x * ripple, pr.y + wave * pr.x * 0.45 * sin(ang * 5.0 + 0.6), sin(ang) * pr.x * ripple)
 					var nrm := Vector3(cos(ang) * nn.x, nn.y, sin(ang) * nn.x)
 					s.set_color(col)
 					s.set_uv(Vector2(float(q[2]) / segs, float(pi) / (n - 1)))

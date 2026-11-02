@@ -31,7 +31,7 @@ LATIN = {
     "chanterelle": "Cantharellus cibarius",
     "mycena_lantern": "Mycena chlorophos",
     "mycena_white": "Mycena galericulata",
-    "bracket": "Ganoderma applanatum",
+    "bracket": "Trametes versicolor",
     "giant_morel": "Morchella esculenta, colossal",
     "morel": "Morchella esculenta",
     "morel_small": "Morchella esculenta",
