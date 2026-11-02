@@ -154,7 +154,7 @@ fighting, but its food runs out, so it has to keep moving.
   | **Corpse** | 0 | 15 (unit), 40 (elite) | every unit that dies, from any court, including neutral insects (5) |
   | **Rubble** (dead structure) | 60 | 10 | every structure that dies |
 
-- A **Rot Bracket** (Ganoderma) on a log or snag digests it. It produces 1.8 cellulose per
+- A **Rot Bracket** (turkey tail, Trametes versicolor) on a log or snag digests it. It produces 1.8 cellulose per
   second until the deposit is gone.
 - Corpses are picked up by any Hollow mycelium of density above 0.3, at 1.5 nitrogen per
   second per corpse. Corpses rot away in 60 s, so the Hollow has to have mycelium under the
@@ -296,6 +296,89 @@ and short-lived, it has almost no structures, and it must keep hunting or it col
 **What it fears:** an insect famine. If the Court culls the bugs and the Hollow eats the logs,
 the Choir's income dries up. It also fears being caught in the open, since it has no towers
 spread around the map.
+
+### 4.4 Proposal (2026-11-02): the living and the dead
+
+**Status:** agreed with the user on 2026-11-02 and being built. When it lands, it replaces the
+rising rules in §4.3 and the corpse rule in §4.2.
+
+**The problem.** The Hollow and the Choir both feed on deaths. Under the current rules, anything
+that dies near Choir flesh rises as a thrall, and everything else is left as a corpse for the
+Hollow. The two courts race for the same bodies, and the code has to decide who gets each one. The
+Hollow mostly loses that race:
+- It attacks, so its fights happen on enemy ground, where it can't digest corpses.
+- It won 4–17% of the matches in the last few 24-seed bot batches.
+
+**The rule.** The biology already splits the two courts:
+- **A parasite needs a living host.** Real *Ophiocordyceps* takes over a living ant, steers it,
+  and only then kills it and fruits from the body.
+- **A saprotroph eats the dead.**
+
+So the Choir gets **the living** and the Hollow gets **the dead**.
+
+**Choir: infection of the living**
+
+- **Infection meter.** Every host insect and every non-elite enemy unit carries an infection
+  value from 0 to 1. Insects already have one; enemy units get one too.
+- **Sources of infection:**
+  - **Choir attacks on enemy units** add damage ÷ max hp × 0.5 for thralls, and × 1.5 for
+    Stalkers. A Stalker turns a unit after taking about two thirds of its health; ordinary
+    thralls rarely turn anything before it dies.
+  - **Choir attacks on host insects** add infection *instead of* damage: damage ÷ max hp × 1.5.
+    Hunting insects means infecting them, never killing them.
+  - **Lures, the Heart and Ophiocordyceps** work as they do now.
+  - **A sporulation burst** adds 0.5 to everything living within 6 m, enemy units included, on
+    top of its damage.
+  - **Pandemic** adds 0.15 a second to every living non-elite unit and insect in its 10 m area for
+    15 s.
+  - **Zombify** is unchanged: it turns up to four non-elite units at once.
+- **Turning.** At 1.0 the host turns *alive*:
+  - An insect becomes its thrall type.
+  - An enemy unit becomes a Cordyceps Thrall at its current share of health.
+  - At the population cap the host withers instead, for +6 biomass, as it does today.
+- **Recovery.** Infection fades by 0.03 a second once the host has gone 5 s without a new dose.
+- **Infected deaths.** A host that dies at infection 0.5 or more bursts. The Choir gets
+  4 + 6 × infection spores, and the body becomes a *husk* corpse with 30% of the usual nitrogen.
+- **Removed rules:**
+  - Ordinary kills no longer rise. The 20% chance to raise a killed enemy unit is gone, along
+    with the "dies within 8 m of Choir flesh" rule.
+  - Stalker kills no longer always rise either: Stalkers turn their targets through infection.
+
+**Hollow: everything dead is food**
+
+- **Every death leaves a corpse:** every death that is not an infection burst, and husks from the
+  ones that are. Hunting insects (+4 nitrogen, no corpse) and reclaiming its own dead stay as they
+  are.
+- **The mycelium grows toward the dead.** A corpse or rubble within 14 m of any connected Hollow
+  structure, cord or Hollow unit becomes a mycelium source for the Hollow:
+  - It is a disc 3 m across at strength 0.9, which grows in over about 8 s.
+  - Hollow territory then reaches into the battlefield on its own, the way real saprotroph
+    mycelium grows toward food. The feast stays on Hollow ground, and the ground goes to the
+    feast.
+  - The corpse still has to be digested on that ground, so the enemy can deny it by winning the
+    fight or by walking its own mycelium over it.
+
+**What this changes in a fight**
+
+- **The Choir** wants enemies sick but alive. Killing them too fast wastes the infection.
+- **The Hollow** wants them dead before they turn. Killing a half-infected unit denies the Choir
+  and feeds the Hollow, though an infected unit leaves only a husk.
+- **The Court** should fight the Choir quickly, and clear corpses or hold its ground against the
+  Hollow's creep.
+
+**Build and test order**
+
+1. **Baseline.** Run a 24-seed baseline on the current code (`sim_runs/baseline_1102`).
+2. **Hollow mycelium grows toward the dead.** Run a batch and compare.
+3. **Choir infection of the living.** Run a batch and compare. Tune the multipliers until the
+   Choir's win rate lands near a third, without a big swing in its thrall count.
+4. **HUD and art.** Show infection on enemy units (a thin orange ring and Beauveria dust where the
+   shader supports it), and give husks their own look.
+
+**Open questions**
+
+- Should the Court get a cure, such as Universal Veil halving infection?
+- Should infection show to the infected unit's owner, so they can pull it back to recover?
 
 ---
 
