@@ -1,5 +1,46 @@
 # RHIZOMORPH — roadmap & handoff
 
+## The living and the dead (2026-11-02)
+
+This implements DESIGN §4.4. The Choir now infects the living, and the Hollow eats the dead.
+
+**Choir.** Choir hits do their normal damage and roll to infect:
+- Host insects are infected on every hit, so they turn on the first one.
+- The other courts' ordinary units are infected 20% of the time (60% for the Stalker). Each
+  success adds `INFECT_DOSE` 0.34, so three successes turn the unit, alive and keeping its wounds.
+- Infection fades after 5 s without a dose.
+- Pandemic and sporulation add doses.
+- Plain kills never rise.
+- A host that dies at 0.5 infection or more bursts for spores and leaves a husk with 30% of the
+  usual nitrogen.
+
+The code is `game.gd` `_hostable` / `_dose` / `_turn`, plus the infection block at the top of `_damage`.
+
+**Hollow.** A corpse or rubble within `CREEP_REACH` of a connected Hollow structure or a Hollow unit
+becomes a Hollow mycelium source (`_push_creep`). The sim summary now reports `eco_` counters:
+corpses left, nitrogen taken from corpses, husks, and turned insects and units.
+
+**24-seed batches** (wins for Court / Hollow / Choir; each result has a ±20-point margin):
+
+| run | change | Court | Hollow | Choir |
+|---|---|---|---|---|
+| `baseline_1102` | before | 13 | 2 | 5 |
+| `creep` | corpse creep only (reach 14 m, radius 3 m, strength 0.9) | 6 | 8 | 1 |
+| `living` | creep + living infection (committed values) | 2 | 8 | 8 |
+| `creep_soft` | living, with creep at 10 m / 2 m / 0.7 | 3 | 4 | 15 |
+
+**Next:** the Court is now the weak court in both runs. It loses about 45–60 ordinary units per
+match to infection.
+
+Options for the Court:
+- A resistance. The open question in DESIGN §4.4 suggests Universal Veil halving infection.
+- A smaller `INFECT_DOSE`.
+- Fed-tree (grove) units resisting infection.
+
+The Hollow's late income is still about twice the baseline's (cellulose about 18–21/s). A creep
+setting between the two runs tested is worth a try. Use 48 seeds per change from here on, because
+24 seeds swing too much.
+
 ## Coral Binder (2026-11-02)
 
 The Morel Patch now plants a stationary Coral Binder through a two-click root and wall-end command. The wall grows linearly, slows enemy ground movement, can be targeted along its length and retaliates against direct melee; its segments share the root's health. The Morel AI can place defensive walls. Cost, health and rates are initial tuning values; multiplayer-scale and strategic balance still need playtesting. See `art/binder/README.md` and `DESIGN.md` for controls and details.

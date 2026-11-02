@@ -2838,7 +2838,7 @@ func _push_creep() -> void:
 					continue
 				d[key] = time
 			var k := clampf((time - float(d[key])) / Data.CREEP_TIME, 0.0, 1.0)
-			myc.add_disc(d["pos"], Data.CREEP_R * lerpf(0.4, 1.0, k), 0.9 * k, f)
+			myc.add_disc(d["pos"], Data.CREEP_R * lerpf(0.4, 1.0, k), Data.CREEP_STRENGTH * k, f)
 
 
 func _creep_reach(f: int, p: Vector2) -> bool:

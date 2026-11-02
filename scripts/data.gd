@@ -52,6 +52,7 @@ const RECLAIM := 0.5          # share of its nitrogen cost a Hollow unit returns
 const INSECT_MEAL := 4.0      # nitrogen the Hollow gets at once for an insect it kills
 const CREEP_REACH := 14.0     # the Hollow's mycelium grows toward the dead this close to its network or units
 const CREEP_R := 3.0          # the patch it grows over a corpse or rubble (m)
+const CREEP_STRENGTH := 0.9   # how strongly that patch holds the ground
 const CREEP_TIME := 8.0       # seconds for that patch to grow in
 
 # --- the Choir's hosts ---
