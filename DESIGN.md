@@ -324,7 +324,7 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
   - **Choir hits do their normal damage and roll to infect** (the user's rule, 2026-11-02):
     - **Host insects:** every Choir hit infects, so an insect turns on the first hit.
     - **The other courts' ordinary units:** each hit infects 20% of the time (60% for a
-      Stalker's spit). Each success adds 0.34, so three successes turn the unit.
+      Stalker's spit). Each success adds 0.25, so four successes turn the unit.
   - **Lures, the Heart and Ophiocordyceps** work as they do now.
   - **A sporulation burst** still turns host insects within 6 m outright, as before. It adds 0.5
     to enemy units within 6 m (0.75 with Summit Disease), on top of its damage.
@@ -336,6 +336,9 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
   - An enemy unit becomes a Cordyceps Thrall at its current share of health.
   - At the population cap the host withers instead, for +6 biomass, as it does today.
 - **Recovery.** Infection fades by 0.03 a second once the host has gone 5 s without a new dose.
+- **The Court's grove resists.** Court units standing in the roots of a tree the Court feeds take
+  half of every dose, and their infection starts fading right away. A healthy forest keeps its
+  defenders healthy, so the Court should fight the Choir among its trees.
 - **Infected deaths.** A host that dies at infection 0.5 or more bursts. The Choir gets
   4 + 6 × infection spores, and the body becomes a *husk* corpse with 30% of the usual nitrogen.
 - **Removed rules:**
@@ -378,7 +381,7 @@ So the Choir gets **the living** and the Hollow gets **the dead**.
 
 **Open questions**
 
-- Should the Court get a cure, such as Universal Veil halving infection?
+- Should the Court also get a cure beyond its groves, such as Universal Veil halving infection?
 - Should infection show to the infected unit's owner, so they can pull it back to recover?
 
 ---

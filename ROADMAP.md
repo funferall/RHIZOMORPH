@@ -28,9 +28,27 @@ corpses left, nitrogen taken from corpses, husks, and turned insects and units.
 | `creep` | corpse creep only (reach 14 m, radius 3 m, strength 0.9) | 6 | 8 | 1 |
 | `living` | creep + living infection (committed values) | 2 | 8 | 8 |
 | `creep_soft` | living, with creep at 10 m / 2 m / 0.7 | 3 | 4 | 15 |
+| `grove48` (**48 seeds**, current) | living + grove resistance + `INFECT_DOSE` 0.25 | 14 (29%) | 17 (35%) | 10 (21%) |
 
-**Next:** the Court is now the weak court in both runs. It loses about 45–60 ordinary units per
-match to infection.
+**Current values (`grove48`).**
+- **Grove resistance:** Court units in a fed tree's roots (`u.grove`) take half of every dose
+  (`GROVE_RESIST`), and their infection fades without the 5 s wait.
+- **Dose:** four infecting hits turn a unit. About 30 Court and Hollow units turn per match, plus
+  about 180 insects.
+- **Unresolved:** 7 of the 48 matches ran out the clock.
+
+**The rival direction decides a lot.** The court that hunts the Choir wins:
+- Hollow → Choir: the Hollow won 17 of 24.
+- Court → Choir: the Court won 13 of 24.
+
+The court the Choir hunts almost never wins (Court 1 of 24, Hollow 0 of 24): the Choir wears its
+target down and the third court cleans up. This is mostly about how the bots pick fights.
+
+**Next.** The three courts are roughly level now. A human game is the next real test. The items
+below date from before `grove48`.
+
+Earlier note: the Court was the weak court in both of the 24-seed runs, losing about 45–60
+ordinary units per match to infection.
 
 Options for the Court:
 - A resistance. The open question in DESIGN §4.4 suggests Universal Veil halving infection.

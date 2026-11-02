@@ -1797,7 +1797,7 @@ func _update_unit(u: Ent, dt: float) -> void:
 		return
 	if u.infect > 0.0:
 		u.dosed += dt
-		if u.dosed > 5.0:
+		if u.dosed > 5.0 or u.grove:
 			u.infect = maxf(u.infect - Data.INFECT_FADE * dt, 0.0)
 	if u.id == "binder":
 		u.wall_length = minf(u.wall_length + float(d["wall_growth"]) * dt, u.wall_limit)
@@ -2428,6 +2428,8 @@ func _hostable(e: Ent, ch: int) -> bool:
 func _dose(e: Ent, amt: float, ch: int) -> bool:
 	if amt <= 0.0 or not _hostable(e, ch):
 		return false
+	if e.grove:
+		amt *= Data.GROVE_RESIST   # the Wood Wide Web keeps its defenders healthy
 	e.infect = minf(e.infect + amt, 1.0)
 	e.dosed = 0.0
 	if e.infect < 1.0:

@@ -60,10 +60,11 @@ const THRALL_DECAY := 0.0055  # fraction of max hp lost per second
 # Infection of the living (DESIGN 4.4): hosts carry an infection meter and turn, alive, at 1.0.
 const INFECT_CHANCE := 0.2    # chance that a Choir hit on another court's ordinary unit infects it
 const INFECT_STALKER := 0.6   # the same chance for a Stalker's spit
-const INFECT_DOSE := 0.34     # infection each infecting hit adds: three turn the unit (host insects turn on the first)
+const INFECT_DOSE := 0.25     # infection each infecting hit adds: four turn the unit (host insects turn on the first)
 const INFECT_SPORES := 0.5    # a sporulation burst doses enemy units within 6 m this much
 const INFECT_PANDEMIC := 0.15 # per second inside a Pandemic
 const INFECT_FADE := 0.03     # per second, once 5 s have passed without a dose
+const GROVE_RESIST := 0.5     # Court units in a fed tree's roots take this share of each dose, and start healing it at once
 const HUSK_MIN := 0.5         # a host this infected bursts into spores as it dies
 const HUSK_SHARE := 0.3       # the share of nitrogen a burst host's dry husk keeps
 const HOST_RANGE := 6.0       # a Choir structure grows from a thrall this close to the spot
