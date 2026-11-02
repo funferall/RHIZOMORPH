@@ -1,11 +1,6 @@
 {
-  "triangles": 6097,
-  "vertices": 3982,
+  "triangles": 7441,
+  "vertices": 4930,
   "bones": 13,
-  "surfaces": 1,
-  "animations": [
-    "Idle",
-    "Walk",
-    "Attack"
-  ]
+  "surfaces": 1
 }

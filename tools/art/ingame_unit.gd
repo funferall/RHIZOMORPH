@@ -34,6 +34,8 @@ func run() -> void:
 		var p := at + Vector2(-3.0 + i * 1.7, (i % 2) * 1.8 - 0.6)
 		var u = g._spawn_unit(faction, unit, p)
 		u.goal = p + Vector2(8, 0) if i % 2 == 0 else p
+		if unit == "angel" and i < 3:
+			u.reveal_t = 10.0
 		walkers.append(u)
 	walkers[1].strike = 0.62   # caught with its arms up
 	var others: Array = Data().FACTIONS[faction]["starters"]
@@ -50,7 +52,11 @@ func run() -> void:
 			g.time += 1.0 / 60.0
 			g._update_visuals(1.0 / 60.0)
 			walkers[1].strike = 0.62
-			walkers[1].mi.set_instance_shader_parameter("strike", 0.62)
+			if unit == "angel":
+				walkers[1].anim.play("Attack")
+				walkers[1].anim.seek(0.95 * 0.43, true)
+			else:
+				walkers[1].mi.set_instance_shader_parameter("strike", 0.62)
 			await process_frame
 		await RenderingServer.frame_post_draw
 		var path: String = out.path_join(view[0] + ".png")

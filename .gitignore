@@ -24,3 +24,6 @@ art/webcap/frames/
 # Reproducible Morel Bruiser walk and attack source frames
 art/bruiser/frames_*/
 tools/blender/__pycache__/
+
+# Reproducible Destroying Angel review-animation frames
+art/destroying_angel/frames_*/

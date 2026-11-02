@@ -11,6 +11,7 @@ const SCENES := [
 ]
 const SHADER := preload("res://shaders/destroying_angel.gdshader")
 const CLOAK_SHADER := preload("res://shaders/destroying_angel_cloak.gdshader")
+const SliceTrails := preload("res://scripts/angel_slice_trails.gd")
 const SKIN_MAP := preload("res://art/destroying_angel/angel_skin.png")
 const DETAIL_MAP := preload("res://art/destroying_angel/surface_detail.png")
 const SCALE := 0.8            # the GLB stands 2.5 m; in the game it towers over a Wartling at 2 m
@@ -53,13 +54,17 @@ static func instance() -> Array:
 	var mi: MeshInstance3D = root.find_children("*", "MeshInstance3D", true, false)[0]
 	mi.material_override = material(false)
 	# the attack lunges forward and the hood sways; bones leave the bind-pose box
-	mi.custom_aabb = AABB(Vector3(-1.0, -0.2, -1.0), Vector3(2.0, 3.2, 3.0))
+	mi.custom_aabb = AABB(Vector3(-1.6, -0.2, -1.2), Vector3(3.2, 3.3, 3.6))
 	var player: AnimationPlayer = root.find_children("*", "AnimationPlayer", true, false)[0]
 	for clip in ["Idle", "Walk"]:
 		player.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
 	player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	player.play("Idle")
 	player.seek(randf() * 2.4, true)
+	var trails := SliceTrails.new()
+	trails.name = "SliceTrails"
+	root.add_child(trails)
+	player.set_meta("slice_trails", trails)
 	return [root, mi, player]
 
 

@@ -2660,7 +2660,11 @@ func _angel_visual(u: Ent, game_dt: float, update_lod: bool, px_scale: float) ->
 			# a 1.2 s stride cycle; quicken it with pace so the feet keep up with the ground
 			rate = clampf(u.vel.length() / 3.2, 0.7, 2.3)
 	if game_dt > 0.0:
-		u.anim.advance(game_dt * rate)
+		# Sample fast blade sweeps at 120 Hz, including at low rendering frame rates.
+		var steps := clampi(ceili(game_dt * 120.0), 1, 24) if u.attack_anim > 0.0 else 1
+		for sample in steps:
+			u.anim.advance(game_dt * rate / steps)
+			u.anim.get_meta("slice_trails").tick(game_dt / steps, u.anim, cloaked == 1)
 
 
 func _fx_common(e: Ent, delta: float) -> void:

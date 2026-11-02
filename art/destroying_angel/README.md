@@ -1,86 +1,30 @@
-# Destroying Angel — first rigged 3D asset pass
+# Destroying Angel
 
-A self-contained Godot review project and three portable, skinned GLB assets.
-The design uses exactly two legs, a flat fungal torso, an asymmetric ivory hood,
-forearm blades and three mantle plates. This is a procedural interpretation of
-the approved concept, not a finished sculpt matching all of its surface detail.
+The Amanita Court assassin uses an ivory swept hood, warm gill ribs, layered pointed veils, a slender stalk, splayed legs with fungal husks, and two long integral forearm scythes. Built against `reference_images/amanita_court_roster.jpg`.
 
-## Open and inspect
+## Runtime
 
-Open `project.godot` in Godot 4.7.2, allow imports to finish, then press F6 on
-`review.tscn` or run the project normally. No Python dependencies are needed to
-use the assets or the Godot preview.
+Three GLBs share a 13-joint skeleton and one mesh surface. Close/battle/distant geometry is 23,864 / 7,441 / 1,704 triangles. Idle (2.4 s), Walk (1.2 s), and Attack (0.95 s) are embedded clips. Attack holds anticipation, snaps through a crossing cut at 43%, then recovers; gameplay accelerates the clip to its 0.85 s cooldown and retains the 0.36 s damage windup.
 
-- W: toggle the stalking walk.
-- A: play the blade-lunge attack.
-- S: toggle the test "spotted" input.
-- L: switch close, battle and distant models.
-- P: pause the animation.
-- Left drag / wheel: orbit and zoom.
+`scripts/destroying_angel.gd` supplies LODs and revealed/cloaked materials. The revealed shader uses mesh colors for ivory skin and warm gills. The original blue shimmer, enemy concealment, proximity detection, and reveal rules remain in place.
 
-The character auto-cloaks while unspotted and not attacking. Spotting or attacking
-switches to its solid ivory material. After the attack ends, it cloaks again if
-still unspotted. S simulates detection for review; the actual RTS must supply its
-visibility/detection result through `set_spotted()`.
+`scripts/angel_slice_trails.gd` samples the actual blade bones during the cut, drawing three short ribbons per blade with a 0.12 s lifetime. Sampling uses game time, including pause/speed, and subdivides fast motion at 120 Hz (capped at 24 samples per visual update). Ribbons live under the unit's visibility root and clear on cloak. No timers or independently visible world effects are used.
 
-## Assets and animation
+## Rebuild and review
 
-`assets/destroying_angel.glb`, `destroying_angel_battle.glb` and
-`destroying_angel_distant.glb` each contain one skinned mesh primitive, one shared
-PBR material, two embedded images, 13 joints, and three real animation clips:
+From the repository root, with Python, NumPy and Pillow:
 
-| Clip | Duration | Purpose |
-|---|---:|---|
-| Idle | 2.4 s | Subtle upper-stalk and hood movement |
-| Walk | 1.2 s | Alternating two-leg stalking cycle |
-| Attack | 0.95 s | Windup, forward blade lunge and recovery |
-
-Idle/Walk have matching endpoint poses; the review sets them to loop. Attack is
-one-shot. The attack's forward displacement returns to its start, so game movement
-should remain controlled by the simulation. `assets/stats_*.json` contains the
-measured triangle and vertex counts for each level. All levels retain the same
-joint names and animations.
-
-The GLBs' revealed materials and animations are portable. Blue transparency and
-rim emission are supplied separately by `scripts/cloak.gdshader` in Godot; that
-effect is not embedded as a portable glTF material. The review swaps material
-only when state changes. Revealed rendering uses the opaque material; cloaking
-uses an alpha blend with a depth prepass. There are no attached lights or cloud
-particle effects. Texture maps are 512 x 512.
-
-## Connect to gameplay
-
-The review root provides these hooks, which can be moved into your unit visual
-controller:
-
-```gdscript
-angel.set_spotted(enemy_can_see_this_unit)
-angel.set_walking(unit_speed > 0.0)
-angel.attack()  # returns false if already attacking
-angel.attack_impact.connect(on_melee_contact)
-```
-
-`attack_impact` fires once per attack at 43% of the clip. The visual code does not
-apply damage, decide targets or implement enemy fog visibility. It demonstrates
-material visibility for the local player; an enemy renderer must hide genuinely
-undetected units according to the game's rules. No changes have been made to the
-original game's combat data, training queues or source checkout.
-
-## Source and checks
-
-`tools/build_angel.py` regenerates the meshes, skeleton, skin and animation data.
-It needs Python with numpy and Pillow. Run it with 0, 1 or 2 for the three LODs.
-The exported assets do not depend on those packages at runtime.
-
-```sh
+```powershell
+python tools/destroying_angel/build_angel.py 0
+python tools/destroying_angel/build_angel.py 1
+python tools/destroying_angel/build_angel.py 2
 godot --headless --path . --editor --import --quit
-godot --headless --path . --script tools/check_asset.gd
-godot --path . -- --capture
+godot --path . --script tools/destroying_angel/render_angel.gd
+godot --path . --script tools/art/ingame_unit.gd -- --unit=angel --out=res://art/destroying_angel
+godot --headless --path . --script tools/tests/angel_visual.gd
+godot --headless --path . --script tools/tests/court_units.gd
 ```
 
-The checks load all three GLBs in Godot and verify one mesh/material surface,
-13 bones, normalized skin weights, finite positions, decreasing geometry counts,
-three animation tracks, cloak activation, spotted reveal, attack reveal and
-re-cloaking. Preview PNGs/GIFs are actual Godot Compatibility renders, produced
-using Mesa software rendering. Target-GPU frame time, crowd performance, combat
-contact alignment and final art polish still need work in the actual game.
+Review images: `revealed.png`, `cloaked.png`, `angel_ingame.png`, and `angel_ingame_close.png`. `attack.gif` and `walk.gif` show engine-rendered animation. Source frame directories are ignored by Git and Godot.
+
+Verified in Godot 4.7.2: all three LODs load, both blades produce trails, pause freezes trails, trails expire and clear on cloak. Court integration tests pass detection, re-cloaking, attack reveal, and damage timing. The broader Court test reports seven ObjectDB instances at shutdown; no script or rendering errors occurred during asset preview.

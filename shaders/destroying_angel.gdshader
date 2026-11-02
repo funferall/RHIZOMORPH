@@ -9,7 +9,7 @@ instance uniform vec4 team = vec4(1.0, 1.0, 1.0, 0.0);
 instance uniform float wither = 0.0;
 
 void fragment() {
-	vec3 col = texture(skin_map, UV).rgb * 0.7;
+	vec3 col = texture(skin_map, UV).rgb * COLOR.rgb * 0.88;
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	col = mix(col, team.rgb, rim * team.a * 0.25);
 	float gray = dot(col, vec3(0.3, 0.55, 0.15));
@@ -17,6 +17,6 @@ void fragment() {
 	ALBEDO = col;
 	NORMAL_MAP = texture(detail_map, UV).rgb;
 	NORMAL_MAP_DEPTH = 0.42;
-	ROUGHNESS = 0.82;
+	ROUGHNESS = 0.72;
 	EMISSION = vec3(1.0, 0.95, 0.85) * flash * 0.7;
 }
