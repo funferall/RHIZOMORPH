@@ -50,6 +50,9 @@ const OYSTER_RATE := 0.4      # nitrogen/s an Oyster Shelf gets from the nematod
 const ROT_NITROGEN := 0.1     # nitrogen per cellulose a Rot Bracket digests (bacteria fix it in the wood)
 const RECLAIM := 0.5          # share of its nitrogen cost a Hollow unit returns dying on Hollow ground
 const INSECT_MEAL := 4.0      # nitrogen the Hollow gets at once for an insect it kills
+const CREEP_REACH := 14.0     # the Hollow's mycelium grows toward the dead this close to its network or units
+const CREEP_R := 3.0          # the patch it grows over a corpse or rubble (m)
+const CREEP_TIME := 8.0       # seconds for that patch to grow in
 
 # --- the Choir's hosts ---
 const THRALL_DECAY := 0.0055  # fraction of max hp lost per second

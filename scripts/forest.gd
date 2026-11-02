@@ -202,6 +202,7 @@ func add_corpse(e) -> void:
 	elif e.d.get("thrall", false):
 		n = 8.0
 	var d := _deposit("corpse", e.pos, 0.0, n)
+	g._stats["eco_corpses"] = g._stats.get("eco_corpses", 0) + 1
 	d["life"] = Data.CORPSE_LIFE * (2.0 if _hollow_has("necrophagy") else 1.0)
 	d["node"] = e.node
 	d["fly_t"] = 12.0 if _rng.randf() < 0.5 else INF
@@ -330,6 +331,8 @@ func tick(dt: float) -> void:
 	var i := deposits.size() - 1
 	while i >= 0:
 		var d := deposits[i]
+		if d["kind"] == "corpse" and d["drain_n"] > 0.0:
+			g._stats["eco_corpse_n"] = g._stats.get("eco_corpse_n", 0.0) + minf(d["n"], d["drain_n"] * dt)
 		d["c"] = maxf(d["c"] - d["drain_c"] * dt, 0.0)
 		d["n"] = maxf(d["n"] - d["drain_n"] * dt, 0.0)
 		if not d["kept"]:

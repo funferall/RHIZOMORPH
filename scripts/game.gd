@@ -2603,7 +2603,7 @@ func sim_summary() -> Dictionary:
 			"hist": fs[f].get("hist", [])})
 	var casts := {}
 	for k in _stats:
-		if str(k).begins_with("cast_") or str(k).begins_with("spor") or str(k).begins_with("built_"):
+		if str(k).begins_with("cast_") or str(k).begins_with("spor") or str(k).begins_with("built_") or str(k).begins_with("eco_"):
 			casts[k] = _stats[k]
 	return {"match": match_seed, "rival_step": rival_step, "difficulty": difficulty, "time": snappedf(time, 0.1), "winner": alive[0] if alive.size() == 1 else -1,
 		"alive": alive, "courts": per, "casts": casts, "cpu_mycelium": myc.cpu, "profile_ms": _prof_report()}
@@ -2777,6 +2777,7 @@ func _push_sources() -> void:
 	for u in units:
 		if u.alive and u.f != Data.NEUTRAL:
 			myc.add_disc(u.pos, 2.2, 0.55, u.f)
+	_push_creep()
 	for z in zones:
 		match z["kind"]:
 			"fairy_ring":
@@ -2786,6 +2787,34 @@ func _push_sources() -> void:
 					myc.add_burn(z["p"], z["r"])
 				else:
 					myc.add_disc(z["p"], z["r"], 1.0, z["f"])
+
+
+# The Hollow's mycelium grows toward the dead: a corpse or rubble near its network
+# or its units becomes a source of Hollow ground, so the feast reaches the battlefield.
+func _push_creep() -> void:
+	for f in 3:
+		if not fs[f]["alive"] or econ(f) != "saprotroph":
+			continue
+		var key := "creep%d" % f
+		for d in forest.deposits:
+			if d["kind"] != "corpse" and d["kind"] != "rubble":
+				continue
+			if not d.has(key):
+				if not _creep_reach(f, d["pos"]):
+					continue
+				d[key] = time
+			var k := clampf((time - float(d[key])) / Data.CREEP_TIME, 0.0, 1.0)
+			myc.add_disc(d["pos"], Data.CREEP_R * lerpf(0.4, 1.0, k), 0.9 * k, f)
+
+
+func _creep_reach(f: int, p: Vector2) -> bool:
+	for s in structs:
+		if s.f == f and s.alive and s.connected and s.built >= 1.0 and s.pos.distance_to(p) < Data.CREEP_REACH:
+			return true
+	for u in _near_units(p, Data.CREEP_REACH):
+		if u.f == f and u.alive:
+			return true
+	return false
 
 
 # --- visuals -------------------------------------------------------------------
