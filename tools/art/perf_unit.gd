@@ -7,7 +7,9 @@ extends SceneTree
 
 const FungusLib = preload("res://scripts/fungus_lib.gd")
 const ART := {"binder": ["res://scripts/coral_binder.gd", "u_binder"], "runner": ["res://scripts/candlesnuff_runner.gd", "u_runner"], "slinger": ["res://scripts/elf_cup_slinger.gd", "u_slinger"], "bomber": ["res://scripts/puffball_bomber.gd", "u_bomber"], "webcap": ["res://scripts/webcap.gd", "u_webcap"], "bruiser": ["res://scripts/morel_bruiser.gd", "u_bruiser"],
-	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"], "t_beetle": ["res://scripts/whitecoat_beetle.gd", "t_beetle"]}
+	"spitter": ["res://scripts/muscarine_spitter.gd", "u_spitter"], "t_beetle": ["res://scripts/whitecoat_beetle.gd", "t_beetle"],
+	# not a trained unit yet: spawn Spitters, compare with the Spitter's old model, wear the new mesh
+	"sailwing": ["res://scripts/mycena_sailwing.gd", "u_spitter", "spitter"]}
 
 
 func _initialize() -> void:
@@ -40,7 +42,7 @@ func run() -> void:
 	var units := []
 	var side := ceili(sqrt(count))
 	for i in count:
-		var u = g._spawn_unit(1, unit, at + Vector2((i % side) - side * 0.5, (i / side) - side * 0.5) * 1.9)
+		var u = g._spawn_unit(1, ART[unit][2] if ART[unit].size() > 2 else unit, at + Vector2((i % side) - side * 0.5, (i / side) - side * 0.5) * 1.9)
 		u.goal = u.pos
 		if unit == "binder" and opt("wall", "0") == "1":
 			u.wall_limit = 12.0

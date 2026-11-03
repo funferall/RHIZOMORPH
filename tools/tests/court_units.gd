@@ -153,6 +153,13 @@ func run() -> void:
 	step(0.4)
 	check(dummy.hp < dhp, "The smash lands the blow")
 
+	# --- Mycena Sailwing: art only so far (not yet a trained unit) ---
+	var sw_art = load("res://scripts/mycena_sailwing.gd")
+	check(sw_art.stats(0)["triangles"] > sw_art.stats(1)["triangles"] and sw_art.stats(1)["triangles"] > sw_art.stats(2)["triangles"]
+		and sw_art.stats(0)["surfaces"] == 1, "Sailwing has three decreasing LODs on one surface")
+	var sw_clap := float(sw_art.SHADER.code.get_slice("const float CLAP = ", 1).get_slice(";", 0))
+	check(is_equal_approx(sw_art.WINDUP_SECONDS, sw_clap * sw_art.SWING_SECONDS), "The Sailwing's windup lands on the clap")
+
 	# --- Muscarine Spitter: coils, then spits on the lash ---
 	var sp = g._spawn_unit(0, "spitter", at + Vector2(-12, 8))
 	var sp_art = load("res://scripts/muscarine_spitter.gd")

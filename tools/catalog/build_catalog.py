@@ -79,6 +79,7 @@ LATIN = {
     "u_webcap": "Cortinarius violaceus, walking",
     "u_milkcap": "Lactarius deliciosus, walking",
     "u_cep_bulwark": "Boletus edulis, walking",
+    "u_sailwing": "Mycena pura, aloft",
 }
 
 COURTS = [

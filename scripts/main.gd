@@ -383,6 +383,7 @@ func _catalog_entries() -> Array:
 	add.call("agaric_button", "prop", 0, "Fairy Ring (spore action)")
 	add.call("death_cap", "prop", 0, "Death Cap Bloom (spore action)")
 	add.call("anthill", "prop", Data.NEUTRAL, "Anthill (insect nest)")
+	add.call("u_sailwing", "unit", 0, "Mycena Sailwing (art preview, not yet trained)")
 	return out.values()
 
 

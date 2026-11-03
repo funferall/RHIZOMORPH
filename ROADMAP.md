@@ -156,6 +156,31 @@ The Hollow's late income is still about twice the baseline's (cellulose about 18
 setting between the two runs tested is worth a try. Use 48 seeds per change from here on, because
 24 seeds swing too much.
 
+## Mycena Sailwing art (2026-11-02; art only, not yet a unit)
+
+The Court's flying skirmisher from the roster sheet:
+- Seven lilac Mycena bells fan out like wings from a hook-beaked fruiting knot, trailing gold
+  hyphae.
+- Built in `tools/blender/sailwing_build.py`, with the loader `scripts/mycena_sailwing.gd` and the
+  shader `shaders/mycena_sailwing.gdshader`.
+- The motion pulses the bells like a jellyfish's and flaps them as wings. The volley rears with
+  the bells flared, then claps them shut.
+- LOD triangles 7,878 / 2,398 / 940, one surface and one 1024 atlas. Atlas lint: 0 fail, 0 warn.
+  Court suite: 0 failures, including two new Sailwing checks.
+- Three critique rounds:
+  - The caps went from puffballs to bells, fanned out from the body.
+  - The paint went from saturated purple to pale lilac, with gold striae glowing through the
+    margin.
+  - The speckled body became an open honeycomb lattice.
+  - The stems got thinner, and the distant LOD lost the gill stripe it had smeared across each
+    rim.
+- **Not done:**
+  - It is not in `data.gd`, so it can't be trained or captured in a match yet (it appears in the
+    catalog as an art preview).
+  - The perf run sat at a 30 fps cap in every variant, so its cost is unmeasured.
+
+  See `art/sailwing/README.md`.
+
 ## Coral Binder (2026-11-02)
 
 The Morel Patch now plants a stationary Coral Binder through a two-click root and wall-end command. The wall grows linearly, slows enemy ground movement, can be targeted along its length and retaliates against direct melee; its segments share the root's health. The Morel AI can place defensive walls. Cost, health and rates are initial tuning values; multiplayer-scale and strategic balance still need playtesting. See `art/binder/README.md` and `DESIGN.md` for controls and details.

@@ -15,6 +15,7 @@ const UNITS := {
 	"bomber": ["res://scripts/puffball_bomber.gd", "PUFFBALL BOMBER", "Morel Hollow / area bombardment", Color(0.98, 0.8, 0.22, 0.25)],
 	"slinger": ["res://scripts/elf_cup_slinger.gd", "ELF-CUP SLINGER", "Morel Hollow / ranged pressure", Color(0.98, 0.8, 0.22, 0.25)],
 	"webcap": ["res://scripts/webcap.gd", "VIOLET WEBCAP", "Amanita Court / control", Color(0.92, 0.18, 0.12, 0.25)],
+	"sailwing": ["res://scripts/mycena_sailwing.gd", "MYCENA SAILWING", "Amanita Court / flying skirmisher", Color(0.92, 0.18, 0.12, 0.25)],
 	"bruiser": ["res://scripts/morel_bruiser.gd", "MOREL BRUISER", "Morel Hollow / regenerating frontline", Color(0.98, 0.8, 0.22, 0.25)],
 }
 var unit := "bruiser"
@@ -78,7 +79,7 @@ func _run() -> void:
 				var t := float(i) / frames
 				if clip == "infect":
 					mi.set_instance_shader_parameter("infect", t * 1.15)
-				mi.set_instance_shader_parameter("motion_time", t * 3.0 if clip == "infect" else t * TAU * (2.0 if unit == "runner" else 1.0) / gait if clip == "walk" else 1.0 + t * (art.SWING_SECONDS if unit in ["spitter", "t_beetle"] else 0.72 if unit == "slinger" else (0.8 if unit == "runner" else 0.6)))
+				mi.set_instance_shader_parameter("motion_time", t * 3.0 if clip == "infect" else t * TAU * (2.0 if unit == "runner" else 1.0) / gait if clip == "walk" else 1.0 + t * (art.SWING_SECONDS if unit in ["spitter", "t_beetle", "sailwing"] else 0.72 if unit == "slinger" else (0.8 if unit == "runner" else 0.6)))
 				mi.set_instance_shader_parameter("strike", 1.0 - t if clip == "attack" else 0.0)
 				await _settle(3)
 				vp.get_texture().get_image().save_png(ProjectSettings.globalize_path(dir.path_join("%03d.png" % i)))
