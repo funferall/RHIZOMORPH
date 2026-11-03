@@ -80,6 +80,7 @@ LATIN = {
     "u_milkcap": "Lactarius deliciosus, walking",
     "u_cep_bulwark": "Boletus edulis, walking",
     "u_sailwing": "Mycena pura, aloft",
+    "u_binder": "Ramaria, rooted",
 }
 
 COURTS = [

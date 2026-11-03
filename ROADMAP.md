@@ -468,6 +468,16 @@ Then republish `screenshots/catalog/catalog.html` to that URL. Species come from
 insects, decor), plus the props listed in `main.gd _catalog_entries`. Add a binomial to `LATIN` in the builder.
 `tools/catalog/seen.json` dates each species' first render, so new ones get a "new" tag.
 
+**Order of Battle** (https://claude.ai/artifact/Rc8HZotZ2LS8qdxwtU9i1C) is the companion page: every building and
+unit by court, what makes what, costs, build and train times and combat stats, using the same renders. **After
+changing data.gd or adding a unit or building**, refresh it:
+```
+$G --headless --path . --script tools/catalog/dump_data.gd   # data.gd -> screenshots/catalog/roster_data.json
+python tools/catalog/build_roster.py                          # writes screenshots/catalog/roster.html
+```
+Then republish `screenshots/catalog/roster.html` to that URL. Roles ("Melee", "Fast scout") live in `ROLE` in the
+builder, because data.gd has no role field. Add one for each new unit.
+
 ## Balance harness (headless)
 
 ```
