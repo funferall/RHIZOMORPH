@@ -164,7 +164,8 @@ The Morel Hollow's flying spore bomber from the combat roster sheet:
 - Built in `tools/blender/glider_build.py`, with the loader `scripts/splitgill_glider.gd` and the
   shader `shaders/splitgill_glider.gdshader`.
 - LOD triangles 7,760 / 2,080 / 692, one surface and one 1024 atlas. Atlas lint: 0 fail, 0 warn.
-  Court suite: 0 failures, including four new Glider checks.
+  Court suite: 0 failures, including four new Glider checks. Perf (16 rounds): 60 units at
+  battle detail add +0.06 ms, against +0.20 ms for the old procedural Bomber.
 - **First generated motion.** [UniMate](https://github.com/Friedrich-M/UniMate) (text to motion
   for any skeleton) animated a 14-bone bird-named rig that the build writes.
   - `tools/unimate/glider_motion.py` bakes the clips into a bone texture (`glider_bones.tres`).

@@ -61,7 +61,10 @@ clips swing the wings about ±90°, too wild from the RTS camera.
 - `WINDUP_SECONDS` = 0.71184 = RELEASE x SWING_SECONDS, checked in `court_units.gd`.
 
 Shader cost: two bones a vertex and two clips blended (three during a run). Each blend is up to
-two texel fetches per frame pair, which is cheap at these vertex counts.
+two texel fetches per frame pair. **Measured** with `perf_unit.gd --rounds=16` on the RTX 4060
+laptop: 60 units at battle detail add median +0.06 ms (middle half +0.02 to +0.36), against
++0.20 ms for the old procedural Bomber model. At close detail they add +0.52 ms, and at distant
+detail -0.02 ms (noise).
 
 ## Rebuild
 
