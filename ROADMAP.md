@@ -156,6 +156,31 @@ The Hollow's late income is still about twice the baseline's (cellulose about 18
 setting between the two runs tested is worth a try. Use 48 seeds per change from here on, because
 24 seeds swing too much.
 
+## Splitgill Glider art, with motion from UniMate (2026-11-03; art only, not yet a unit)
+
+The Morel Hollow's flying spore bomber from the combat roster sheet:
+- Two split-gill (*Schizophyllum*) fans spread as wings from a pored morel body, with a rust
+  streamer for a tail and earthball spore bombs slung underneath.
+- Built in `tools/blender/glider_build.py`, with the loader `scripts/splitgill_glider.gd` and the
+  shader `shaders/splitgill_glider.gdshader`.
+- LOD triangles 7,760 / 2,080 / 692, one surface and one 1024 atlas. Atlas lint: 0 fail, 0 warn.
+  Court suite: 0 failures, including four new Glider checks.
+- **First generated motion.** [UniMate](https://github.com/Friedrich-M/UniMate) (text to motion
+  for any skeleton) animated a 14-bone bird-named rig that the build writes.
+  - `tools/unimate/glider_motion.py` bakes the clips into a bone texture (`glider_bones.tres`).
+    The shader skins on the GPU from the data UV, with no Skeleton3D.
+  - Three clips: a hover, a one-beat flight loop tied to `gait`, and a bomb run that climbs,
+    dives and drops the bombs at its fastest drop (windup 0.712 s).
+- What UniMate is good for here: limb and wing motion we'd otherwise hand-write in shaders. It
+  works offline on this laptop (RTX 4060), about 3.5 minutes per batch of 5 prompts.
+  - It needs a skeleton, so our units would gain a rig step.
+  - The raw motion is too big for the RTS camera, so the baker eases it (amp 0.5-0.7).
+  - Prompts don't map literally: "glides with its wings spread" gave the best wingbeat.
+  - Its checkpoints are **CC BY-NC**: check this before anything generated with them ships
+    commercially.
+- **Not done:** it is not in `data.gd` (no trainer, stats or bomb shot), so it can't be captured
+  in a match yet. See `art/glider/README.md`.
+
 ## Mycena Sailwing art (2026-11-02; art only, not yet a unit)
 
 The Court's flying skirmisher from the roster sheet:

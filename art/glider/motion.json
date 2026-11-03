@@ -1,0 +1,31 @@
+{
+ "GLIDE": {
+  "sample": "glider-an_object_flaps_its_wings-rep_1-0.npy",
+  "loop": [
+   17,
+   57
+  ],
+  "seam_error": 0.042301298060238406,
+  "amp": 0.6
+ },
+ "FLY": {
+  "sample": "glider-an_object_glides_with_its_wings_spread-rep_1-1.npy",
+  "loop": [
+   19,
+   37
+  ],
+  "seam_error": 0.018268265189811374,
+  "amp": 0.5
+ },
+ "RUN": {
+  "sample": "glider-an_object_dives_forward_and_pulls_up-rep_1-4.npy",
+  "window": [
+   0,
+   60
+  ],
+  "amp": 0.7,
+  "release_frame": 35,
+  "frames": 60
+ },
+ "release": 0.5932203389830508
+}

@@ -160,6 +160,24 @@ func run() -> void:
 	var sw_clap := float(sw_art.SHADER.code.get_slice("const float CLAP = ", 1).get_slice(";", 0))
 	check(is_equal_approx(sw_art.WINDUP_SECONDS, sw_clap * sw_art.SWING_SECONDS), "The Sailwing's windup lands on the clap")
 
+	# --- Splitgill Glider: art only so far; its motion is UniMate clips baked into a bone texture ---
+	var gl_art = load("res://scripts/splitgill_glider.gd")
+	check(gl_art.stats(0)["triangles"] > gl_art.stats(1)["triangles"] and gl_art.stats(1)["triangles"] > gl_art.stats(2)["triangles"]
+		and gl_art.stats(0)["surfaces"] == 1, "Glider has three decreasing LODs on one surface")
+	var gl_inc := FileAccess.get_file_as_string("res://shaders/splitgill_glider_motion.gdshaderinc")
+	var gl_rows := 0
+	for clip in ["GLIDE", "FLY", "RUN"]:
+		gl_rows += int(gl_inc.get_slice("const int %s_LEN = " % clip, 1).get_slice(";", 0))
+	var gl_bones: Image = gl_art.BONES.get_image()
+	check(gl_bones.get_format() == Image.FORMAT_RGBAF and gl_bones.get_height() == gl_rows
+		and gl_bones.get_width() == 2 * int(gl_inc.get_slice("const int BONE_COUNT = ", 1).get_slice(";", 0)),
+		"The Glider's bone texture holds every baked frame of its three clips")
+	var gl_release := float(gl_inc.get_slice("const float RELEASE = ", 1).get_slice(";", 0))
+	check(is_equal_approx(gl_art.WINDUP_SECONDS, gl_release * gl_art.SWING_SECONDS)
+		and is_equal_approx(gl_art.SWING_SECONDS, float(gl_inc.get_slice("const float SWING_SECONDS = ", 1).get_slice(";", 0))),
+		"The Glider's windup lands when its bombs let go")
+	check(FungusLib.mesh("u_glider") == gl_art.mesh(0), "The catalog shows the Glider's Blender-built mesh")
+
 	# --- Muscarine Spitter: coils, then spits on the lash ---
 	var sp = g._spawn_unit(0, "spitter", at + Vector2(-12, 8))
 	var sp_art = load("res://scripts/muscarine_spitter.gd")

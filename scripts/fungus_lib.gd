@@ -20,6 +20,7 @@ const Bruiser := preload("res://scripts/morel_bruiser.gd")
 const Spitter := preload("res://scripts/muscarine_spitter.gd")
 const Beetle := preload("res://scripts/whitecoat_beetle.gd")
 const Sailwing := preload("res://scripts/mycena_sailwing.gd")
+const Glider := preload("res://scripts/splitgill_glider.gd")
 
 static var _meshes := {}
 static var _mats := {}
@@ -324,6 +325,11 @@ static func mesh(id: String) -> ArrayMesh:
 		_meshes[id] = sailwing
 		_heights[id] = Sailwing.HEIGHT
 		return sailwing
+	if id == "u_glider":
+		var glider := Glider.mesh(0)
+		_meshes[id] = glider
+		_heights[id] = Glider.HEIGHT
+		return glider
 	if id == "u_webcap":
 		var webcap := Webcap.mesh(0)
 		_meshes[id] = webcap

@@ -384,6 +384,7 @@ func _catalog_entries() -> Array:
 	add.call("death_cap", "prop", 0, "Death Cap Bloom (spore action)")
 	add.call("anthill", "prop", Data.NEUTRAL, "Anthill (insect nest)")
 	add.call("u_sailwing", "unit", 0, "Mycena Sailwing (art preview, not yet trained)")
+	add.call("u_glider", "unit", 1, "Splitgill Glider (art preview, not yet trained)")
 	add.call(Data.UNITS["binder"]["species"], "unit", 1, Data.UNITS["binder"]["name"])   # planted from the Morel Patch
 	return out.values()
 
